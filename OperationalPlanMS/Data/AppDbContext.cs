@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Models.Entities;
 
 namespace OperationalPlanMS.Data
@@ -9,9 +9,7 @@ namespace OperationalPlanMS.Data
         {
         }
 
-        // DbSets for all entities
-        public DbSet<Organization> Organizations { get; set; }
-        public DbSet<OrganizationalUnit> OrganizationalUnits { get; set; }
+        // DbSets
         public DbSet<Role> Roles { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<FiscalYear> FiscalYears { get; set; }
@@ -41,26 +39,6 @@ namespace OperationalPlanMS.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Organization
-            modelBuilder.Entity<Organization>(entity =>
-            {
-                entity.HasIndex(e => e.Code).IsUnique();
-            });
-
-            // OrganizationalUnit
-            modelBuilder.Entity<OrganizationalUnit>(entity =>
-            {
-                entity.HasOne(e => e.ParentUnit)
-                    .WithMany(e => e.ChildUnits)
-                    .HasForeignKey(e => e.ParentUnitId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.Organization)
-                    .WithMany(e => e.OrganizationalUnits)
-                    .HasForeignKey(e => e.OrganizationId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-
             // Role
             modelBuilder.Entity<Role>(entity =>
             {
@@ -77,35 +55,24 @@ namespace OperationalPlanMS.Data
                     .HasForeignKey(e => e.RoleId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(e => e.OrganizationalUnit)
-                    .WithMany(e => e.Users)
-                    .HasForeignKey(e => e.OrganizationalUnitId)
+                entity.HasOne(e => e.ExternalUnit)
+                    .WithMany()
+                    .HasForeignKey(e => e.ExternalUnitId)
                     .OnDelete(DeleteBehavior.SetNull);
-
-                entity.HasOne(e => e.Organization)
-                    .WithMany(e => e.Users)
-                    .HasForeignKey(e => e.OrganizationId)
-                    .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // FiscalYear
-            modelBuilder.Entity<FiscalYear>(entity =>
-            {
-                entity.HasOne(e => e.Organization)
-                    .WithMany(e => e.FiscalYears)
-                    .HasForeignKey(e => e.OrganizationId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
+            // FiscalYear - لا يوجد OrganizationId بعد الآن
+            // (لا تحتاج تهيئة خاصة)
 
             // Initiative
             modelBuilder.Entity<Initiative>(entity =>
             {
                 entity.HasIndex(e => e.Code).IsUnique();
 
-                entity.HasOne(e => e.OrganizationalUnit)
+                entity.HasOne(e => e.ExternalUnit)
                     .WithMany(e => e.Initiatives)
-                    .HasForeignKey(e => e.OrganizationalUnitId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .HasForeignKey(e => e.ExternalUnitId)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasOne(e => e.FiscalYear)
                     .WithMany(e => e.Initiatives)
@@ -138,13 +105,6 @@ namespace OperationalPlanMS.Data
                     .HasForeignKey(e => e.InitiativeId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                // الوحدة التنظيمية المحلية (اختياري - للتوافق)
-                entity.HasOne(e => e.OrganizationalUnit)
-                    .WithMany()
-                    .HasForeignKey(e => e.OrganizationalUnitId)
-                    .OnDelete(DeleteBehavior.SetNull);
-
-                // الوحدة التنظيمية من API
                 entity.HasOne(e => e.ExternalUnit)
                     .WithMany(e => e.Projects)
                     .HasForeignKey(e => e.ExternalUnitId)
@@ -155,13 +115,11 @@ namespace OperationalPlanMS.Data
                     .HasForeignKey(e => e.ProjectManagerId)
                     .OnDelete(DeleteBehavior.SetNull);
 
-                // الهدف الفرعي
                 entity.HasOne(e => e.SubObjective)
                     .WithMany()
                     .HasForeignKey(e => e.SubObjectiveId)
                     .OnDelete(DeleteBehavior.SetNull);
 
-                // التكلفة المالية
                 entity.HasOne(e => e.FinancialCost)
                     .WithMany()
                     .HasForeignKey(e => e.FinancialCostId)
@@ -295,13 +253,11 @@ namespace OperationalPlanMS.Data
                     .HasForeignKey(e => e.ProjectId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                // الجهة المساندة المحلية (اختياري - للتوافق)
                 entity.HasOne(e => e.SupportingEntity)
                     .WithMany(s => s.ProjectSupportingUnits)
                     .HasForeignKey(e => e.SupportingEntityId)
                     .OnDelete(DeleteBehavior.SetNull);
 
-                // الجهة المساندة من API
                 entity.HasOne(e => e.ExternalUnit)
                     .WithMany()
                     .HasForeignKey(e => e.ExternalUnitId)
@@ -329,7 +285,6 @@ namespace OperationalPlanMS.Data
             // ExternalOrganizationalUnit
             modelBuilder.Entity<ExternalOrganizationalUnit>(entity =>
             {
-                // Id ليس auto-generated - يأتي من API
                 entity.Property(e => e.Id).ValueGeneratedNever();
 
                 entity.HasOne(e => e.Parent)
@@ -358,14 +313,17 @@ namespace OperationalPlanMS.Data
             modelBuilder.Entity<StrategicObjective>(entity =>
             {
                 entity.HasIndex(e => e.Code).IsUnique();
+
                 entity.HasOne(e => e.StrategicAxis)
                     .WithMany(e => e.StrategicObjectives)
                     .HasForeignKey(e => e.StrategicAxisId)
                     .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasOne(e => e.CreatedBy)
                     .WithMany()
                     .HasForeignKey(e => e.CreatedById)
                     .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasOne(e => e.LastModifiedBy)
                     .WithMany()
                     .HasForeignKey(e => e.LastModifiedById)
@@ -376,14 +334,17 @@ namespace OperationalPlanMS.Data
             modelBuilder.Entity<MainObjective>(entity =>
             {
                 entity.HasIndex(e => e.Code).IsUnique();
+
                 entity.HasOne(e => e.StrategicObjective)
                     .WithMany(e => e.MainObjectives)
                     .HasForeignKey(e => e.StrategicObjectiveId)
                     .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasOne(e => e.CreatedBy)
                     .WithMany()
                     .HasForeignKey(e => e.CreatedById)
                     .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasOne(e => e.LastModifiedBy)
                     .WithMany()
                     .HasForeignKey(e => e.LastModifiedById)
@@ -400,10 +361,10 @@ namespace OperationalPlanMS.Data
                     .HasForeignKey(e => e.MainObjectiveId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(e => e.OrganizationalUnit)
+                entity.HasOne(e => e.ExternalUnit)
                     .WithMany()
-                    .HasForeignKey(e => e.OrganizationalUnitId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .HasForeignKey(e => e.ExternalUnitId)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasOne(e => e.CreatedBy)
                     .WithMany()

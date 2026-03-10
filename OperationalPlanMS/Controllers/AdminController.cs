@@ -36,326 +36,7 @@ namespace OperationalPlanMS.Controllers
             return View();
         }
 
-        #region Organizations
-
-        // GET: /Admin/Organizations
-        public async Task<IActionResult> Organizations(string? searchTerm)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            var query = _db.Organizations.AsQueryable();
-
-            if (!string.IsNullOrEmpty(searchTerm))
-            {
-                query = query.Where(o => o.NameAr.Contains(searchTerm) ||
-                                        o.NameEn.Contains(searchTerm) ||
-                                        o.Code.Contains(searchTerm));
-            }
-
-            var viewModel = new OrganizationListViewModel
-            {
-                Organizations = await query.OrderBy(o => o.NameAr).ToListAsync(),
-                SearchTerm = searchTerm,
-                TotalCount = await query.CountAsync()
-            };
-
-            return View(viewModel);
-        }
-
-        // GET: /Admin/OrganizationCreate
-        public IActionResult OrganizationCreate()
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            return View(new OrganizationFormViewModel());
-        }
-
-        // POST: /Admin/OrganizationCreate
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> OrganizationCreate(OrganizationFormViewModel model)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            if (ModelState.IsValid)
-            {
-                // إنشاء الكود تلقائياً
-                var lastOrg = await _db.Organizations.OrderByDescending(o => o.Id).FirstOrDefaultAsync();
-                int nextNumber = (lastOrg?.Id ?? 0) + 1;
-                string autoCode = $"ORG-{nextNumber:D3}";
-
-                var entity = new Organization
-                {
-                    Code = autoCode,
-                    NameAr = model.NameAr,
-                    NameEn = model.NameEn,
-                    IsActive = model.IsActive,
-                    CreatedAt = DateTime.Now,
-                    CreatedBy = GetCurrentUserId()
-                };
-                _db.Organizations.Add(entity);
-                await _db.SaveChangesAsync();
-                TempData["SuccessMessage"] = $"تم إضافة المنظمة بنجاح (الكود: {autoCode})";
-                return RedirectToAction(nameof(Organizations));
-            }
-
-            return View(model);
-        }
-
-        // GET: /Admin/OrganizationEdit/5
-        public async Task<IActionResult> OrganizationEdit(int id)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            var entity = await _db.Organizations.FindAsync(id);
-            if (entity == null)
-                return NotFound();
-
-            return View(OrganizationFormViewModel.FromEntity(entity));
-        }
-
-        // POST: /Admin/OrganizationEdit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> OrganizationEdit(int id, OrganizationFormViewModel model)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            if (id != model.Id)
-                return NotFound();
-
-            if (await _db.Organizations.AnyAsync(o => o.Code == model.Code && o.Id != id))
-            {
-                ModelState.AddModelError("Code", "هذا الكود مستخدم بالفعل");
-            }
-
-            if (ModelState.IsValid)
-            {
-                var entity = await _db.Organizations.FindAsync(id);
-                if (entity == null)
-                    return NotFound();
-
-                model.UpdateEntity(entity);
-                await _db.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم تحديث المنظمة بنجاح";
-                return RedirectToAction(nameof(Organizations));
-            }
-
-            return View(model);
-        }
-
-        // POST: /Admin/OrganizationDelete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> OrganizationDelete(int id)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            var entity = await _db.Organizations.FindAsync(id);
-            if (entity == null)
-                return NotFound();
-
-            // Check for dependencies
-            if (await _db.OrganizationalUnits.AnyAsync(u => u.OrganizationId == id))
-            {
-                TempData["ErrorMessage"] = "لا يمكن حذف المنظمة لوجود وحدات تنظيمية مرتبطة بها";
-                return RedirectToAction(nameof(Organizations));
-            }
-
-            _db.Organizations.Remove(entity);
-            await _db.SaveChangesAsync();
-            TempData["SuccessMessage"] = "تم حذف المنظمة بنجاح";
-            return RedirectToAction(nameof(Organizations));
-        }
-
-        #endregion
-
-        #region OrganizationalUnits
-
-        // GET: /Admin/OrganizationalUnits
-        public async Task<IActionResult> OrganizationalUnits(string? searchTerm, int? organizationId)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            var query = _db.OrganizationalUnits
-                .Include(u => u.Organization)
-                .Include(u => u.ParentUnit)
-                .AsQueryable();
-
-            if (!string.IsNullOrEmpty(searchTerm))
-            {
-                query = query.Where(u => u.NameAr.Contains(searchTerm) ||
-                                        u.NameEn.Contains(searchTerm) ||
-                                        u.Code.Contains(searchTerm));
-            }
-
-            if (organizationId.HasValue)
-            {
-                query = query.Where(u => u.OrganizationId == organizationId.Value);
-            }
-
-            var viewModel = new OrganizationalUnitListViewModel
-            {
-                Units = await query.OrderBy(u => u.NameAr).ToListAsync(),
-                SearchTerm = searchTerm,
-                OrganizationId = organizationId,
-                Organizations = new SelectList(await _db.Organizations.Where(o => o.IsActive).ToListAsync(), "Id", "NameAr"),
-                TotalCount = await query.CountAsync()
-            };
-
-            return View(viewModel);
-        }
-
-        // GET: /Admin/OrganizationalUnitCreate
-        public async Task<IActionResult> OrganizationalUnitCreate()
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            var viewModel = new OrganizationalUnitFormViewModel();
-            await PopulateOrgUnitDropdowns(viewModel);
-            return View(viewModel);
-        }
-
-        // POST: /Admin/OrganizationalUnitCreate
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> OrganizationalUnitCreate(OrganizationalUnitFormViewModel model)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            if (ModelState.IsValid)
-            {
-                // إنشاء الكود تلقائياً: UNIT-{رقم المنظمة}-{رقم تسلسلي}
-                var unitsInOrg = await _db.OrganizationalUnits
-                    .Where(u => u.OrganizationId == model.OrganizationId)
-                    .CountAsync();
-                int nextNumber = unitsInOrg + 1;
-                string autoCode = $"UNIT-{model.OrganizationId:D3}-{nextNumber:D3}";
-
-                var entity = new OrganizationalUnit
-                {
-                    Code = autoCode,
-                    NameAr = model.NameAr,
-                    NameEn = model.NameEn,
-                    OrganizationId = model.OrganizationId,
-                    ParentUnitId = null,  // لا توجد وحدة أعلى
-                    UnitLevel = 1,  // المستوى الأول
-                    SortOrder = nextNumber,  // ترتيب العرض
-                    IsActive = model.IsActive,
-                    CreatedAt = DateTime.Now,
-                    CreatedBy = GetCurrentUserId()
-                };
-                _db.OrganizationalUnits.Add(entity);
-                await _db.SaveChangesAsync();
-                TempData["SuccessMessage"] = $"تم إضافة الوحدة التنظيمية بنجاح (الكود: {autoCode})";
-                return RedirectToAction(nameof(OrganizationalUnits));
-            }
-
-            await PopulateOrgUnitDropdowns(model);
-            return View(model);
-        }
-
-        // GET: /Admin/OrganizationalUnitEdit/5
-        public async Task<IActionResult> OrganizationalUnitEdit(int id)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            var entity = await _db.OrganizationalUnits
-                .Include(u => u.Organization)
-                .FirstOrDefaultAsync(u => u.Id == id);
-            if (entity == null)
-                return NotFound();
-
-            var viewModel = OrganizationalUnitFormViewModel.FromEntity(entity);
-            await PopulateOrgUnitDropdowns(viewModel);
-            ViewBag.OrganizationName = entity.Organization?.NameAr;
-            return View(viewModel);
-        }
-
-        // POST: /Admin/OrganizationalUnitEdit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> OrganizationalUnitEdit(int id, OrganizationalUnitFormViewModel model)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            if (id != model.Id)
-                return NotFound();
-
-            if (ModelState.IsValid)
-            {
-                var entity = await _db.OrganizationalUnits.FindAsync(id);
-                if (entity == null)
-                    return NotFound();
-
-                // تحديث البيانات (بدون تغيير الكود أو المنظمة)
-                entity.NameAr = model.NameAr;
-                entity.NameEn = model.NameEn;
-                entity.IsActive = model.IsActive;
-
-                await _db.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم تحديث الوحدة التنظيمية بنجاح";
-                return RedirectToAction(nameof(OrganizationalUnits));
-            }
-
-            var org = await _db.Organizations.FindAsync(model.OrganizationId);
-            ViewBag.OrganizationName = org?.NameAr;
-            await PopulateOrgUnitDropdowns(model);
-            return View(model);
-        }
-
-        // POST: /Admin/OrganizationalUnitDelete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> OrganizationalUnitDelete(int id)
-        {
-            if (!IsAdminUser())
-                return Forbid();
-
-            var entity = await _db.OrganizationalUnits.FindAsync(id);
-            if (entity == null)
-                return NotFound();
-
-            // Check for dependencies
-            if (await _db.OrganizationalUnits.AnyAsync(u => u.ParentUnitId == id))
-            {
-                TempData["ErrorMessage"] = "لا يمكن حذف الوحدة لوجود وحدات فرعية";
-                return RedirectToAction(nameof(OrganizationalUnits));
-            }
-
-            if (await _db.Users.AnyAsync(u => u.OrganizationalUnitId == id))
-            {
-                TempData["ErrorMessage"] = "لا يمكن حذف الوحدة لوجود مستخدمين مرتبطين بها";
-                return RedirectToAction(nameof(OrganizationalUnits));
-            }
-
-            _db.OrganizationalUnits.Remove(entity);
-            await _db.SaveChangesAsync();
-            TempData["SuccessMessage"] = "تم حذف الوحدة التنظيمية بنجاح";
-            return RedirectToAction(nameof(OrganizationalUnits));
-        }
-
-        private async Task PopulateOrgUnitDropdowns(OrganizationalUnitFormViewModel model)
-        {
-            model.Organizations = new SelectList(
-                await _db.Organizations.Where(o => o.IsActive).ToListAsync(),
-                "Id", "NameAr", model.OrganizationId);
-        }
-
-        #endregion
-
-        #region Users
+                        #region Users
 
         // GET: /Admin/Users
         public async Task<IActionResult> Users(string? searchTerm, int? roleId, int? organizationalUnitId, bool? isActive, int page = 1)
@@ -365,8 +46,6 @@ namespace OperationalPlanMS.Controllers
 
             var query = _db.Users
                 .Include(u => u.Role)
-                .Include(u => u.OrganizationalUnit)
-                .Include(u => u.Organization)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(searchTerm))
@@ -401,7 +80,6 @@ namespace OperationalPlanMS.Controllers
                 OrganizationalUnitId = organizationalUnitId,
                 IsActive = isActive,
                 Roles = new SelectList(await _db.Roles.ToListAsync(), "Id", "NameAr"),
-                OrganizationalUnits = new SelectList(await _db.OrganizationalUnits.Where(u => u.IsActive).ToListAsync(), "Id", "NameAr"),
                 TotalCount = totalCount,
                 CurrentPage = page,
                 PageSize = pageSize
@@ -582,11 +260,8 @@ namespace OperationalPlanMS.Controllers
                 "Id", "NameAr", model.RoleId);
 
             model.OrganizationalUnits = new SelectList(
-                await _db.OrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
                 "Id", "NameAr", model.OrganizationalUnitId);
 
-            model.Organizations = new SelectList(
-                await _db.Organizations.Where(o => o.IsActive).ToListAsync(),
                 "Id", "NameAr", model.OrganizationId);
         }
 
@@ -601,19 +276,15 @@ namespace OperationalPlanMS.Controllers
                 return Forbid();
 
             var query = _db.FiscalYears
-                .Include(f => f.Organization)
                 .AsQueryable();
 
             if (organizationId.HasValue)
             {
-                query = query.Where(f => f.OrganizationId == organizationId.Value);
             }
 
             var viewModel = new FiscalYearListViewModel
             {
                 FiscalYears = await query.OrderByDescending(f => f.Year).ToListAsync(),
-                OrganizationId = organizationId,
-                Organizations = new SelectList(await _db.Organizations.Where(o => o.IsActive).ToListAsync(), "Id", "NameAr"),
                 TotalCount = await query.CountAsync()
             };
 
@@ -635,8 +306,6 @@ namespace OperationalPlanMS.Controllers
                 EndDate = new DateTime(DateTime.Now.Year, 12, 31)
             };
 
-            viewModel.Organizations = new SelectList(
-                await _db.Organizations.Where(o => o.IsActive).ToListAsync(),
                 "Id", "NameAr");
 
             return View(viewModel);
@@ -650,7 +319,6 @@ namespace OperationalPlanMS.Controllers
             if (!IsAdminUser())
                 return Forbid();
 
-            if (await _db.FiscalYears.AnyAsync(f => f.Year == model.Year && f.OrganizationId == model.OrganizationId))
             {
                 ModelState.AddModelError("Year", "هذه السنة المالية موجودة بالفعل لهذه المنظمة");
             }
@@ -668,7 +336,6 @@ namespace OperationalPlanMS.Controllers
                 if (entity.IsCurrent)
                 {
                     await _db.FiscalYears
-                        .Where(f => f.OrganizationId == entity.OrganizationId && f.IsCurrent)
                         .ExecuteUpdateAsync(s => s.SetProperty(f => f.IsCurrent, false));
                 }
 
@@ -678,8 +345,6 @@ namespace OperationalPlanMS.Controllers
                 return RedirectToAction(nameof(FiscalYears));
             }
 
-            model.Organizations = new SelectList(
-                await _db.Organizations.Where(o => o.IsActive).ToListAsync(),
                 "Id", "NameAr", model.OrganizationId);
 
             return View(model);
@@ -696,8 +361,6 @@ namespace OperationalPlanMS.Controllers
                 return NotFound();
 
             var viewModel = FiscalYearFormViewModel.FromEntity(entity);
-            viewModel.Organizations = new SelectList(
-                await _db.Organizations.Where(o => o.IsActive).ToListAsync(),
                 "Id", "NameAr", viewModel.OrganizationId);
 
             return View(viewModel);
@@ -714,7 +377,6 @@ namespace OperationalPlanMS.Controllers
             if (id != model.Id)
                 return NotFound();
 
-            if (await _db.FiscalYears.AnyAsync(f => f.Year == model.Year && f.OrganizationId == model.OrganizationId && f.Id != id))
             {
                 ModelState.AddModelError("Year", "هذه السنة المالية موجودة بالفعل لهذه المنظمة");
             }
@@ -729,7 +391,6 @@ namespace OperationalPlanMS.Controllers
                 if (model.IsCurrent && !entity.IsCurrent)
                 {
                     await _db.FiscalYears
-                        .Where(f => f.OrganizationId == model.OrganizationId && f.IsCurrent)
                         .ExecuteUpdateAsync(s => s.SetProperty(f => f.IsCurrent, false));
                 }
 
@@ -739,8 +400,6 @@ namespace OperationalPlanMS.Controllers
                 return RedirectToAction(nameof(FiscalYears));
             }
 
-            model.Organizations = new SelectList(
-                await _db.Organizations.Where(o => o.IsActive).ToListAsync(),
                 "Id", "NameAr", model.OrganizationId);
 
             return View(model);
@@ -785,7 +444,6 @@ namespace OperationalPlanMS.Controllers
 
             // Reset all others for same organization
             await _db.FiscalYears
-                .Where(f => f.OrganizationId == entity.OrganizationId && f.IsCurrent)
                 .ExecuteUpdateAsync(s => s.SetProperty(f => f.IsCurrent, false));
 
             entity.IsCurrent = true;
@@ -864,7 +522,6 @@ namespace OperationalPlanMS.Controllers
                 return Forbid();
 
             var query = _db.SupportingEntities
-                .Include(e => e.Organization)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(searchTerm))
@@ -876,7 +533,6 @@ namespace OperationalPlanMS.Controllers
 
             if (organizationId.HasValue)
             {
-                query = query.Where(e => e.OrganizationId == organizationId.Value);
             }
 
             if (isActive.HasValue)
@@ -888,9 +544,7 @@ namespace OperationalPlanMS.Controllers
             {
                 Entities = await query.OrderBy(e => e.NameAr).ToListAsync(),
                 SearchTerm = searchTerm,
-                OrganizationId = organizationId,
                 IsActive = isActive,
-                Organizations = new SelectList(await _db.Organizations.Where(o => o.IsActive).ToListAsync(), "Id", "NameAr"),
                 TotalCount = await query.CountAsync()
             };
 
@@ -920,7 +574,6 @@ namespace OperationalPlanMS.Controllers
             {
                 // إنشاء الكود تلقائياً: SE-{رقم المنظمة}-{رقم تسلسلي}
                 var entitiesInOrg = await _db.SupportingEntities
-                    .Where(e => e.OrganizationId == model.OrganizationId)
                     .CountAsync();
                 int nextNumber = entitiesInOrg + 1;
                 string autoCode = $"SE-{model.OrganizationId:D3}-{nextNumber:D3}";
@@ -930,7 +583,6 @@ namespace OperationalPlanMS.Controllers
                     Code = autoCode,
                     NameAr = model.NameAr,
                     NameEn = model.NameEn,
-                    OrganizationId = model.OrganizationId,
                     OrderIndex = nextNumber,
                     IsActive = model.IsActive,
                     CreatedAt = DateTime.Now,
@@ -955,7 +607,6 @@ namespace OperationalPlanMS.Controllers
                 return Forbid();
 
             var entity = await _db.SupportingEntities
-                .Include(e => e.Organization)
                 .FirstOrDefaultAsync(e => e.Id == id);
 
             if (entity == null)
@@ -963,7 +614,6 @@ namespace OperationalPlanMS.Controllers
 
             var viewModel = SupportingEntityFormViewModel.FromEntity(entity);
             await PopulateSupportingEntityDropdowns(viewModel);
-            ViewBag.OrganizationName = entity.Organization?.NameAr;
             return View(viewModel);
         }
 
@@ -997,8 +647,6 @@ namespace OperationalPlanMS.Controllers
                 return RedirectToAction(nameof(SupportingEntities));
             }
 
-            var org = await _db.Organizations.FindAsync(model.OrganizationId);
-            ViewBag.OrganizationName = org?.NameAr;
             await PopulateSupportingEntityDropdowns(model);
             return View(model);
         }
@@ -1053,8 +701,6 @@ namespace OperationalPlanMS.Controllers
 
         private async Task PopulateSupportingEntityDropdowns(SupportingEntityFormViewModel model)
         {
-            model.Organizations = new SelectList(
-                await _db.Organizations.Where(o => o.IsActive).ToListAsync(),
                 "Id", "NameAr", model.OrganizationId);
         }
 
@@ -1081,8 +727,6 @@ namespace OperationalPlanMS.Controllers
 
             // جلب إعدادات الوحدات
             var unitSettings = await _db.OrganizationalUnitSettings
-                .Include(u => u.OrganizationalUnit)
-                    .ThenInclude(o => o.Organization)
                 .Include(u => u.CreatedBy)
                 .OrderBy(u => u.ExternalUnitName ?? u.OrganizationalUnit.NameAr)
                 .ToListAsync();
@@ -1180,7 +824,6 @@ namespace OperationalPlanMS.Controllers
                 return Forbid();
 
             var unitSettings = await _db.OrganizationalUnitSettings
-                .Include(u => u.OrganizationalUnit)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
             if (unitSettings == null)
@@ -1271,7 +914,6 @@ namespace OperationalPlanMS.Controllers
                     .Include(s => s.MainObjective)
                         .ThenInclude(m => m.StrategicObjective)
                             .ThenInclude(so => so.StrategicAxis)
-                    .Include(s => s.OrganizationalUnit)
                     .OrderBy(s => s.MainObjective.OrderIndex)
                     .ThenBy(s => s.OrderIndex)
                     .ToListAsync(),
@@ -1281,12 +923,11 @@ namespace OperationalPlanMS.Controllers
                     .ToListAsync(),
 
                 OrganizationalUnitsDropdown = new SelectList(
-                    await _db.OrganizationalUnits
-                        .Include(u => u.Organization)
+                    await _db.ExternalOrganizationalUnits
                         .Where(u => u.IsActive)
-                        .OrderBy(u => u.Organization.NameAr)
+                        .OrderBy(u => u.ArabicName)
                         .ThenBy(u => u.NameAr)
-                        .Select(u => new { u.Id, Name = u.Organization.NameAr + " - " + u.NameAr })
+                        .Select(u => new { u.Id, Name = u.ArabicName })
                         .ToListAsync(),
                     "Id", "Name")
             };

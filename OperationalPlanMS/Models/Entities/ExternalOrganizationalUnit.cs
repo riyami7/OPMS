@@ -73,6 +73,7 @@ namespace OperationalPlanMS.Models.Entities
         /// <summary>
         /// المشاريع المرتبطة بهذه الوحدة
         /// </summary>
+        public virtual ICollection<Initiative> Initiatives { get; set; } = new List<Initiative>();
         public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 
         // ========== Computed Properties ==========

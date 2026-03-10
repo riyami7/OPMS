@@ -11,12 +11,12 @@ namespace OperationalPlanMS.Models.ViewModels
     {
         public List<Initiative> Initiatives { get; set; } = new();
         public string? SearchTerm { get; set; }
-        public int? OrganizationId { get; set; }
-        public int? OrganizationalUnitId { get; set; }
+        
+        
         public int? FiscalYearId { get; set; }
 
-        public SelectList? Organizations { get; set; }
-        public SelectList? OrganizationalUnits { get; set; }
+        
+        
         public SelectList? FiscalYears { get; set; }
 
         public int CurrentPage { get; set; } = 1;
@@ -78,10 +78,10 @@ namespace OperationalPlanMS.Models.ViewModels
 
         // ======= العلاقات القديمة (للتوافق) =======
         [Display(Name = "المنظمة")]
-        public int? OrganizationId { get; set; }
+        
 
         [Display(Name = "الوحدة التنظيمية")]
-        public int? OrganizationalUnitId { get; set; }
+        
 
         [Display(Name = "المشرف")]
         public int? SupervisorId { get; set; }
@@ -126,8 +126,8 @@ namespace OperationalPlanMS.Models.ViewModels
         public int FiscalYearId { get; set; }
 
         // ======= Dropdown lists =======
-        public SelectList? Organizations { get; set; }
-        public SelectList? OrganizationalUnits { get; set; }
+        
+        
         public SelectList? FiscalYears { get; set; }
         public SelectList? Supervisors { get; set; }
 
@@ -151,8 +151,6 @@ namespace OperationalPlanMS.Models.ViewModels
                 StrategicObjective = entity.StrategicObjective,
                 FiscalYearId = entity.FiscalYearId,
                 // الحقول القديمة
-                OrganizationalUnitId = entity.OrganizationalUnitId,
-                OrganizationId = entity.OrganizationalUnit?.OrganizationId,
                 SupervisorId = entity.SupervisorId,
                 // الحقول الجديدة من API
                 ExternalUnitId = entity.ExternalUnitId,
@@ -190,11 +188,9 @@ namespace OperationalPlanMS.Models.ViewModels
             // الحقول القديمة (للتوافق) - تصفّر إذا استخدمنا API
             if (ExternalUnitId.HasValue)
             {
-                entity.OrganizationalUnitId = null;
             }
             else
             {
-                entity.OrganizationalUnitId = OrganizationalUnitId;
             }
 
             if (!string.IsNullOrEmpty(SupervisorEmpNumber))

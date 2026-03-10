@@ -26,7 +26,6 @@ namespace OperationalPlanMS.Controllers
             var query = _db.Projects
                 .Where(p => !p.IsDeleted)
                 .Include(p => p.Initiative)
-                .Include(p => p.OrganizationalUnit)
                 .Include(p => p.ProjectManager)
                 .Include(p => p.Steps.Where(s => !s.IsDeleted))
                 .AsQueryable();
@@ -146,7 +145,7 @@ namespace OperationalPlanMS.Controllers
         [HttpGet]
         public async Task<IActionResult> GetOrganizationalUnits(int organizationId)
         {
-            var units = await _db.OrganizationalUnits
+            var units = await _db.ExternalOrganizationalUnits
                 .Where(u => u.OrganizationId == organizationId && u.IsActive)
                 .OrderBy(u => u.NameAr)
                 .Select(u => new { u.Id, u.NameAr })
@@ -177,9 +176,8 @@ namespace OperationalPlanMS.Controllers
         public async Task<IActionResult> GetSupportingEntityInfo(int id)
         {
             var entity = await _db.SupportingEntities
-                .Include(e => e.Organization)
                 .Where(e => e.Id == id)
-                .Select(e => new { e.Id, e.NameAr, OrgName = e.Organization.NameAr })
+                .Select(e => new { e.Id, e.NameAr })
                 .FirstOrDefaultAsync();
 
             if (entity == null)
@@ -199,7 +197,7 @@ namespace OperationalPlanMS.Controllers
                 return Json(new List<object>());
             }
 
-            var localUnit = await _db.OrganizationalUnits
+            var localUnit = await _db.ExternalOrganizationalUnits
                 .FirstOrDefaultAsync(u => u.NameAr == unitName || u.NameEn == unitName);
 
             if (localUnit == null)
@@ -226,9 +224,6 @@ namespace OperationalPlanMS.Controllers
         {
             var project = await _db.Projects
                 .Include(p => p.Initiative)
-                    .ThenInclude(i => i.OrganizationalUnit)
-                        .ThenInclude(u => u.Organization)
-                .Include(p => p.OrganizationalUnit)
                 .Include(p => p.ExternalUnit)
                 .Include(p => p.ProjectManager)
                 .Include(p => p.CreatedBy)
@@ -346,8 +341,6 @@ namespace OperationalPlanMS.Controllers
             }
 
             var initiative = await _db.Initiatives
-                .Include(i => i.OrganizationalUnit)
-                    .ThenInclude(u => u.Organization)
                 .FirstOrDefaultAsync(i => i.Id == initiativeId.Value && !i.IsDeleted);
 
             if (initiative == null)
@@ -355,14 +348,12 @@ namespace OperationalPlanMS.Controllers
                 return NotFound();
             }
 
-            var organizationId = initiative.OrganizationalUnit?.OrganizationId ?? 0;
 
             var viewModel = new ProjectFormViewModel
             {
                 InitiativeId = initiativeId.Value,
                 OrganizationalUnitId = initiative.OrganizationalUnitId,
                 OrganizationId = organizationId,
-                OrganizationName = initiative.OrganizationalUnit?.Organization?.NameAr
             };
 
             var currentYear = DateTime.Now.Year;
@@ -385,7 +376,6 @@ namespace OperationalPlanMS.Controllers
 
             await PopulateFormDropdowns(viewModel, organizationId);
 
-            ViewBag.AllOrganizations = await _db.Organizations
                 .Where(o => o.IsActive)
                 .OrderBy(o => o.NameAr)
                 .Select(o => new SelectListItem { Value = o.Id.ToString(), Text = o.NameAr })
@@ -393,8 +383,6 @@ namespace OperationalPlanMS.Controllers
 
             ViewBag.InitiativeName = initiative.NameAr;
             ViewBag.InitiativeCode = initiative.Code;
-            ViewBag.OrganizationName = initiative.OrganizationalUnit?.Organization?.NameAr;
-            ViewBag.OrganizationId = organizationId;
 
             return View(viewModel);
         }
@@ -410,8 +398,6 @@ namespace OperationalPlanMS.Controllers
             }
 
             var initiative = await _db.Initiatives
-                .Include(i => i.OrganizationalUnit)
-                    .ThenInclude(u => u.Organization)
                 .FirstOrDefaultAsync(i => i.Id == model.InitiativeId && !i.IsDeleted);
 
             if (initiative == null)
@@ -419,7 +405,6 @@ namespace OperationalPlanMS.Controllers
                 return NotFound();
             }
 
-            var organizationId = initiative.OrganizationalUnit?.OrganizationId ?? 0;
 
             if (ModelState.IsValid)
             {
@@ -438,7 +423,6 @@ namespace OperationalPlanMS.Controllers
                         ModelState.AddModelError("ProjectNumber", "رقم المشروع مستخدم بالفعل");
                         await PopulateFormDropdowns(model, organizationId);
                         SetViewBagForCreate(initiative, organizationId);
-                        ViewBag.AllOrganizations = await _db.Organizations
                             .Where(o => o.IsActive)
                             .OrderBy(o => o.NameAr)
                             .Select(o => new SelectListItem { Value = o.Id.ToString(), Text = o.NameAr })
@@ -482,8 +466,6 @@ namespace OperationalPlanMS.Controllers
 
             var project = await _db.Projects
                 .Include(p => p.Initiative)
-                    .ThenInclude(i => i.OrganizationalUnit)
-                        .ThenInclude(u => u.Organization)
                 .Include(p => p.Steps.Where(s => !s.IsDeleted))
                 .Include(p => p.Requirements.OrderBy(r => r.OrderIndex))
                 .Include(p => p.ProjectKPIs.OrderBy(k => k.OrderIndex))
@@ -497,14 +479,11 @@ namespace OperationalPlanMS.Controllers
                 return NotFound();
             }
 
-            var organizationId = project.Initiative?.OrganizationalUnit?.OrganizationId ?? 0;
 
             var viewModel = ProjectFormViewModel.FromEntity(project);
-            viewModel.OrganizationName = project.Initiative?.OrganizationalUnit?.Organization?.NameAr;
 
             await PopulateFormDropdowns(viewModel, organizationId);
 
-            ViewBag.AllOrganizations = await _db.Organizations
                 .Where(o => o.IsActive)
                 .OrderBy(o => o.NameAr)
                 .Select(o => new SelectListItem { Value = o.Id.ToString(), Text = o.NameAr })
@@ -512,8 +491,6 @@ namespace OperationalPlanMS.Controllers
 
             ViewBag.InitiativeName = project.Initiative?.NameAr;
             ViewBag.InitiativeCode = project.Initiative?.Code;
-            ViewBag.OrganizationName = project.Initiative?.OrganizationalUnit?.Organization?.NameAr;
-            ViewBag.OrganizationId = organizationId;
             ViewBag.CalculatedProgress = project.Steps.Where(s => s.ProgressPercentage >= 100).Sum(s => s.Weight);
 
             return View(viewModel);
@@ -535,11 +512,8 @@ namespace OperationalPlanMS.Controllers
             }
 
             var initiative = await _db.Initiatives
-                .Include(i => i.OrganizationalUnit)
-                    .ThenInclude(u => u.Organization)
                 .FirstOrDefaultAsync(i => i.Id == model.InitiativeId);
 
-            var organizationId = initiative?.OrganizationalUnit?.OrganizationId ?? 0;
 
             var calculatedProgress = await _db.Steps
                 .Where(s => s.ProjectId == id && !s.IsDeleted && s.ProgressPercentage >= 100)
@@ -572,7 +546,6 @@ namespace OperationalPlanMS.Controllers
                         await PopulateFormDropdowns(model, organizationId);
                         SetViewBagForEdit(initiative, organizationId);
                         ViewBag.CalculatedProgress = calculatedProgress;
-                        ViewBag.AllOrganizations = await _db.Organizations
                             .Where(o => o.IsActive)
                             .OrderBy(o => o.NameAr)
                             .Select(o => new SelectListItem { Value = o.Id.ToString(), Text = o.NameAr })
@@ -626,7 +599,6 @@ namespace OperationalPlanMS.Controllers
 
             var project = await _db.Projects
                 .Include(p => p.Initiative)
-                .Include(p => p.OrganizationalUnit)
                 .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
 
             if (project == null)
@@ -836,16 +808,12 @@ namespace OperationalPlanMS.Controllers
         {
             ViewBag.InitiativeName = initiative.NameAr;
             ViewBag.InitiativeCode = initiative.Code;
-            ViewBag.OrganizationName = initiative.OrganizationalUnit?.Organization?.NameAr;
-            ViewBag.OrganizationId = organizationId;
         }
 
         private void SetViewBagForEdit(Initiative? initiative, int organizationId)
         {
             ViewBag.InitiativeName = initiative?.NameAr;
             ViewBag.InitiativeCode = initiative?.Code;
-            ViewBag.OrganizationName = initiative?.OrganizationalUnit?.Organization?.NameAr;
-            ViewBag.OrganizationId = organizationId;
         }
 
         private async Task PopulateFilterDropdowns(ProjectListViewModel model)
@@ -864,7 +832,7 @@ namespace OperationalPlanMS.Controllers
                 "Id", "NameAr", model.InitiativeId);
 
             model.OrganizationalUnits = new SelectList(
-                await _db.OrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
+                await _db.ExternalOrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
                 "Id", "NameAr", model.OrganizationalUnitId);
         }
 
@@ -877,15 +845,15 @@ namespace OperationalPlanMS.Controllers
             if (organizationId > 0)
             {
                 model.OrganizationalUnits = new SelectList(
-                    await _db.OrganizationalUnits
-                        .Where(u => u.IsActive && u.OrganizationId == organizationId)
+                    await _db.ExternalOrganizationalUnits
+                        .Where(u => u.IsActive)
                         .ToListAsync(),
                     "Id", "NameAr", model.OrganizationalUnitId);
             }
             else
             {
                 model.OrganizationalUnits = new SelectList(
-                    await _db.OrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
+                    await _db.ExternalOrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
                     "Id", "NameAr", model.OrganizationalUnitId);
             }
 
@@ -903,7 +871,7 @@ namespace OperationalPlanMS.Controllers
 
             if (!string.IsNullOrEmpty(model.ExternalUnitName))
             {
-                var localUnit = await _db.OrganizationalUnits
+                var localUnit = await _db.ExternalOrganizationalUnits
                     .FirstOrDefaultAsync(u => u.NameAr == model.ExternalUnitName || u.NameEn == model.ExternalUnitName);
 
                 if (localUnit != null)

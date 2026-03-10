@@ -67,7 +67,6 @@ namespace OperationalPlanMS.Controllers
             // Recent Initiatives (last 5)
             viewModel.RecentInitiatives = await _db.Initiatives
                 .Where(i => !i.IsDeleted)
-                .Include(i => i.OrganizationalUnit)
                 .Include(i => i.Supervisor)
                 .OrderByDescending(i => i.CreatedAt)
                 .Take(5)
@@ -82,7 +81,6 @@ namespace OperationalPlanMS.Controllers
                     && i.Status != Status.Cancelled
                     && i.PlannedEndDate >= today
                     && i.PlannedEndDate <= thirtyDaysLater)
-                .Include(i => i.OrganizationalUnit)
                 .OrderBy(i => i.PlannedEndDate)
                 .Take(5)
                 .ToListAsync();
@@ -93,7 +91,6 @@ namespace OperationalPlanMS.Controllers
                     && i.Status != Status.Completed
                     && i.Status != Status.Cancelled
                     && i.PlannedEndDate < today)
-                .Include(i => i.OrganizationalUnit)
                 .OrderBy(i => i.PlannedEndDate)
                 .Take(5)
                 .ToListAsync();

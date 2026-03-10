@@ -16,7 +16,6 @@ namespace OperationalPlanMS.Models.ViewModels
         /// <summary>
         /// إعدادات الوحدات التنظيمية
         /// </summary>
-        public List<OrganizationalUnitSettings> UnitSettings { get; set; } = new();
 
         /// <summary>
         /// الوحدات المتاحة للإضافة (التي ليس لها إعدادات بعد) - للتوافق القديم
@@ -85,7 +84,6 @@ namespace OperationalPlanMS.Models.ViewModels
         public int Id { get; set; }
 
         // ========== الحقول القديمة (للتوافق) ==========
-        public int? OrganizationalUnitId { get; set; }
 
         // ========== الحقول الجديدة من API ==========
         public int? ExternalUnitId { get; set; }
@@ -108,14 +106,11 @@ namespace OperationalPlanMS.Models.ViewModels
         // للعرض
         public string? UnitName { get; set; }
 
-        public SelectList? OrganizationalUnits { get; set; }
 
-        public static UnitSettingsFormViewModel FromEntity(OrganizationalUnitSettings entity)
         {
             return new UnitSettingsFormViewModel
             {
                 Id = entity.Id,
-                OrganizationalUnitId = entity.OrganizationalUnitId,
                 ExternalUnitId = entity.ExternalUnitId,
                 ExternalUnitName = entity.ExternalUnitName,
                 VisionAr = entity.VisionAr,
@@ -128,7 +123,6 @@ namespace OperationalPlanMS.Models.ViewModels
             };
         }
 
-        public void UpdateEntity(OrganizationalUnitSettings entity)
         {
             entity.VisionAr = VisionAr;
             entity.VisionEn = VisionEn;
@@ -144,11 +138,9 @@ namespace OperationalPlanMS.Models.ViewModels
             // الحقل القديم - null إذا استخدمنا API
             if (ExternalUnitId.HasValue)
             {
-                entity.OrganizationalUnitId = null;
             }
             else
             {
-                entity.OrganizationalUnitId = OrganizationalUnitId;
             }
         }
     }

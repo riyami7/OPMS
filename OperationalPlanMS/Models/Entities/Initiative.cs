@@ -22,10 +22,8 @@ namespace OperationalPlanMS.Models.Entities
         public string NameEn { get; set; } = string.Empty;
 
         public string? DescriptionAr { get; set; }
-
         public string? DescriptionEn { get; set; }
 
-        // ========== الحقول المُلغاة (تبقى للتوافق مع DB) ==========
         [Required]
         public Status Status { get; set; } = Status.InProgress;
 
@@ -45,9 +43,7 @@ namespace OperationalPlanMS.Models.Entities
 
         [Column(TypeName = "decimal(5,2)")]
         public decimal Weight { get; set; } = 10;
-        // ==========================================================
 
-        // ========== الحقول المستخدمة ==========
         [Column(TypeName = "date")]
         public DateTime? ActualStartDate { get; set; }
 
@@ -63,50 +59,25 @@ namespace OperationalPlanMS.Models.Entities
         [StringLength(500)]
         public string? StrategicObjective { get; set; }
 
-        // ========== الوحدة التنظيمية المحلية (للتوافق) ==========
-        public int? OrganizationalUnitId { get; set; }
-
-        // ========== الهيكل التنظيمي من API الخارجي (جديد) ==========
-
-        /// <summary>
-        /// معرف الوحدة التنظيمية من API الخارجي
-        /// </summary>
+        // ========== الوحدة التنظيمية من API ==========
         public int? ExternalUnitId { get; set; }
 
-        /// <summary>
-        /// اسم الوحدة المختارة من API (للعرض السريع)
-        /// </summary>
         [StringLength(300)]
         public string? ExternalUnitName { get; set; }
 
-        // ========== المشرف من API الخارجي (جديد) ==========
-
-        /// <summary>
-        /// رقم المشرف (من API الخارجي)
-        /// </summary>
+        // ========== المشرف من API ==========
         [StringLength(50)]
         public string? SupervisorEmpNumber { get; set; }
 
-        /// <summary>
-        /// اسم المشرف (من API)
-        /// </summary>
         [StringLength(200)]
         public string? SupervisorName { get; set; }
 
-        /// <summary>
-        /// رتبة المشرف (من API)
-        /// </summary>
         [StringLength(100)]
         public string? SupervisorRank { get; set; }
-
-        // ==========================================================
 
         [Required]
         public int FiscalYearId { get; set; }
 
-        /// <summary>
-        /// المشرف المحلي (للتوافق مع النظام القديم)
-        /// </summary>
         public int? SupervisorId { get; set; }
 
         [Required]
@@ -115,15 +86,10 @@ namespace OperationalPlanMS.Models.Entities
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         public int? LastModifiedById { get; set; }
-
         public DateTime? LastModifiedAt { get; set; }
-
         public bool IsDeleted { get; set; } = false;
 
         // Navigation properties
-        [ForeignKey("OrganizationalUnitId")]
-        public virtual OrganizationalUnit? OrganizationalUnit { get; set; }
-
         [ForeignKey("ExternalUnitId")]
         public virtual ExternalOrganizationalUnit? ExternalUnit { get; set; }
 
@@ -143,22 +109,12 @@ namespace OperationalPlanMS.Models.Entities
         public virtual ICollection<ProgressUpdate> ProgressUpdates { get; set; } = new List<ProgressUpdate>();
         public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
 
-        // ========== Computed Properties ==========
-
-        /// <summary>
-        /// اسم المشرف للعرض (من API أو من النظام القديم)
-        /// </summary>
         [NotMapped]
         public string SupervisorDisplayName => !string.IsNullOrEmpty(SupervisorName)
             ? $"{SupervisorRank} {SupervisorName}".Trim()
             : Supervisor?.FullNameAr ?? "";
 
-        /// <summary>
-        /// اسم الوحدة التنظيمية للعرض
-        /// </summary>
         [NotMapped]
-        public string UnitDisplayName => !string.IsNullOrEmpty(ExternalUnitName)
-            ? ExternalUnitName
-            : OrganizationalUnit?.NameAr ?? "";
+        public string UnitDisplayName => ExternalUnitName ?? ExternalUnit?.DisplayName ?? "";
     }
 }

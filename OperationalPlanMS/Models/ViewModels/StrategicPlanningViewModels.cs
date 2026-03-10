@@ -19,7 +19,6 @@ namespace OperationalPlanMS.Models.ViewModels
         public SelectList? AxesDropdown { get; set; }
         public SelectList? StrategicObjectivesDropdown { get; set; }
         public SelectList? MainObjectivesDropdown { get; set; }
-        public SelectList? OrganizationalUnitsDropdown { get; set; }
     }
 
     #region Strategic Axis ViewModels
@@ -224,7 +223,6 @@ namespace OperationalPlanMS.Models.ViewModels
 
         // ========== الوحدة التنظيمية المحلية (للتوافق) ==========
         [Display(Name = "الوحدة التنظيمية")]
-        public int? OrganizationalUnitId { get; set; }
 
         // ========== الهيكل التنظيمي من API (جديد) ==========
 
@@ -250,7 +248,6 @@ namespace OperationalPlanMS.Models.ViewModels
 
         // Dropdowns
         public SelectList? MainObjectives { get; set; }
-        public SelectList? OrganizationalUnits { get; set; }
 
         public static SubObjectiveFormViewModel FromEntity(SubObjective entity) => new()
         {
@@ -260,7 +257,6 @@ namespace OperationalPlanMS.Models.ViewModels
             DescriptionAr = entity.DescriptionAr,
             DescriptionEn = entity.DescriptionEn,
             MainObjectiveId = entity.MainObjectiveId,
-            OrganizationalUnitId = entity.OrganizationalUnitId,
             ExternalUnitId = entity.ExternalUnitId,
             ExternalUnitName = entity.ExternalUnitName,
             OrderIndex = entity.OrderIndex,
@@ -284,11 +280,9 @@ namespace OperationalPlanMS.Models.ViewModels
             // الحقل القديم (للتوافق) - يصفّر إذا استخدمنا API
             if (ExternalUnitId.HasValue)
             {
-                entity.OrganizationalUnitId = null;
             }
             else
             {
-                entity.OrganizationalUnitId = OrganizationalUnitId;
             }
         }
     }

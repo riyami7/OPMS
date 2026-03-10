@@ -27,8 +27,6 @@ namespace OperationalPlanMS.Controllers
             var userId = GetCurrentUserId();
             var user = await _db.Users
                 .Include(u => u.Role)
-                .Include(u => u.Organization)
-                .Include(u => u.OrganizationalUnit)
                 .Include(u => u.SupervisedInitiatives.Where(i => !i.IsDeleted))
                 .Include(u => u.ManagedProjects.Where(p => !p.IsDeleted))
                 .Include(u => u.AssignedSteps.Where(s => !s.IsDeleted))
@@ -48,8 +46,8 @@ namespace OperationalPlanMS.Controllers
                 FullNameEn = user.FullNameEn,
                 ProfileImage = user.ProfileImage,
                 RoleName = user.Role?.NameAr,
-                OrganizationName = user.Organization?.NameAr,
-                OrganizationalUnitName = user.OrganizationalUnit?.NameAr,
+                OrganizationName = user.ExternalUnitName,
+                OrganizationalUnitName = user.ExternalUnitName,
                 LastLoginAt = user.LastLoginAt,
                 CreatedAt = user.CreatedAt,
                 SupervisedInitiativesCount = user.SupervisedInitiatives?.Count ?? 0,

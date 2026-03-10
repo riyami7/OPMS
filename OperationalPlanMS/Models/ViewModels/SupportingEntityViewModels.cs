@@ -11,7 +11,6 @@ namespace OperationalPlanMS.Models.ViewModels
     {
         public List<SupportingEntity> Entities { get; set; } = new();
         public string? SearchTerm { get; set; }
-        public int? OrganizationId { get; set; }
         public bool? IsActive { get; set; }
         public int TotalCount { get; set; }
         public SelectList? Organizations { get; set; }
@@ -30,7 +29,6 @@ namespace OperationalPlanMS.Models.ViewModels
 
         [Required(ErrorMessage = "المنظمة مطلوبة")]
         [Display(Name = "المنظمة")]
-        public int OrganizationId { get; set; }
 
         [Required(ErrorMessage = "الاسم بالعربية مطلوب")]
         [StringLength(200)]
@@ -52,7 +50,6 @@ namespace OperationalPlanMS.Models.ViewModels
         {
             Id = entity.Id,
             Code = entity.Code,
-            OrganizationId = entity.OrganizationId,
             NameAr = entity.NameAr,
             NameEn = entity.NameEn,
             IsActive = entity.IsActive

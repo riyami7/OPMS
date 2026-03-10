@@ -57,7 +57,6 @@ namespace OperationalPlanMS.Controllers
             // Base queries with filters
             var initiativesQuery = _db.Initiatives
                 .Where(i => !i.IsDeleted)
-                .Include(i => i.OrganizationalUnit)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                     .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
                 .AsQueryable();
@@ -172,7 +171,7 @@ namespace OperationalPlanMS.Controllers
                     // استخدام اسم الوحدة من API أو المحلي
                     UnitName = !string.IsNullOrEmpty(i.ExternalUnitName)
                         ? i.ExternalUnitName
-                        : i.OrganizationalUnit?.NameAr,
+                        : i.ExternalUnitName,
                     Progress = Math.Round(i.Projects.Average(p => p.ProgressPercentage), 1),
                     ProjectsCount = i.Projects.Count,
                     CompletedProjectsCount = i.Projects.Count(p => p.ProgressPercentage >= 100),
@@ -192,7 +191,7 @@ namespace OperationalPlanMS.Controllers
                     Name = i.NameAr,
                     UnitName = !string.IsNullOrEmpty(i.ExternalUnitName)
                         ? i.ExternalUnitName
-                        : i.OrganizationalUnit?.NameAr,
+                        : i.ExternalUnitName,
                     Progress = Math.Round(i.Projects.Average(p => p.ProgressPercentage), 1),
                     ProjectsCount = i.Projects.Count,
                     CompletedProjectsCount = i.Projects.Count(p => p.ProgressPercentage >= 100),
@@ -228,7 +227,7 @@ namespace OperationalPlanMS.Controllers
 
             // الوحدات المحلية للتوافقية (قد تُحذف لاحقاً)
             viewModel.OrganizationalUnits = new SelectList(
-                await _db.OrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
+                await _db.ExternalOrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
                 "Id", "NameAr", viewModel.OrganizationalUnitId);
 
             ViewBag.UserRole = userRole;
@@ -299,7 +298,7 @@ namespace OperationalPlanMS.Controllers
             // المبادرات التي لديها OrganizationalUnitId المحلي فقط (للتوافقية)
             var localGroups = initiatives
                 .Where(i => !i.ExternalUnitId.HasValue && i.OrganizationalUnitId.HasValue)
-                .GroupBy(i => new { i.OrganizationalUnitId, UnitName = i.OrganizationalUnit?.NameAr ?? "غير محدد" });
+                .GroupBy(i => new { i.OrganizationalUnitId, UnitName = i.ExternalUnitName ?? "غير محدد" });
 
             foreach (var g in localGroups)
             {
@@ -345,7 +344,6 @@ namespace OperationalPlanMS.Controllers
 
                     var initiativesQuery = _db.Initiatives
                         .Where(i => !i.IsDeleted)
-                        .Include(i => i.OrganizationalUnit)
                         .Include(i => i.Projects.Where(p => !p.IsDeleted))
                         .Where(i => !fiscalYearId.HasValue || i.FiscalYearId == fiscalYearId)
                         .AsQueryable();
@@ -369,7 +367,7 @@ namespace OperationalPlanMS.Controllers
                         var status = GetCalculatedInitiativeStatus(i);
                         var unitName = !string.IsNullOrEmpty(i.ExternalUnitName)
                             ? i.ExternalUnitName
-                            : i.OrganizationalUnit?.NameAr ?? "-";
+                            : i.ExternalUnitName ?? "-";
 
                         csv.AppendLine($"{i.Code},{i.NameAr},{unitName},{projectCount},{completedCount},{avgProgress}%,{i.Budget ?? 0},{i.ActualCost ?? 0},{status}");
                     }
@@ -547,7 +545,6 @@ namespace OperationalPlanMS.Controllers
         public async Task<IActionResult> InitiativeDetails(int id)
         {
             var initiative = await _db.Initiatives
-                .Include(i => i.OrganizationalUnit)
                 .Include(i => i.FiscalYear)
                 .Include(i => i.Supervisor)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
@@ -583,7 +580,7 @@ namespace OperationalPlanMS.Controllers
             // اسم الوحدة من API أو المحلي
             ViewBag.UnitName = !string.IsNullOrEmpty(initiative.ExternalUnitName)
                 ? initiative.ExternalUnitName
-                : initiative.OrganizationalUnit?.NameAr ?? "-";
+                : initiative.ExternalUnitName ?? "-";
 
             return View(initiative);
         }

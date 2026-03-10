@@ -12,10 +12,10 @@ namespace OperationalPlanMS.Models.ViewModels
         public List<Project> Projects { get; set; } = new();
         public string? SearchTerm { get; set; }
         public int? InitiativeId { get; set; }
-        public int? OrganizationalUnitId { get; set; }
+        
         
         public SelectList? Initiatives { get; set; }
-        public SelectList? OrganizationalUnits { get; set; }
+        
         
         public int CurrentPage { get; set; } = 1;
         public int PageSize { get; set; } = 10;
@@ -102,14 +102,13 @@ namespace OperationalPlanMS.Models.ViewModels
         /// الوحدة التنظيمية المحلية (اختياري - للتوافق مع البيانات القديمة)
         /// </summary>
         [Display(Name = "الوحدة التنظيمية المحلية")]
-        public int? OrganizationalUnitId { get; set; }
+        
 
         [Display(Name = "مدير المشروع")]
         public int? ProjectManagerId { get; set; }
 
         // ======= للعرض فقط =======
-        public int OrganizationId { get; set; }
-        public string? OrganizationName { get; set; }
+        
 
         // ======= الهيكل التنظيمي من API =======
 
@@ -197,7 +196,7 @@ namespace OperationalPlanMS.Models.ViewModels
 
         // ======= Dropdown lists =======
         public SelectList? Initiatives { get; set; }
-        public SelectList? OrganizationalUnits { get; set; }
+        
         public SelectList? ProjectManagers { get; set; }
 
         // ======= Computed =======
@@ -251,10 +250,7 @@ namespace OperationalPlanMS.Models.ViewModels
                 ExpectedOutcomes = entity.ExpectedOutcomes,
                 RiskNotes = entity.RiskNotes,
                 InitiativeId = entity.InitiativeId,
-                OrganizationalUnitId = entity.OrganizationalUnitId,
                 ProjectManagerId = entity.ProjectManagerId,
-                OrganizationId = entity.OrganizationalUnit?.OrganizationId ?? 
-                                 entity.Initiative?.OrganizationalUnit?.OrganizationId ?? 0,
 
                 // الحقول الجديدة
                 ExternalUnitId = entity.ExternalUnitId,
@@ -353,7 +349,6 @@ namespace OperationalPlanMS.Models.ViewModels
             entity.ExpectedOutcomes = ExpectedOutcomes;
             entity.RiskNotes = RiskNotes;
             entity.InitiativeId = InitiativeId;
-            entity.OrganizationalUnitId = OrganizationalUnitId;
             entity.ProjectManagerId = ProjectManagerId;
 
             // الحقول الجديدة

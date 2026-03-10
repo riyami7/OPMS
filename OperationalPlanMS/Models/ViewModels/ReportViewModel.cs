@@ -9,7 +9,7 @@ namespace OperationalPlanMS.Models.ViewModels
         public int? FiscalYearId { get; set; }
 
         // الوحدة التنظيمية المحلية (للتوافقية)
-        public int? OrganizationalUnitId { get; set; }
+        
 
         // الوحدة التنظيمية من API الخارجي - الفلتر الفعلي
         public int? ExternalUnitId { get; set; }
@@ -21,7 +21,6 @@ namespace OperationalPlanMS.Models.ViewModels
 
         // Dropdowns
         public SelectList? FiscalYears { get; set; }
-        public SelectList? OrganizationalUnits { get; set; }
 
         // Summary Statistics
         public int TotalInitiatives { get; set; }

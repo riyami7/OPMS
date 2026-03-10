@@ -47,8 +47,6 @@ namespace OperationalPlanMS.Controllers
             // Find user by username
             var user = await _db.Users
                 .Include(u => u.Role)
-                .Include(u => u.Organization)
-                .Include(u => u.OrganizationalUnit)
                 .FirstOrDefaultAsync(u => u.ADUsername == model.Username && u.IsActive);
 
             if (user == null)
@@ -88,7 +86,6 @@ namespace OperationalPlanMS.Controllers
                 new Claim("RoleId", user.RoleId.ToString()),
                 new Claim("RoleNameAr", user.Role?.NameAr ?? ""),
                 new Claim("RoleNameEn", user.Role?.NameEn ?? ""),
-                new Claim("OrganizationId", user.OrganizationId.ToString()),
             };
 
             if (user.OrganizationalUnitId.HasValue)
