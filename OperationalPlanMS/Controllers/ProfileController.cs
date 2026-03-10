@@ -301,9 +301,9 @@ namespace OperationalPlanMS.Controllers
                 new Claim("OrganizationId", user.OrganizationId.ToString()),
             };
 
-            if (user.OrganizationalUnitId.HasValue)
+            if (user.ExternalUnitId.HasValue)
             {
-                claims.Add(new Claim("OrganizationalUnitId", user.OrganizationalUnitId.Value.ToString()));
+                claims.Add(new Claim("ExternalUnitId", user.ExternalUnitId.Value.ToString()));
             }
 
             if (!string.IsNullOrEmpty(user.Email))

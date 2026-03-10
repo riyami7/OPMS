@@ -141,9 +141,7 @@ namespace OperationalPlanMS.Controllers
         /// API: جلب الوحدات التنظيمية لمنظمة معينة
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetOrganizationalUnits(int organizationId)
         {
-            var units = await _db.OrganizationalUnits
                 .Where(u => u.OrganizationId == organizationId && u.IsActive)
                 .OrderBy(u => u.NameAr)
                 .Select(u => new { u.Id, u.NameAr })
@@ -219,7 +217,7 @@ namespace OperationalPlanMS.Controllers
         public async Task<IActionResult> Details(int id)
         {
             var project = await _db.Projects
-                .Include(p => p.Initiative)
+                        .ThenInclude(u => u.Organization)
                 .Include(p => p.ExternalUnit)
                 .Include(p => p.ProjectManager)
                 .Include(p => p.CreatedBy)
@@ -337,6 +335,7 @@ namespace OperationalPlanMS.Controllers
             }
 
             var initiative = await _db.Initiatives
+                    .ThenInclude(u => u.Organization)
                 .FirstOrDefaultAsync(i => i.Id == initiativeId.Value && !i.IsDeleted);
 
             if (initiative == null)
@@ -393,6 +392,7 @@ namespace OperationalPlanMS.Controllers
             }
 
             var initiative = await _db.Initiatives
+                    .ThenInclude(u => u.Organization)
                 .FirstOrDefaultAsync(i => i.Id == model.InitiativeId && !i.IsDeleted);
 
             if (initiative == null)
@@ -460,7 +460,7 @@ namespace OperationalPlanMS.Controllers
             }
 
             var project = await _db.Projects
-                .Include(p => p.Initiative)
+                        .ThenInclude(u => u.Organization)
                 .Include(p => p.Steps.Where(s => !s.IsDeleted))
                 .Include(p => p.Requirements.OrderBy(r => r.OrderIndex))
                 .Include(p => p.ProjectKPIs.OrderBy(k => k.OrderIndex))
@@ -507,6 +507,7 @@ namespace OperationalPlanMS.Controllers
             }
 
             var initiative = await _db.Initiatives
+                    .ThenInclude(u => u.Organization)
                 .FirstOrDefaultAsync(i => i.Id == model.InitiativeId);
 
 
@@ -826,7 +827,6 @@ namespace OperationalPlanMS.Controllers
                 await initiativesQuery.OrderBy(i => i.NameAr).ToListAsync(),
                 "Id", "NameAr", model.InitiativeId);
 
-            model.OrganizationalUnits = new SelectList(
         }
 
         private async Task PopulateFormDropdowns(ProjectFormViewModel model, int organizationId = 0)
@@ -837,14 +837,11 @@ namespace OperationalPlanMS.Controllers
 
             if (organizationId > 0)
             {
-                model.OrganizationalUnits = new SelectList(
-                    await _db.OrganizationalUnits
                         .Where(u => u.IsActive && u.OrganizationId == organizationId)
                         .ToListAsync(),
             }
             else
             {
-                model.OrganizationalUnits = new SelectList(
             }
 
             model.ProjectManagers = new SelectList(

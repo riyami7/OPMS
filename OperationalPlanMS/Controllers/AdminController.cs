@@ -35,6 +35,7 @@ namespace OperationalPlanMS.Controllers
 
             return View();
         }
+
         #region Users
 
         // GET: /Admin/Users
@@ -59,7 +60,6 @@ namespace OperationalPlanMS.Controllers
                 query = query.Where(u => u.RoleId == roleId.Value);
 
             if (organizationalUnitId.HasValue)
-                query = query.Where(u => u.OrganizationalUnitId == organizationalUnitId.Value);
 
             if (isActive.HasValue)
                 query = query.Where(u => u.IsActive == isActive.Value);
@@ -76,7 +76,6 @@ namespace OperationalPlanMS.Controllers
                     .ToListAsync(),
                 SearchTerm = searchTerm,
                 RoleId = roleId,
-                OrganizationalUnitId = organizationalUnitId,
                 IsActive = isActive,
                 Roles = new SelectList(await _db.Roles.ToListAsync(), "Id", "NameAr"),
                 TotalCount = totalCount,
@@ -258,7 +257,6 @@ namespace OperationalPlanMS.Controllers
                 await _db.Roles.ToListAsync(),
                 "Id", "NameAr", model.RoleId);
 
-                "Id", "NameAr", model.OrganizationalUnitId);
 
         }
 
@@ -607,7 +605,6 @@ namespace OperationalPlanMS.Controllers
 
             var viewModel = SupportingEntityFormViewModel.FromEntity(entity);
             await PopulateSupportingEntityDropdowns(viewModel);
-            
             return View(viewModel);
         }
 
@@ -641,7 +638,6 @@ namespace OperationalPlanMS.Controllers
                 return RedirectToAction(nameof(SupportingEntities));
             }
 
-            ViewBag.OrganizationName = org?.NameAr;
             await PopulateSupportingEntityDropdowns(model);
             return View(model);
         }
@@ -721,6 +717,7 @@ namespace OperationalPlanMS.Controllers
 
             // جلب إعدادات الوحدات
             var unitSettings = await _db.OrganizationalUnitSettings
+                    .ThenInclude(o => o.Organization)
                 .Include(u => u.CreatedBy)
                 .OrderBy(u => u.ExternalUnitName ?? u.OrganizationalUnit.NameAr)
                 .ToListAsync();
@@ -795,7 +792,6 @@ namespace OperationalPlanMS.Controllers
                 ExternalUnitId = ExternalUnitId,
                 ExternalUnitName = ExternalUnitName,
                 // الحقل القديم - null عند استخدام API
-                OrganizationalUnitId = null,
                 VisionAr = VisionAr,
                 VisionEn = VisionEn,
                 MissionAr = MissionAr,
@@ -916,8 +912,6 @@ namespace OperationalPlanMS.Controllers
                     .OrderBy(v => v.OrderIndex)
                     .ToListAsync(),
 
-                OrganizationalUnitsDropdown = new SelectList(
-                    await _db.OrganizationalUnits
                         .Where(u => u.IsActive)
                         .OrderBy(u => u.ArabicName)
                         .ThenBy(u => u.NameAr)

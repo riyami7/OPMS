@@ -107,7 +107,6 @@ namespace OperationalPlanMS.Models.ViewModels
         // للعرض
         public string? UnitName { get; set; }
 
-        public SelectList? OrganizationalUnits { get; set; }
 
         public static UnitSettingsFormViewModel FromEntity(OrganizationalUnitSettings entity)
         {

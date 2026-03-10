@@ -224,7 +224,6 @@ namespace OperationalPlanMS.Controllers
                 "Id", "NameAr", viewModel.FiscalYearId);
 
             // الوحدات المحلية للتوافقية (قد تُحذف لاحقاً)
-                "Id", "NameAr", viewModel.OrganizationalUnitId);
 
             ViewBag.UserRole = userRole;
             ViewBag.ExternalUnitId = externalUnitId;
@@ -300,7 +299,7 @@ namespace OperationalPlanMS.Controllers
             {
                 summaries.Add(new UnitSummary
                 {
-                    UnitId = g.Key.OrganizationalUnitId,
+                    UnitId = g.Key.ExternalUnitId,
                     UnitName = g.Key.UnitName,
                     InitiativeCount = g.Count(),
                     ProjectCount = g.SelectMany(i => i.Projects).Count(),

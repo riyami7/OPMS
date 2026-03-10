@@ -66,6 +66,10 @@ namespace OperationalPlanMS.Controllers
                     i.ExternalUnitId.HasValue && unitIds.Contains(i.ExternalUnitId.Value));
             }
 
+            if (model.OrganizationId.HasValue)
+            {
+            }
+
             model.TotalCount = await query.CountAsync();
 
             model.Initiatives = await query
@@ -460,21 +464,36 @@ namespace OperationalPlanMS.Controllers
 
         private async Task PopulateFilterDropdowns(InitiativeListViewModel model)
         {
+                "Id", "NameAr", model.OrganizationId);
+
             model.FiscalYears = new SelectList(
                 await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(),
                 "Id", "NameAr", model.FiscalYearId);
+
         }
 
         private async Task PopulateFormDropdowns(InitiativeFormViewModel model)
         {
+                "Id", "NameAr", model.OrganizationId);
+
             model.FiscalYears = new SelectList(
                 await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(),
                 "Id", "NameAr", model.FiscalYearId);
+
+            if (model.OrganizationId > 0)
+            {
+                        .Where(u => u.IsActive && u.OrganizationId == model.OrganizationId)
+                        .ToListAsync(),
+            }
+            else
+            {
+            }
 
             model.Supervisors = new SelectList(
                 await _db.Users.Where(u => u.IsActive).ToListAsync(),
                 "Id", "FullNameAr", model.SupervisorId);
         }
+
 
         #endregion
     }
