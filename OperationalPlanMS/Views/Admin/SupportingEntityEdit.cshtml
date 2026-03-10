@@ -10,7 +10,7 @@
                 <div>
                     <h4 class="mb-1">تعديل جهة مساندة</h4>
                     <p class="text-muted mb-0">
-                        <code>@Model.Code</code> - @ViewBag.OrganizationName
+                        <code>@Model.Code</code>
                     </p>
                 </div>
                 <a href="/Admin/SupportingEntities" class="btn btn-outline-secondary">
@@ -23,17 +23,13 @@
                     <form asp-action="SupportingEntityEdit" method="post">
                         <input type="hidden" asp-for="Id" />
                         <input type="hidden" asp-for="Code" />
-                        <input type="hidden" asp-for="OrganizationId" />
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">الكود</label>
                                 <input type="text" class="form-control" value="@Model.Code" disabled />
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">المنظمة</label>
-                                <input type="text" class="form-control" value="@ViewBag.OrganizationName" disabled />
-                            </div>
+
                         </div>
 
                         <div class="row">

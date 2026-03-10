@@ -298,7 +298,6 @@ namespace OperationalPlanMS.Controllers
                 new Claim("RoleId", user.RoleId.ToString()),
                 new Claim("RoleNameAr", user.Role?.NameAr ?? ""),
                 new Claim("RoleNameEn", user.Role?.NameEn ?? ""),
-                new Claim("OrganizationId", user.OrganizationId.ToString()),
             };
 
             if (user.ExternalUnitId.HasValue)

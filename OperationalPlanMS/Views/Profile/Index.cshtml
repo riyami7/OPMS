@@ -12,8 +12,8 @@
                 <div class="position-relative d-inline-block mb-3">
                     @if (!string.IsNullOrEmpty(Model.ProfileImage))
                     {
-                        <img src="@Model.ProfileImage" alt="@Model.FullNameAr" 
-                             class="rounded-circle border border-3 border-primary" 
+                        <img src="@Model.ProfileImage" alt="@Model.FullNameAr"
+                             class="rounded-circle border border-3 border-primary"
                              style="width: 150px; height: 150px; object-fit: cover;">
                     }
                     else
@@ -39,12 +39,12 @@
                     <div class="d-flex gap-2 justify-content-center">
                         <label class="btn btn-outline-primary btn-sm mb-0">
                             <i class="bi bi-camera me-1"></i>تغيير الصورة
-                            <input type="file" name="profileImage" accept="image/*" 
+                            <input type="file" name="profileImage" accept="image/*"
                                    onchange="this.form.submit()" hidden>
                         </label>
                         @if (!string.IsNullOrEmpty(Model.ProfileImage))
                         {
-                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                            <button type="button" class="btn btn-outline-danger btn-sm"
                                     onclick="document.getElementById('removeImageForm').submit()">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -90,7 +90,7 @@
                     </div>
                     <div>
                         <small class="text-muted d-block">المنظمة</small>
-                        <span>@Model.OrganizationName</span>
+                        <span>@Model.UnitName</span>
                     </div>
                 </div>
                 <div class="d-flex align-items-center">
@@ -99,7 +99,7 @@
                     </div>
                     <div>
                         <small class="text-muted d-block">الوحدة التنظيمية</small>
-                        <span>@(Model.OrganizationalUnitName ?? "غير محدد")</span>
+                        <span>@(Model.UnitName ?? "غير محدد")</span>
                     </div>
                 </div>
             </div>

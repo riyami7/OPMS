@@ -755,12 +755,9 @@
                             <td class="text-end">@Model.Project.ExternalUnitName</td>
                         </tr>
                     }
-                    else if (Model.Project.OrganizationalUnit != null)
+                    else if (!string.IsNullOrEmpty(Model.Project.ExternalUnitName))
                     {
-                        <tr>
-                            <td class="text-muted">الوحدة التنظيمية</td>
-                            <td class="text-end">@Model.Project.OrganizationalUnit.NameAr</td>
-                        </tr>
+                        <td class="text-end">@Model.Project.ExternalUnitName</td>
                     }
                     <tr>
                         <td class="text-muted">مدير المشروع</td>

@@ -117,11 +117,11 @@
 
                             var unitName = !string.IsNullOrEmpty(item.ExternalUnitName)
                             ? item.ExternalUnitName
-                            : item.OrganizationalUnit?.NameAr ?? "-";
+                            : item.ExternalUnitName ?? "-";
 
                             var orgName = !string.IsNullOrEmpty(item.ExternalUnitName)
                             ? ""
-                            : item.OrganizationalUnit?.Organization?.NameAr ?? "";
+                            : "";
 
                             var supervisorName = !string.IsNullOrEmpty(item.SupervisorName)
                             ? item.SupervisorName

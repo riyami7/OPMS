@@ -24,13 +24,6 @@
 
                 <form asp-action="SupportingEntityCreate" method="post">
                     <div class="row g-3">
-                        <div class="col-md-12">
-                            <label asp-for="OrganizationId" class="form-label">المنظمة <span class="text-danger">*</span></label>
-                            <select asp-for="OrganizationId" asp-items="Model.Organizations" class="form-select">
-                                <option value="">-- اختر المنظمة --</option>
-                            </select>
-                            <span asp-validation-for="OrganizationId" class="text-danger small"></span>
-                        </div>
                         <div class="col-md-6">
                             <label asp-for="NameAr" class="form-label">الاسم بالعربية <span class="text-danger">*</span></label>
                             <input asp-for="NameAr" class="form-control" placeholder="اسم الجهة بالعربية" />

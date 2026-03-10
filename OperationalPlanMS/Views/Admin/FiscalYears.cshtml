@@ -24,9 +24,7 @@
         <form method="get">
             <div class="row g-3">
                 <div class="col-md-10">
-                    <select class="form-select" name="organizationId" asp-items="Model.Organizations">
-                        <option value="">-- كل المنظمات --</option>
-                    </select>
+                    <input type="text" class="form-control" name="searchTerm" placeholder="البحث بالاسم..." />
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
@@ -49,7 +47,7 @@
                         <th>الاسم بالعربية</th>
                         <th>الاسم بالإنجليزية</th>
                         <th>الفترة</th>
-                        <th>المنظمة</th>
+
                         <th>الحالة</th>
                         <th style="width: 180px;">الإجراءات</th>
                     </tr>
@@ -66,7 +64,7 @@
                                 <td>
                                     <small>@item.StartDate.ToString("yyyy-MM-dd") - @item.EndDate.ToString("yyyy-MM-dd")</small>
                                 </td>
-                                <td><small class="text-muted">@item.Organization?.NameAr</small></td>
+
                                 <td>
                                     @if (item.IsCurrent)
                                     {

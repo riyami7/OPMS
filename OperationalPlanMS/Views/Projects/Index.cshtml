@@ -143,7 +143,7 @@
                             // تحديد اسم الوحدة (من API أو محلي)
                             var unitName = !string.IsNullOrEmpty(item.ExternalUnitName)
                             ? item.ExternalUnitName
-                            : item.OrganizationalUnit?.NameAr ?? "-";
+                            : item.ExternalUnitName ?? "-";
                             <tr>
                                 <td><code>@item.Code</code></td>
                                 <td>

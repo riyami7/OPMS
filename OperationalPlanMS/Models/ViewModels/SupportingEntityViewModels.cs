@@ -1,12 +1,8 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using OperationalPlanMS.Models.Entities;
 
 namespace OperationalPlanMS.Models.ViewModels
 {
-    /// <summary>
-    /// قائمة جهات المساندة
-    /// </summary>
     public class SupportingEntityListViewModel
     {
         public List<SupportingEntity> Entities { get; set; } = new();
@@ -15,9 +11,6 @@ namespace OperationalPlanMS.Models.ViewModels
         public int TotalCount { get; set; }
     }
 
-    /// <summary>
-    /// نموذج إنشاء/تعديل جهة مساندة
-    /// </summary>
     public class SupportingEntityFormViewModel
     {
         public int Id { get; set; }
@@ -26,23 +19,17 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "الكود")]
         public string? Code { get; set; }
 
-        [Required(ErrorMessage = "المنظمة مطلوبة")]
-        [Display(Name = "المنظمة")]
-
         [Required(ErrorMessage = "الاسم بالعربية مطلوب")]
         [StringLength(200)]
         [Display(Name = "الاسم بالعربية")]
         public string NameAr { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "الاسم بالإنجليزية مطلوب")]
         [StringLength(200)]
         [Display(Name = "الاسم بالإنجليزية")]
-        public string NameEn { get; set; } = string.Empty;
+        public string? NameEn { get; set; }
 
         [Display(Name = "نشط")]
         public bool IsActive { get; set; } = true;
-
-        // Dropdown
 
         public static SupportingEntityFormViewModel FromEntity(SupportingEntity entity) => new()
         {
@@ -55,11 +42,7 @@ namespace OperationalPlanMS.Models.ViewModels
 
         public void UpdateEntity(SupportingEntity entity)
         {
-            entity.NameAr = NameAr;
-            entity.NameEn = NameEn;
-            entity.IsActive = IsActive;
+            entity.NameAr = NameAr; entity.NameEn = NameEn; entity.IsActive = IsActive;
         }
     }
-
 }
-

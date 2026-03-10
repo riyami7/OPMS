@@ -99,7 +99,7 @@ namespace OperationalPlanMS.Models.ViewModels
         /// <summary>
         /// الوحدة التنظيمية المحلية (اختياري - للتوافق مع البيانات القديمة)
         /// </summary>
-        [Display(Name = "الوحدة التنظيمية المحلية")]
+        //[Display(Name = "الوحدة التنظيمية المحلية")]
 
         [Display(Name = "مدير المشروع")]
         public int? ProjectManagerId { get; set; }

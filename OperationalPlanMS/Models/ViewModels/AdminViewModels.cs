@@ -11,7 +11,6 @@ namespace OperationalPlanMS.Models.ViewModels
         public List<User> Users { get; set; } = new();
         public string? SearchTerm { get; set; }
         public int? RoleId { get; set; }
-        public int? ExternalUnitId { get; set; }
         public bool? IsActive { get; set; }
         public SelectList? Roles { get; set; }
         public int TotalCount { get; set; }
@@ -27,7 +26,6 @@ namespace OperationalPlanMS.Models.ViewModels
         [Required(ErrorMessage = "رقم الموظف مطلوب")]
         [StringLength(100)]
         [Display(Name = "رقم الموظف")]
-        [RegularExpression(@"^[A-Za-z]\d+-\d+$", ErrorMessage = "صيغة رقم الموظف غير صحيحة (مثال: C1-1234)")]
         public string ADUsername { get; set; } = string.Empty;
 
         [StringLength(200)]
@@ -63,8 +61,6 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "مؤكد الخطوات")]
         public bool IsStepApprover { get; set; } = false;
 
-        #region Employee API Fields
-
         [StringLength(100)]
         [Display(Name = "الرتبة")]
         public string? EmployeeRank { get; set; }
@@ -77,14 +73,12 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "الفرع")]
         public string? BranchName { get; set; }
 
-        [Display(Name = "الوحدة التنظيمية")]
+        [Display(Name = "الوحدة التنظيمية (API)")]
         public int? ExternalUnitId { get; set; }
 
         [StringLength(300)]
-        [Display(Name = "اسم الوحدة التنظيمية")]
+        [Display(Name = "اسم الوحدة (API)")]
         public string? ExternalUnitName { get; set; }
-
-        #endregion
 
         public SelectList? Roles { get; set; }
 
@@ -107,17 +101,11 @@ namespace OperationalPlanMS.Models.ViewModels
 
         public void UpdateEntity(User entity)
         {
-            entity.ADUsername = ADUsername;
-            entity.Email = Email;
-            entity.FullNameAr = FullNameAr;
-            entity.FullNameEn = FullNameEn;
-            entity.RoleId = RoleId;
-            entity.IsActive = IsActive;
-            entity.IsStepApprover = IsStepApprover;
-            entity.EmployeeRank = EmployeeRank;
-            entity.EmployeePosition = EmployeePosition;
-            entity.BranchName = BranchName;
-            entity.ExternalUnitId = ExternalUnitId;
+            entity.ADUsername = ADUsername; entity.Email = Email;
+            entity.FullNameAr = FullNameAr; entity.FullNameEn = FullNameEn;
+            entity.RoleId = RoleId; entity.IsActive = IsActive; entity.IsStepApprover = IsStepApprover;
+            entity.EmployeeRank = EmployeeRank; entity.EmployeePosition = EmployeePosition;
+            entity.BranchName = BranchName; entity.ExternalUnitId = ExternalUnitId;
             entity.ExternalUnitName = ExternalUnitName;
         }
     }
@@ -176,60 +164,8 @@ namespace OperationalPlanMS.Models.ViewModels
 
         public void UpdateEntity(FiscalYear entity)
         {
-            entity.Year = Year;
-            entity.NameAr = NameAr;
-            entity.NameEn = NameEn;
-            entity.StartDate = StartDate;
-            entity.EndDate = EndDate;
-            entity.IsCurrent = IsCurrent;
-        }
-    }
-
-    #endregion
-
-    #region SupportingEntity ViewModels
-
-    public class SupportingEntityListViewModel
-    {
-        public List<SupportingEntity> Entities { get; set; } = new();
-        public string? SearchTerm { get; set; }
-        public int TotalCount { get; set; }
-    }
-
-    public class SupportingEntityFormViewModel
-    {
-        public int Id { get; set; }
-
-        [StringLength(50)]
-        [Display(Name = "الكود")]
-        public string? Code { get; set; }
-
-        [Required(ErrorMessage = "الاسم بالعربية مطلوب")]
-        [StringLength(200)]
-        [Display(Name = "الاسم بالعربية")]
-        public string NameAr { get; set; } = string.Empty;
-
-        [StringLength(200)]
-        [Display(Name = "الاسم بالإنجليزية")]
-        public string? NameEn { get; set; }
-
-        [Display(Name = "نشط")]
-        public bool IsActive { get; set; } = true;
-
-        public static SupportingEntityFormViewModel FromEntity(SupportingEntity entity) => new()
-        {
-            Id = entity.Id,
-            Code = entity.Code,
-            NameAr = entity.NameAr,
-            NameEn = entity.NameEn,
-            IsActive = entity.IsActive
-        };
-
-        public void UpdateEntity(SupportingEntity entity)
-        {
-            entity.NameAr = NameAr;
-            entity.NameEn = NameEn;
-            entity.IsActive = IsActive;
+            entity.Year = Year; entity.NameAr = NameAr; entity.NameEn = NameEn;
+            entity.StartDate = StartDate; entity.EndDate = EndDate; entity.IsCurrent = IsCurrent;
         }
     }
 
@@ -276,10 +212,8 @@ namespace OperationalPlanMS.Models.ViewModels
 
         public void UpdateEntity(Role entity)
         {
-            entity.Code = Code;
-            entity.NameAr = NameAr;
-            entity.NameEn = NameEn;
-            entity.Permissions = Permissions;
+            entity.Code = Code; entity.NameAr = NameAr;
+            entity.NameEn = NameEn; entity.Permissions = Permissions;
         }
     }
 

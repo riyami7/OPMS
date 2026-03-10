@@ -276,29 +276,6 @@
                             </select>
                             <span asp-validation-for="RoleId" class="text-danger small"></span>
                         </div>
-
-                        <!-- المنظمة -->
-                        <div class="col-md-4">
-                            <label asp-for="OrganizationId" class="form-label">
-                                <i class="bi bi-building me-1 text-primary"></i>المنظمة
-                            </label>
-                            <select asp-for="OrganizationId" asp-items="Model.Organizations" class="form-select">
-                                <option value="">-- اختر المنظمة --</option>
-                            </select>
-                            <span asp-validation-for="OrganizationId" class="text-danger small"></span>
-                        </div>
-
-                        <!-- الوحدة التنظيمية المحلية -->
-                        <div class="col-md-4">
-                            <label asp-for="OrganizationalUnitId" class="form-label">
-                                <i class="bi bi-diagram-3 me-1 text-info"></i>الوحدة المحلية
-                            </label>
-                            <select asp-for="OrganizationalUnitId" asp-items="Model.OrganizationalUnits" class="form-select">
-                                <option value="">-- اختياري --</option>
-                            </select>
-                            <small class="text-muted">الوحدة من API: @(Model.ExternalUnitName ?? "غير محدد")</small>
-                        </div>
-
                         <!-- Switches -->
                         <div class="col-md-6">
                             <div class="form-check form-switch">

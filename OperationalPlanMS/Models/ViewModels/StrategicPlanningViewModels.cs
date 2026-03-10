@@ -222,7 +222,7 @@ namespace OperationalPlanMS.Models.ViewModels
         public int MainObjectiveId { get; set; }
 
         // ========== الوحدة التنظيمية المحلية (للتوافق) ==========
-        [Display(Name = "الوحدة التنظيمية")]
+        //[Display(Name = "الوحدة التنظيمية")]
 
         // ========== الهيكل التنظيمي من API (جديد) ==========
 

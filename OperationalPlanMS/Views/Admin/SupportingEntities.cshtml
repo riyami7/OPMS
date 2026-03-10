@@ -40,14 +40,10 @@
         <form method="get">
             <div class="row g-3">
                 <div class="col-md-4">
-                    <input type="text" class="form-control" name="searchTerm" value="@Model.SearchTerm" 
+                    <input type="text" class="form-control" name="searchTerm" value="@Model.SearchTerm"
                            placeholder="البحث بالاسم أو الكود..." />
                 </div>
-                <div class="col-md-3">
-                    <select class="form-select" name="organizationId" asp-items="Model.Organizations">
-                        <option value="">-- كل المنظمات --</option>
-                    </select>
-                </div>
+
                 <div class="col-md-3">
                     <select class="form-select" name="isActive">
                         <option value="">-- الكل --</option>
@@ -98,7 +94,7 @@
                         <th>الكود</th>
                         <th>الاسم بالعربية</th>
                         <th>الاسم بالإنجليزية</th>
-                        <th>المنظمة</th>
+
                         <th>الحالة</th>
                         <th style="width: 120px;">الإجراءات</th>
                     </tr>
@@ -112,9 +108,7 @@
                                 <td><code>@item.Code</code></td>
                                 <td><strong>@item.NameAr</strong></td>
                                 <td class="text-muted" dir="ltr">@item.NameEn</td>
-                                <td>
-                                    <span class="badge bg-info">@item.Organization?.NameAr</span>
-                                </td>
+
                                 <td>
                                     @if (item.IsActive)
                                     {
@@ -132,12 +126,12 @@
                                         </a>
                                         <form asp-action="SupportingEntityToggle" asp-route-id="@item.Id" method="post" class="d-inline">
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-outline-@(item.IsActive ? "warning" : "success")" 
+                                            <button type="submit" class="btn btn-outline-@(item.IsActive ? "warning" : "success")"
                                                     title="@(item.IsActive ? "تعطيل" : "تفعيل")">
                                                 <i class="bi bi-toggle-@(item.IsActive ? "on" : "off")"></i>
                                             </button>
                                         </form>
-                                        <form asp-action="SupportingEntityDelete" asp-route-id="@item.Id" method="post" class="d-inline" 
+                                        <form asp-action="SupportingEntityDelete" asp-route-id="@item.Id" method="post" class="d-inline"
                                               onsubmit="return confirm('هل أنت متأكد من الحذف؟');">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="btn btn-outline-danger" title="حذف">
@@ -152,7 +146,7 @@
                     else
                     {
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">
+                            <td colspan="5" class="text-center py-4 text-muted">
                                 <i class="bi bi-building" style="font-size: 2rem;"></i>
                                 <p class="mt-2 mb-0">لا توجد جهات مساندة</p>
                                 <a href="/Admin/SupportingEntityCreate" class="btn btn-success btn-sm mt-2">
