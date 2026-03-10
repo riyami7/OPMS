@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using OperationalPlanMS.Models.Entities;
 
@@ -13,7 +13,6 @@ namespace OperationalPlanMS.Models.ViewModels
         public string? SearchTerm { get; set; }
         public bool? IsActive { get; set; }
         public int TotalCount { get; set; }
-        public SelectList? Organizations { get; set; }
     }
 
     /// <summary>
@@ -44,7 +43,6 @@ namespace OperationalPlanMS.Models.ViewModels
         public bool IsActive { get; set; } = true;
 
         // Dropdown
-        public SelectList? Organizations { get; set; }
 
         public static SupportingEntityFormViewModel FromEntity(SupportingEntity entity) => new()
         {

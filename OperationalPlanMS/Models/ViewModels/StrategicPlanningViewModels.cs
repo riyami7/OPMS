@@ -19,6 +19,7 @@ namespace OperationalPlanMS.Models.ViewModels
         public SelectList? AxesDropdown { get; set; }
         public SelectList? StrategicObjectivesDropdown { get; set; }
         public SelectList? MainObjectivesDropdown { get; set; }
+        public SelectList? OrganizationalUnitsDropdown { get; set; }
     }
 
     #region Strategic Axis ViewModels
@@ -248,6 +249,7 @@ namespace OperationalPlanMS.Models.ViewModels
 
         // Dropdowns
         public SelectList? MainObjectives { get; set; }
+        public SelectList? OrganizationalUnits { get; set; }
 
         public static SubObjectiveFormViewModel FromEntity(SubObjective entity) => new()
         {

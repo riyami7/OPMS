@@ -11,12 +11,8 @@ namespace OperationalPlanMS.Models.ViewModels
     {
         public List<Initiative> Initiatives { get; set; } = new();
         public string? SearchTerm { get; set; }
-        
-        
         public int? FiscalYearId { get; set; }
 
-        
-        
         public SelectList? FiscalYears { get; set; }
 
         public int CurrentPage { get; set; } = 1;
@@ -78,10 +74,8 @@ namespace OperationalPlanMS.Models.ViewModels
 
         // ======= العلاقات القديمة (للتوافق) =======
         [Display(Name = "المنظمة")]
-        
 
         [Display(Name = "الوحدة التنظيمية")]
-        
 
         [Display(Name = "المشرف")]
         public int? SupervisorId { get; set; }
@@ -126,8 +120,6 @@ namespace OperationalPlanMS.Models.ViewModels
         public int FiscalYearId { get; set; }
 
         // ======= Dropdown lists =======
-        
-        
         public SelectList? FiscalYears { get; set; }
         public SelectList? Supervisors { get; set; }
 

@@ -9,7 +9,6 @@ namespace OperationalPlanMS.Models.ViewModels
         public int? FiscalYearId { get; set; }
 
         // الوحدة التنظيمية المحلية (للتوافقية)
-        
 
         // الوحدة التنظيمية من API الخارجي - الفلتر الفعلي
         public int? ExternalUnitId { get; set; }

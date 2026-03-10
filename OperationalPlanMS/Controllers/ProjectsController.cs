@@ -72,9 +72,7 @@ namespace OperationalPlanMS.Controllers
                     p.Initiative.ExternalUnitId.HasValue && unitIds.Contains(p.Initiative.ExternalUnitId.Value));
             }
             // فلتر الوحدة المحلية (للتوافقية)
-            else if (model.OrganizationalUnitId.HasValue)
             {
-                query = query.Where(p => p.OrganizationalUnitId == model.OrganizationalUnitId.Value);
             }
 
             model.TotalCount = await query.CountAsync();
@@ -145,7 +143,7 @@ namespace OperationalPlanMS.Controllers
         [HttpGet]
         public async Task<IActionResult> GetOrganizationalUnits(int organizationId)
         {
-            var units = await _db.ExternalOrganizationalUnits
+            var units = await _db.OrganizationalUnits
                 .Where(u => u.OrganizationId == organizationId && u.IsActive)
                 .OrderBy(u => u.NameAr)
                 .Select(u => new { u.Id, u.NameAr })
@@ -197,7 +195,6 @@ namespace OperationalPlanMS.Controllers
                 return Json(new List<object>());
             }
 
-            var localUnit = await _db.ExternalOrganizationalUnits
                 .FirstOrDefaultAsync(u => u.NameAr == unitName || u.NameEn == unitName);
 
             if (localUnit == null)
@@ -206,7 +203,6 @@ namespace OperationalPlanMS.Controllers
             }
 
             var subObjectives = await _db.SubObjectives
-                .Where(s => s.OrganizationalUnitId == localUnit.Id && s.IsActive)
                 .OrderBy(s => s.OrderIndex)
                 .Select(s => new
                 {
@@ -352,7 +348,6 @@ namespace OperationalPlanMS.Controllers
             var viewModel = new ProjectFormViewModel
             {
                 InitiativeId = initiativeId.Value,
-                OrganizationalUnitId = initiative.OrganizationalUnitId,
                 OrganizationId = organizationId,
             };
 
@@ -832,8 +827,6 @@ namespace OperationalPlanMS.Controllers
                 "Id", "NameAr", model.InitiativeId);
 
             model.OrganizationalUnits = new SelectList(
-                await _db.ExternalOrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
-                "Id", "NameAr", model.OrganizationalUnitId);
         }
 
         private async Task PopulateFormDropdowns(ProjectFormViewModel model, int organizationId = 0)
@@ -845,16 +838,13 @@ namespace OperationalPlanMS.Controllers
             if (organizationId > 0)
             {
                 model.OrganizationalUnits = new SelectList(
-                    await _db.ExternalOrganizationalUnits
-                        .Where(u => u.IsActive)
+                    await _db.OrganizationalUnits
+                        .Where(u => u.IsActive && u.OrganizationId == organizationId)
                         .ToListAsync(),
-                    "Id", "NameAr", model.OrganizationalUnitId);
             }
             else
             {
                 model.OrganizationalUnits = new SelectList(
-                    await _db.ExternalOrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
-                    "Id", "NameAr", model.OrganizationalUnitId);
             }
 
             model.ProjectManagers = new SelectList(
@@ -871,14 +861,12 @@ namespace OperationalPlanMS.Controllers
 
             if (!string.IsNullOrEmpty(model.ExternalUnitName))
             {
-                var localUnit = await _db.ExternalOrganizationalUnits
                     .FirstOrDefaultAsync(u => u.NameAr == model.ExternalUnitName || u.NameEn == model.ExternalUnitName);
 
                 if (localUnit != null)
                 {
                     model.SubObjectives = new SelectList(
                         await _db.SubObjectives
-                            .Where(s => s.OrganizationalUnitId == localUnit.Id && s.IsActive)
                             .OrderBy(s => s.OrderIndex)
                             .Select(s => new { s.Id, s.NameAr })
                             .ToListAsync(),

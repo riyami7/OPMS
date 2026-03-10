@@ -1,3 +1,87 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using OperationalPlanMS.Data;
+using OperationalPlanMS.Models;
+using OperationalPlanMS.Models.Entities;
+using OperationalPlanMS.Models.ViewModels;
+using System.Security.Claims;
+
+namespace OperationalPlanMS.Controllers
+{
+    [Authorize]
+    public class HomeController : Controller
+    {
+        private readonly AppDbContext _db;
+
+        public HomeController(AppDbContext db)
+        {
+            _db = db;
+        }
+
+        public async Task<IActionResult> Index()
+        {
+            // Get current user info from claims
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
+            var userRoleStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            var roleNameAr = User.FindFirst("RoleNameAr")?.Value;
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            int.TryParse(userIdStr, out int userId);
+            Enum.TryParse<UserRole>(userRoleStr, out UserRole userRole);
+
+            ViewBag.UserName = userName;
+            ViewBag.UserRole = userRole;
+            ViewBag.RoleNameAr = roleNameAr;
+
+            try
+            {
+                var viewModel = new DashboardViewModel();
+
+                switch (userRole)
+                {
+                    case UserRole.Admin:
+                        await LoadAdminDashboard(viewModel);
+                        break;
+                    case UserRole.Executive:
+                        await LoadExecutiveDashboard(viewModel);
+                        break;
+                    case UserRole.Supervisor:
+                        await LoadSupervisorDashboard(viewModel, userId);
+                        break;
+                    case UserRole.User:
+                        await LoadUserDashboard(viewModel, userId);
+                        break;
+                    default:
+                        await LoadBasicDashboard(viewModel);
+                        break;
+                }
+
+                return View(viewModel);
+            }
+            catch (Exception ex)
+            {
+                ViewBag.DatabaseError = ex.Message;
+                return View(new DashboardViewModel());
+            }
+        }
+
+        #region Dashboard Loaders
+
+        private async Task LoadBasicDashboard(DashboardViewModel model)
+        {
+            model.TotalInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted);
+            model.TotalProjects = await _db.Projects.CountAsync(p => !p.IsDeleted);
+            model.TotalSteps = await _db.Steps.CountAsync(s => !s.IsDeleted);
+        }
+
+        private async Task LoadAdminDashboard(DashboardViewModel model)
+        {
+            // إحصائيات شاملة
+            model.TotalInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted);
+            model.TotalProjects = await _db.Projects.CountAsync(p => !p.IsDeleted);
+            model.TotalSteps = await _db.Steps.CountAsync(s => !s.IsDeleted);
+            model.TotalUsers = await _db.Users.CountAsync(u => u.IsActive);
 
             // إحصائيات الحالة
             model.CompletedInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.Status == Status.Completed);

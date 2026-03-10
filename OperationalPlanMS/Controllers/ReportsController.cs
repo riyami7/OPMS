@@ -171,7 +171,6 @@ namespace OperationalPlanMS.Controllers
                     // استخدام اسم الوحدة من API أو المحلي
                     UnitName = !string.IsNullOrEmpty(i.ExternalUnitName)
                         ? i.ExternalUnitName
-                        : i.ExternalUnitName,
                     Progress = Math.Round(i.Projects.Average(p => p.ProgressPercentage), 1),
                     ProjectsCount = i.Projects.Count,
                     CompletedProjectsCount = i.Projects.Count(p => p.ProgressPercentage >= 100),
@@ -191,7 +190,6 @@ namespace OperationalPlanMS.Controllers
                     Name = i.NameAr,
                     UnitName = !string.IsNullOrEmpty(i.ExternalUnitName)
                         ? i.ExternalUnitName
-                        : i.ExternalUnitName,
                     Progress = Math.Round(i.Projects.Average(p => p.ProgressPercentage), 1),
                     ProjectsCount = i.Projects.Count,
                     CompletedProjectsCount = i.Projects.Count(p => p.ProgressPercentage >= 100),
@@ -226,8 +224,6 @@ namespace OperationalPlanMS.Controllers
                 "Id", "NameAr", viewModel.FiscalYearId);
 
             // الوحدات المحلية للتوافقية (قد تُحذف لاحقاً)
-            viewModel.OrganizationalUnits = new SelectList(
-                await _db.ExternalOrganizationalUnits.Where(u => u.IsActive).ToListAsync(),
                 "Id", "NameAr", viewModel.OrganizationalUnitId);
 
             ViewBag.UserRole = userRole;
@@ -298,7 +294,7 @@ namespace OperationalPlanMS.Controllers
             // المبادرات التي لديها OrganizationalUnitId المحلي فقط (للتوافقية)
             var localGroups = initiatives
                 .Where(i => !i.ExternalUnitId.HasValue && i.OrganizationalUnitId.HasValue)
-                .GroupBy(i => new { i.OrganizationalUnitId, UnitName = i.ExternalUnitName ?? "غير محدد" });
+                .GroupBy(i => new { i.ExternalUnitId, UnitName = i.ExternalUnitName ?? "غير محدد" });
 
             foreach (var g in localGroups)
             {
@@ -367,7 +363,6 @@ namespace OperationalPlanMS.Controllers
                         var status = GetCalculatedInitiativeStatus(i);
                         var unitName = !string.IsNullOrEmpty(i.ExternalUnitName)
                             ? i.ExternalUnitName
-                            : i.ExternalUnitName ?? "-";
 
                         csv.AppendLine($"{i.Code},{i.NameAr},{unitName},{projectCount},{completedCount},{avgProgress}%,{i.Budget ?? 0},{i.ActualCost ?? 0},{status}");
                     }
@@ -580,7 +575,6 @@ namespace OperationalPlanMS.Controllers
             // اسم الوحدة من API أو المحلي
             ViewBag.UnitName = !string.IsNullOrEmpty(initiative.ExternalUnitName)
                 ? initiative.ExternalUnitName
-                : initiative.ExternalUnitName ?? "-";
 
             return View(initiative);
         }

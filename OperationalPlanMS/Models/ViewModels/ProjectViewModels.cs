@@ -13,9 +13,7 @@ namespace OperationalPlanMS.Models.ViewModels
         public string? SearchTerm { get; set; }
         public int? InitiativeId { get; set; }
         
-        
         public SelectList? Initiatives { get; set; }
-        
         
         public int CurrentPage { get; set; } = 1;
         public int PageSize { get; set; } = 10;
@@ -102,13 +100,11 @@ namespace OperationalPlanMS.Models.ViewModels
         /// الوحدة التنظيمية المحلية (اختياري - للتوافق مع البيانات القديمة)
         /// </summary>
         [Display(Name = "الوحدة التنظيمية المحلية")]
-        
 
         [Display(Name = "مدير المشروع")]
         public int? ProjectManagerId { get; set; }
 
         // ======= للعرض فقط =======
-        
 
         // ======= الهيكل التنظيمي من API =======
 
@@ -196,7 +192,6 @@ namespace OperationalPlanMS.Models.ViewModels
 
         // ======= Dropdown lists =======
         public SelectList? Initiatives { get; set; }
-        
         public SelectList? ProjectManagers { get; set; }
 
         // ======= Computed =======

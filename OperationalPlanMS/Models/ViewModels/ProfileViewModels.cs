@@ -14,7 +14,6 @@ namespace OperationalPlanMS.Models.ViewModels
         public string FullNameEn { get; set; } = string.Empty;
         public string? ProfileImage { get; set; }
         public string? RoleName { get; set; }
-        // Organization removed - using ExternalUnit directly
         public string? UnitName { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public DateTime CreatedAt { get; set; }

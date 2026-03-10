@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -79,6 +79,8 @@ namespace OperationalPlanMS.Controllers
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                if (user.ExternalUnitId.HasValue)
+                    claims.Add(new Claim("ExternalUnitId", user.ExternalUnitId.Value.ToString()));
                 new Claim(ClaimTypes.Name, user.FullNameAr),
                 new Claim("FullNameAr", user.FullNameAr),
                 new Claim("FullNameEn", user.FullNameEn),
@@ -88,9 +90,7 @@ namespace OperationalPlanMS.Controllers
                 new Claim("RoleNameEn", user.Role?.NameEn ?? ""),
             };
 
-            if (user.OrganizationalUnitId.HasValue)
             {
-                claims.Add(new Claim("OrganizationalUnitId", user.OrganizationalUnitId.Value.ToString()));
             }
 
             if (!string.IsNullOrEmpty(user.Email))

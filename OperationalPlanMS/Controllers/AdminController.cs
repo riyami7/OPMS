@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -35,8 +35,7 @@ namespace OperationalPlanMS.Controllers
 
             return View();
         }
-
-                        #region Users
+        #region Users
 
         // GET: /Admin/Users
         public async Task<IActionResult> Users(string? searchTerm, int? roleId, int? organizationalUnitId, bool? isActive, int page = 1)
@@ -259,10 +258,8 @@ namespace OperationalPlanMS.Controllers
                 await _db.Roles.ToListAsync(),
                 "Id", "NameAr", model.RoleId);
 
-            model.OrganizationalUnits = new SelectList(
                 "Id", "NameAr", model.OrganizationalUnitId);
 
-                "Id", "NameAr", model.OrganizationId);
         }
 
         #endregion
@@ -345,7 +342,6 @@ namespace OperationalPlanMS.Controllers
                 return RedirectToAction(nameof(FiscalYears));
             }
 
-                "Id", "NameAr", model.OrganizationId);
 
             return View(model);
         }
@@ -361,7 +357,6 @@ namespace OperationalPlanMS.Controllers
                 return NotFound();
 
             var viewModel = FiscalYearFormViewModel.FromEntity(entity);
-                "Id", "NameAr", viewModel.OrganizationId);
 
             return View(viewModel);
         }
@@ -400,7 +395,6 @@ namespace OperationalPlanMS.Controllers
                 return RedirectToAction(nameof(FiscalYears));
             }
 
-                "Id", "NameAr", model.OrganizationId);
 
             return View(model);
         }
@@ -576,7 +570,6 @@ namespace OperationalPlanMS.Controllers
                 var entitiesInOrg = await _db.SupportingEntities
                     .CountAsync();
                 int nextNumber = entitiesInOrg + 1;
-                string autoCode = $"SE-{model.OrganizationId:D3}-{nextNumber:D3}";
 
                 var entity = new SupportingEntity
                 {
@@ -614,6 +607,7 @@ namespace OperationalPlanMS.Controllers
 
             var viewModel = SupportingEntityFormViewModel.FromEntity(entity);
             await PopulateSupportingEntityDropdowns(viewModel);
+            
             return View(viewModel);
         }
 
@@ -647,6 +641,7 @@ namespace OperationalPlanMS.Controllers
                 return RedirectToAction(nameof(SupportingEntities));
             }
 
+            ViewBag.OrganizationName = org?.NameAr;
             await PopulateSupportingEntityDropdowns(model);
             return View(model);
         }
@@ -701,7 +696,6 @@ namespace OperationalPlanMS.Controllers
 
         private async Task PopulateSupportingEntityDropdowns(SupportingEntityFormViewModel model)
         {
-                "Id", "NameAr", model.OrganizationId);
         }
 
         #endregion
@@ -923,7 +917,7 @@ namespace OperationalPlanMS.Controllers
                     .ToListAsync(),
 
                 OrganizationalUnitsDropdown = new SelectList(
-                    await _db.ExternalOrganizationalUnits
+                    await _db.OrganizationalUnits
                         .Where(u => u.IsActive)
                         .OrderBy(u => u.ArabicName)
                         .ThenBy(u => u.NameAr)

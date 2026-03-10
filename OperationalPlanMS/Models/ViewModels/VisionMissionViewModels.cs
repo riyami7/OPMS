@@ -16,6 +16,7 @@ namespace OperationalPlanMS.Models.ViewModels
         /// <summary>
         /// إعدادات الوحدات التنظيمية
         /// </summary>
+        public List<OrganizationalUnitSettings> UnitSettings { get; set; } = new();
 
         /// <summary>
         /// الوحدات المتاحة للإضافة (التي ليس لها إعدادات بعد) - للتوافق القديم
@@ -106,7 +107,9 @@ namespace OperationalPlanMS.Models.ViewModels
         // للعرض
         public string? UnitName { get; set; }
 
+        public SelectList? OrganizationalUnits { get; set; }
 
+        public static UnitSettingsFormViewModel FromEntity(OrganizationalUnitSettings entity)
         {
             return new UnitSettingsFormViewModel
             {
@@ -123,6 +126,7 @@ namespace OperationalPlanMS.Models.ViewModels
             };
         }
 
+        public void UpdateEntity(OrganizationalUnitSettings entity)
         {
             entity.VisionAr = VisionAr;
             entity.VisionEn = VisionEn;
