@@ -1,0 +1,78 @@
+@model OperationalPlanMS.Models.Entities.Step
+@{
+    ViewData["Title"] = "حذف خطوة";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                تأكيد حذف الخطوة
+            </div>
+            <div class="card-body text-center">
+                <i class="bi bi-trash text-danger" style="font-size: 4rem;"></i>
+                <h4 class="mt-3">هل أنت متأكد من حذف هذه الخطوة؟</h4>
+                <p class="text-muted">سيتم حذف الخطوة وجميع البيانات المرتبطة بها</p>
+
+                <div class="card bg-light mt-4">
+                    <div class="card-body text-start">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <td class="text-muted" style="width: 120px;">رقم الخطوة:</td>
+                                <td><strong>@Model.StepNumber</strong></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">الاسم:</td>
+                                <td><strong>@Model.NameAr</strong></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">الوزن:</td>
+                                <td><span class="badge bg-info">@Model.Weight%</span></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">الإنجاز:</td>
+                                <td><span class="badge bg-primary">@Model.ProgressPercentage%</span></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">المشروع:</td>
+                                <td>@Model.Project?.NameAr</td>
+                            </tr>
+                            @if (Model.Project?.Initiative != null)
+                            {
+                                <tr>
+                                    <td class="text-muted">المبادرة:</td>
+                                    <td>@Model.Project.Initiative.NameAr</td>
+                                </tr>
+                            }
+                            <tr>
+                                <td class="text-muted">المسؤول:</td>
+                                <td>@(Model.AssignedTo?.FullNameAr ?? "-")</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                @if (Model.ProgressPercentage >= 100)
+                {
+                    <div class="alert alert-warning mt-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>تنبيه:</strong> هذه الخطوة مكتملة. حذفها سيُنقص نسبة إنجاز المشروع بـ @Model.Weight%
+                    </div>
+                }
+
+                <form asp-action="Delete" method="post" class="mt-4">
+                    <input type="hidden" asp-for="Id" />
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-trash me-2"></i>نعم، احذف
+                        </button>
+                        <a href="/Projects/Details/@Model.ProjectId" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle me-2"></i>إلغاء
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

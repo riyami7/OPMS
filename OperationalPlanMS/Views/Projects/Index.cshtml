@@ -1,0 +1,447 @@
+@model OperationalPlanMS.Models.ViewModels.ProjectListViewModel
+@{
+    ViewData["Title"] = "المشاريع";
+    var canEdit = (bool)(ViewBag.CanEdit ?? false);
+}
+
+<style>
+    .welcome-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        color: white;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4 welcome-banner">
+    <div>
+        <h4 class="mb-1">إدارة المشاريع</h4>
+        <p class="text-white mb-0">عرض جميع المشاريع - لإضافة مشروع جديد، اذهب إلى صفحة المبادرة</p>
+    </div>
+</div>
+
+<!-- Filters Card -->
+<div class="card mb-4">
+    <div class="card-header bg-light py-2">
+        <i class="bi bi-funnel me-2"></i><strong>فلاتر البحث</strong>
+    </div>
+    <div class="card-body">
+        <form method="get" asp-action="Index" id="filterForm">
+            <div class="row g-3">
+                <!-- البحث -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-search me-1 text-primary"></i>البحث
+                    </label>
+                    <input type="text" class="form-control" asp-for="SearchTerm" placeholder="البحث بالاسم أو الكود..." />
+                </div>
+
+                <!-- المبادرة -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-lightning-charge me-1 text-warning"></i>المبادرة
+                    </label>
+                    <select class="form-select" asp-for="InitiativeId" asp-items="Model.Initiatives">
+                        <option value="">-- جميع المبادرات --</option>
+                    </select>
+                </div>
+
+                <!-- المستوى الأول -->
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-building me-1 text-primary"></i>المستوى الأول
+                    </label>
+                    <select class="form-select" id="filterLevel1">
+                        <option value="">-- جاري التحميل --</option>
+                    </select>
+                </div>
+
+                <!-- المستوى الثاني -->
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-diagram-2 me-1 text-info"></i>المستوى الثاني
+                    </label>
+                    <select class="form-select" id="filterLevel2" disabled>
+                        <option value="">-- اختر الأول --</option>
+                    </select>
+                </div>
+
+                <!-- المستوى الثالث -->
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-geo-alt me-1 text-success"></i>المستوى الثالث
+                    </label>
+                    <select class="form-select" id="filterLevel3" disabled>
+                        <option value="">-- اختر الثاني --</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Hidden field for selected unit -->
+            <input type="hidden" id="ExternalUnitId" name="ExternalUnitId" value="@ViewBag.ExternalUnitId" />
+
+            <!-- أزرار التحكم -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <!-- عرض الوحدة المختارة -->
+                        <div id="selectedUnitDisplay">
+                            @if (ViewBag.SelectedUnitName != null)
+                            {
+                                <span class="badge bg-primary fs-6">
+                                    <i class="bi bi-building me-1"></i>@ViewBag.SelectedUnitName
+                                </span>
+                            }
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-1"></i>بحث
+                            </button>
+                            <a href="/Projects" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-1"></i>إعادة تعيين
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results Info -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-muted">عرض @Model.Projects.Count من @Model.TotalCount نتيجة</span>
+</div>
+
+<!-- Projects Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">الكود</th>
+                        <th>المشروع</th>
+                        <th>المبادرة</th>
+                        <th>الوحدة التنظيمية</th>
+                        <th style="width: 80px;">الخطوات</th>
+                        <th style="width: 140px;">التقدم</th>
+                        <th style="width: 100px;">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Projects.Any())
+                    {
+                        @foreach (var item in Model.Projects)
+                        {
+
+                            var progressClass = item.ProgressPercentage < 40 ? "bg-danger" :
+                            item.ProgressPercentage < 70 ? "bg-warning" : "bg-success";
+
+                            // تحديد اسم الوحدة (من API أو محلي)
+                            var unitName = !string.IsNullOrEmpty(item.ExternalUnitName)
+                            ? item.ExternalUnitName
+                            : item.OrganizationalUnit?.NameAr ?? "-";
+                            <tr>
+                                <td><code>@item.Code</code></td>
+                                <td>
+                                    <a href="/Projects/Details/@item.Id" class="fw-bold text-decoration-none">
+                                        @item.NameAr
+                                    </a>
+                                    @if (!string.IsNullOrEmpty(item.NameEn))
+                                    {
+                                        <br>
+                                        <small class="text-muted">@item.NameEn</small>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="/Initiatives/Details/@item.InitiativeId" class="text-decoration-none">
+                                        <i class="bi bi-lightning-charge text-warning me-1"></i>@item.Initiative?.NameAr
+                                    </a>
+                                </td>
+                                <td>
+                                    <small>@unitName</small>
+                                </td>
+                                <td class="text-center">
+                                    @{
+                                        var stepsCount = item.Steps?.Count ?? 0;
+                                        var completedSteps = item.Steps?.Count(s => s.ProgressPercentage >= 100) ?? 0;
+                                    }
+                                    <span class="badge @(completedSteps == stepsCount && stepsCount > 0 ? "bg-success" : "bg-secondary")">
+                                        @completedSteps / @stepsCount
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-fill" style="height: 8px;">
+                                            <div class="progress-bar @progressClass" style="width: @item.ProgressPercentage%"></div>
+                                        </div>
+                                        <small class="text-nowrap fw-bold">@item.ProgressPercentage%</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/Projects/Details/@item.Id" class="btn btn-outline-primary" title="عرض">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        @if (canEdit)
+                                        {
+                                            <a href="/Projects/Edit/@item.Id" class="btn btn-outline-warning" title="تعديل">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="/Projects/Delete/@item.Id" class="btn btn-outline-danger" title="حذف">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <i class="bi bi-folder text-muted" style="font-size: 3rem;"></i>
+                                <p class="text-muted mt-2 mb-0">لا توجد مشاريع</p>
+                                <p class="text-muted small">لإضافة مشروع، اذهب إلى صفحة المبادرة المطلوبة</p>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="?CurrentPage=@(Model.CurrentPage - 1)&SearchTerm=@Model.SearchTerm&InitiativeId=@Model.InitiativeId&ExternalUnitId=@ViewBag.ExternalUnitId">
+                    السابق
+                </a>
+            </li>
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                    <a class="page-link" href="?CurrentPage=@i&SearchTerm=@Model.SearchTerm&InitiativeId=@Model.InitiativeId&ExternalUnitId=@ViewBag.ExternalUnitId">
+                        @i
+                    </a>
+                </li>
+            }
+            <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="?CurrentPage=@(Model.CurrentPage + 1)&SearchTerm=@Model.SearchTerm&InitiativeId=@Model.InitiativeId&ExternalUnitId=@ViewBag.ExternalUnitId">
+                    التالي
+                </a>
+            </li>
+        </ul>
+    </nav>
+}
+
+@section Scripts {
+    <script>
+        // متغيرات عامة
+        var allUnits = [];
+        var selectedExternalUnitId = '@(ViewBag.ExternalUnitId ?? "")';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrganizationalUnits();
+
+            // Event listeners للقوائم
+            document.getElementById('filterLevel1').addEventListener('change', onLevel1Change);
+            document.getElementById('filterLevel2').addEventListener('change', onLevel2Change);
+            document.getElementById('filterLevel3').addEventListener('change', onLevel3Change);
+        });
+
+        // تحميل الوحدات التنظيمية من API
+        function loadOrganizationalUnits() {
+            fetch('/api/OrganizationApi/units/all')
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(function(data) {
+                    console.log('Units loaded:', data.length);
+                    allUnits = data;
+                    populateFilterLevel1();
+
+                    // استعادة الفلتر المحدد
+                    if (selectedExternalUnitId) {
+                        restoreFilterSelection(parseInt(selectedExternalUnitId));
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error loading units:', error);
+                    document.getElementById('filterLevel1').innerHTML = '<option value="">-- فشل التحميل --</option>';
+                });
+        }
+
+        // ملء المستوى الأول
+        function populateFilterLevel1() {
+            var level1Units = allUnits.filter(function(u) {
+                return u.parentId === null || u.parentId === 0;
+            });
+            var select = document.getElementById('filterLevel1');
+            select.innerHTML = '<option value="">-- جميع الوحدات --</option>';
+
+            level1Units.forEach(function(unit) {
+                var option = document.createElement('option');
+                option.value = unit.id;
+                option.textContent = unit.name;
+                select.appendChild(option);
+            });
+        }
+
+        // عند تغيير المستوى الأول
+        function onLevel1Change() {
+            var selectedId = parseInt(this.value);
+            var level2Select = document.getElementById('filterLevel2');
+            var level3Select = document.getElementById('filterLevel3');
+
+            level2Select.innerHTML = '';
+            level2Select.disabled = true;
+            level3Select.innerHTML = '<option value="">-- اختر الثاني --</option>';
+            level3Select.disabled = true;
+
+            if (selectedId) {
+                var children = allUnits.filter(function(u) {
+                    return u.parentId === selectedId;
+                });
+
+                if (children.length > 0) {
+                    level2Select.innerHTML = '<option value="">-- جميع الفروع --</option>';
+                    children.forEach(function(unit) {
+                        var option = document.createElement('option');
+                        option.value = unit.id;
+                        option.textContent = unit.name;
+                        level2Select.appendChild(option);
+                    });
+                    level2Select.disabled = false;
+                } else {
+                    level2Select.innerHTML = '<option value="">-- لا توجد فروع --</option>';
+                }
+
+                updateSelectedUnit(selectedId);
+            } else {
+                level2Select.innerHTML = '<option value="">-- اختر الأول --</option>';
+                document.getElementById('ExternalUnitId').value = '';
+                updateSelectedUnitDisplay('');
+            }
+        }
+
+        // عند تغيير المستوى الثاني
+        function onLevel2Change() {
+            var selectedId = parseInt(this.value);
+            var level3Select = document.getElementById('filterLevel3');
+
+            level3Select.innerHTML = '';
+            level3Select.disabled = true;
+
+            if (selectedId) {
+                var children = allUnits.filter(function(u) {
+                    return u.parentId === selectedId;
+                });
+
+                if (children.length > 0) {
+                    level3Select.innerHTML = '<option value="">-- جميع الأقسام --</option>';
+                    children.forEach(function(unit) {
+                        var option = document.createElement('option');
+                        option.value = unit.id;
+                        option.textContent = unit.name;
+                        level3Select.appendChild(option);
+                    });
+                    level3Select.disabled = false;
+                } else {
+                    level3Select.innerHTML = '<option value="">-- لا توجد أقسام --</option>';
+                }
+
+                updateSelectedUnit(selectedId);
+            } else {
+                level3Select.innerHTML = '<option value="">-- اختر الثاني --</option>';
+                // العودة للمستوى الأول
+                var level1Val = parseInt(document.getElementById('filterLevel1').value);
+                if (level1Val) {
+                    updateSelectedUnit(level1Val);
+                } else {
+                    document.getElementById('ExternalUnitId').value = '';
+                    updateSelectedUnitDisplay('');
+                }
+            }
+        }
+
+        // عند تغيير المستوى الثالث
+        function onLevel3Change() {
+            var selectedId = parseInt(this.value);
+
+            if (selectedId) {
+                updateSelectedUnit(selectedId);
+            } else {
+                // العودة للمستوى الثاني
+                var level2Val = parseInt(document.getElementById('filterLevel2').value);
+                if (level2Val) {
+                    updateSelectedUnit(level2Val);
+                }
+            }
+        }
+
+        // تحديث الوحدة المختارة
+        function updateSelectedUnit(unitId) {
+            document.getElementById('ExternalUnitId').value = unitId;
+            var unit = allUnits.find(function(u) { return u.id === unitId; });
+            if (unit) {
+                updateSelectedUnitDisplay(unit.name);
+            }
+        }
+
+        // تحديث عرض الوحدة المختارة
+        function updateSelectedUnitDisplay(unitName) {
+            var display = document.getElementById('selectedUnitDisplay');
+            if (unitName) {
+                display.innerHTML = '<span class="badge bg-primary fs-6"><i class="bi bi-building me-1"></i>' + unitName + '</span>';
+            } else {
+                display.innerHTML = '';
+            }
+        }
+
+        // استعادة الفلتر المحدد
+        function restoreFilterSelection(unitId) {
+            var unit = allUnits.find(function(u) { return u.id === unitId; });
+            if (!unit) return;
+
+            // بناء سلسلة الآباء
+            var hierarchy = [];
+            var current = unit;
+
+            while (current) {
+                hierarchy.unshift(current);
+                var parentId = current.parentId;
+                current = allUnits.find(function(u) { return u.id === parentId; });
+            }
+
+            // تطبيق التحديد
+            if (hierarchy.length >= 1) {
+                document.getElementById('filterLevel1').value = hierarchy[0].id;
+                onLevel1Change.call(document.getElementById('filterLevel1'));
+
+                setTimeout(function() {
+                    if (hierarchy.length >= 2) {
+                        document.getElementById('filterLevel2').value = hierarchy[1].id;
+                        onLevel2Change.call(document.getElementById('filterLevel2'));
+
+                        setTimeout(function() {
+                            if (hierarchy.length >= 3) {
+                                document.getElementById('filterLevel3').value = hierarchy[2].id;
+                                updateSelectedUnit(hierarchy[2].id);
+                            }
+                        }, 100);
+                    }
+                }, 100);
+            }
+        }
+    </script>
+}

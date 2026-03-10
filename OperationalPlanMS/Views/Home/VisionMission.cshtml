@@ -1,0 +1,340 @@
+@model OperationalPlanMS.Models.ViewModels.StrategicOverviewViewModel
+@{
+    ViewData["Title"] = "الرؤية والمهمة";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+        .page-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+            .page-header h2 i {
+                color: #3498db;
+            }
+
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 3px solid #3498db;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Main Organization Card */
+    .org-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 5px 25px rgba(0,0,0,0.08);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .org-card-header {
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: white;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+        .org-card-header i {
+            font-size: 2rem;
+        }
+
+        .org-card-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+    .org-card-body {
+        padding: 1.5rem;
+    }
+
+    .vm-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    @@media (max-width: 768px) {
+        .vm-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .vm-box {
+        padding: 1.25rem;
+        border-radius: 12px;
+        border-right: 4px solid;
+    }
+
+        .vm-box.vision {
+            background: linear-gradient(135deg, #e8f4fc, #f0f8ff);
+            border-color: #3498db;
+        }
+
+        .vm-box.mission {
+            background: linear-gradient(135deg, #e8f8ed, #f0fff4);
+            border-color: #27ae60;
+        }
+
+        .vm-box h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .vm-box.vision h4 {
+            color: #3498db;
+        }
+
+        .vm-box.mission h4 {
+            color: #27ae60;
+        }
+
+        .vm-box p {
+            color: #555;
+            line-height: 1.8;
+            margin: 0;
+        }
+
+        .vm-box.empty {
+            background: #f8f9fa;
+            border-color: #dee2e6;
+            text-align: center;
+            color: #999;
+        }
+
+    /* Units Section */
+    .units-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.25rem;
+    }
+
+    .unit-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+        .unit-card:hover {
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            transform: translateY(-3px);
+        }
+
+    .unit-card-header {
+        background: linear-gradient(135deg, #6f42c1, #8363d1);
+        color: white;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+        .unit-card-header i {
+            font-size: 1.25rem;
+        }
+
+        .unit-card-header h4 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+    .unit-card-body {
+        padding: 1.25rem;
+    }
+
+    .unit-vm {
+        padding: 0.875rem;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        border-right: 3px solid;
+    }
+
+        .unit-vm:last-child {
+            margin-bottom: 0;
+        }
+
+        .unit-vm.vision {
+            background: #f0f8ff;
+            border-color: #3498db;
+        }
+
+        .unit-vm.mission {
+            background: #f0fff4;
+            border-color: #27ae60;
+        }
+
+        .unit-vm h5 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .unit-vm.vision h5 {
+            color: #3498db;
+        }
+
+        .unit-vm.mission h5 {
+            color: #27ae60;
+        }
+
+        .unit-vm p {
+            font-size: 0.9rem;
+            color: #555;
+            line-height: 1.7;
+            margin: 0;
+        }
+
+    .no-data {
+        text-align: center;
+        padding: 3rem;
+        color: #999;
+    }
+
+        .no-data i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <h2><i class="bi bi-eye-fill"></i> الرؤية والمهمة</h2>
+    <a href="/Home/StrategicOverview" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-right me-1"></i>رجوع
+    </a>
+</div>
+
+<!-- Main Organization -->
+<h3 class="section-title">
+    <i class="bi bi-building-fill"></i>
+    رؤية ومهمة المؤسسة
+</h3>
+
+<div class="org-card">
+    <div class="org-card-header">
+        <i class="bi bi-building"></i>
+        <h3>المؤسسة الرئيسية</h3>
+    </div>
+    <div class="org-card-body">
+        @if (Model.SystemSettings != null && (!string.IsNullOrEmpty(Model.SystemSettings.VisionAr) || !string.IsNullOrEmpty(Model.SystemSettings.MissionAr)))
+        {
+            <div class="vm-grid">
+                <div class="vm-box vision">
+                    <h4><i class="bi bi-eye-fill"></i> الرؤية</h4>
+                    @if (!string.IsNullOrEmpty(Model.SystemSettings.VisionAr))
+                    {
+                        <p>@Model.SystemSettings.VisionAr</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted">لم يتم تحديد الرؤية</p>
+                    }
+                </div>
+                <div class="vm-box mission">
+                    <h4><i class="bi bi-rocket-takeoff-fill"></i> المهمة</h4>
+                    @if (!string.IsNullOrEmpty(Model.SystemSettings.MissionAr))
+                    {
+                        <p>@Model.SystemSettings.MissionAr</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted">لم يتم تحديد المهمة</p>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="vm-box empty">
+                <i class="bi bi-info-circle me-2"></i>
+                لم يتم تحديد الرؤية والمهمة بعد
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Units Vision & Mission -->
+@if (Model.UnitSettings.Any())
+{
+    <h3 class="section-title" style="border-color: #6f42c1;">
+        <i class="bi bi-diagram-3-fill" style="color: #6f42c1;"></i>
+        رؤية ومهمة الوحدات التنظيمية
+    </h3>
+
+    <div class="units-grid">
+        @foreach (var unit in Model.UnitSettings)
+        {
+            <div class="unit-card">
+                <div class="unit-card-header">
+                    <i class="bi bi-building"></i>
+                    <h4>@unit.UnitDisplayName</h4>
+                </div>
+                <div class="unit-card-body">
+                    @if (!string.IsNullOrEmpty(unit.VisionAr))
+                    {
+                        <div class="unit-vm vision">
+                            <h5><i class="bi bi-eye-fill"></i> الرؤية</h5>
+                            <p>@unit.VisionAr</p>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(unit.MissionAr))
+                    {
+                        <div class="unit-vm mission">
+                            <h5><i class="bi bi-rocket-takeoff-fill"></i> المهمة</h5>
+                            <p>@unit.MissionAr</p>
+                        </div>
+                    }
+
+                    @if (string.IsNullOrEmpty(unit.VisionAr) && string.IsNullOrEmpty(unit.MissionAr))
+                    {
+                        <p class="text-muted text-center mb-0">
+                            <i class="bi bi-info-circle me-1"></i>لم يتم تحديد الرؤية والمهمة
+                        </p>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="no-data">
+        <i class="bi bi-building"></i>
+        <h5>لا توجد وحدات تنظيمية</h5>
+        <p>سيتم عرض رؤية ومهمة الوحدات هنا عند إضافتها</p>
+    </div>
+}

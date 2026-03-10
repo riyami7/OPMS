@@ -1,0 +1,829 @@
+@model OperationalPlanMS.Models.ViewModels.ProjectDetailsViewModel
+@using OperationalPlanMS.Models.Entities
+@using OperationalPlanMS.Models
+@{
+    ViewData["Title"] = Model.Project.NameAr;
+    var canEdit = (bool)(ViewBag.CanEdit ?? false);
+    var userRole = ViewBag.UserRole as UserRole?;
+    var currentUserId = ViewBag.CurrentUserId as int? ?? 0;
+    var isAdmin = userRole == UserRole.Admin;
+
+    var isProjectManager = Model.Project.ProjectManagerId == currentUserId;
+    var canManageSteps = isAdmin || (userRole == UserRole.User && isProjectManager);
+
+    var progressClass = Model.CalculatedProgress < 40 ? "bg-danger" :
+                       Model.CalculatedProgress < 70 ? "bg-warning" : "bg-success";
+    var totalWeight = Model.Steps.Sum(s => s.Weight);
+    var isWeightValid = Math.Abs(totalWeight - 100) < 0.01m;
+
+    var isMultiYear = Model.Project.IsMultiYear;
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-3">
+            <h4 class="mb-0">@Model.Project.NameAr</h4>
+            @if (!string.IsNullOrEmpty(Model.Project.ProjectNumber))
+            {
+                <span class="badge bg-secondary fs-6">رقم: @Model.Project.ProjectNumber</span>
+            }
+        </div>
+        <p class="text-muted mb-0">
+            @Model.Project.Code | @Model.Project.NameEn
+            <br>
+            <small>
+                <a href="/Initiatives/Details/@Model.Project.InitiativeId">
+                    <i class="bi bi-lightning-charge me-1"></i>@Model.Project.Initiative?.NameAr
+                </a>
+            </small>
+        </p>
+    </div>
+    <div>
+        @if (canEdit)
+        {
+            <a href="/Projects/Edit/@Model.Project.Id" class="btn btn-warning">
+                <i class="bi bi-pencil me-2"></i>تعديل
+            </a>
+        }
+        <a href="/Initiatives/Details/@Model.Project.InitiativeId" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-arrow-right me-2"></i>رجوع للمبادرة
+        </a>
+    </div>
+</div>
+
+<!-- Weight Alert -->
+@if (Model.Steps.Any() && !isWeightValid)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>تنبيه:</strong> مجموع أوزان الخطوات = <strong>@totalWeight%</strong> (يجب أن يساوي 100%)
+    </div>
+}
+
+<!-- Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100 border-primary">
+            <div class="card-body">
+                <i class="bi bi-percent text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">@Model.CalculatedProgress%</h3>
+                <p class="text-muted mb-0">نسبة الإنجاز</p>
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar @progressClass" style="width: @Model.CalculatedProgress%"></div>
+                </div>
+                <small class="text-muted">محسوبة من الخطوات المكتملة</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100 border-success">
+            <div class="card-body">
+                <i class="bi bi-list-check text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">@Model.CompletedSteps / @Model.Steps.Count</h3>
+                <p class="text-muted mb-0">الخطوات المكتملة</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100 @(isWeightValid ? "border-info" : "border-warning")">
+            <div class="card-body">
+                <i class="bi bi-pie-chart @(isWeightValid ? "text-info" : "text-warning")" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0 @(isWeightValid ? "" : "text-warning")">@totalWeight%</h3>
+                <p class="text-muted mb-0">مجموع الأوزان</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="bi bi-person text-secondary" style="font-size: 2rem;"></i>
+                @if (!string.IsNullOrEmpty(Model.Project.ProjectManagerName))
+                {
+                    <h5 class="mt-2 mb-0">@Model.Project.ProjectManagerRank @Model.Project.ProjectManagerName</h5>
+                    <small class="text-muted">@Model.Project.ProjectManagerEmpNumber</small>
+                }
+                else if (Model.Project.ProjectManager != null)
+                {
+                    <h5 class="mt-2 mb-0">@Model.Project.ProjectManager.FullNameAr</h5>
+                }
+                else
+                {
+                    <h5 class="mt-2 mb-0 text-muted">غير معين</h5>
+                }
+                <p class="text-muted mb-0">مدير المشروع</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Basic Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>المعلومات الأساسية
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong class="text-muted d-block">الوصف بالعربية</strong>
+                        <p>@(Model.Project.DescriptionAr ?? "لا يوجد وصف")</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong class="text-muted d-block">الوصف بالإنجليزية</strong>
+                        <p dir="ltr" class="text-end">@(Model.Project.DescriptionEn ?? "No description")</p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.Project.OperationalGoal))
+                    {
+                        <div class="col-12 mb-3">
+                            <strong class="text-muted d-block"><i class="bi bi-bullseye me-1"></i>الهدف التشغيلي</strong>
+                            <p class="mb-0 bg-light p-2 rounded">@Model.Project.OperationalGoal</p>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.Project.ExpectedOutcomes))
+                    {
+                        <div class="col-12 mb-2">
+                            <strong class="text-muted d-block">المخرجات المتوقعة</strong>
+                            <p class="mb-0">@Model.Project.ExpectedOutcomes</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Organizational Structure - الهيكل التنظيمي -->
+        @if (!string.IsNullOrEmpty(Model.Project.ExternalUnitName) || Model.Project.SubObjective != null || Model.Project.FinancialCost != null)
+        {
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-diagram-3 me-2"></i>الهيكل التنظيمي والتصنيف
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @if (!string.IsNullOrEmpty(Model.Project.ExternalUnitName))
+                        {
+                            <div class="col-md-6 mb-3">
+                                <strong class="text-muted d-block"><i class="bi bi-building me-1"></i>الوحدة التنظيمية</strong>
+                                <span class="badge bg-primary fs-6">@Model.Project.ExternalUnitName</span>
+                            </div>
+                        }
+                        @if (Model.Project.SubObjective != null)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <strong class="text-muted d-block"><i class="bi bi-bullseye me-1"></i>الهدف الفرعي</strong>
+                                <span class="badge bg-info fs-6">@Model.Project.SubObjective.NameAr</span>
+                            </div>
+                        }
+                        @if (Model.Project.FinancialCost != null)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <strong class="text-muted d-block"><i class="bi bi-cash-stack me-1"></i>التكلفة المالية</strong>
+                                <span class="badge bg-success fs-6">@Model.Project.FinancialCost.NameAr</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Requirements متطلبات التنفيذ -->
+        @if (Model.Requirements != null && Model.Requirements.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-list-check me-2 text-primary"></i>متطلبات التنفيذ
+                    <span class="badge bg-primary ms-2">@Model.Requirements.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        @foreach (var req in Model.Requirements.OrderBy(r => r.OrderIndex))
+                        {
+                            <li class="list-group-item d-flex align-items-center">
+                                <span class="badge bg-secondary me-3">@(req.OrderIndex + 1)</span>
+                                @req.RequirementText
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <!-- KPIs مؤشرات الأداء -->
+        @if (Model.KPIs != null && Model.KPIs.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-graph-up me-2 text-success"></i>مؤشرات الأداء
+                    <span class="badge bg-success ms-2">@Model.KPIs.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>المؤشر</th>
+                                    <th class="text-center" style="width: 120px;">المستهدف</th>
+                                    <th class="text-center" style="width: 120px;">الفعلي</th>
+                                    <th class="text-center" style="width: 100px;">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var kpiIndex = 1;
+                                }
+                                @foreach (var kpi in Model.KPIs.OrderBy(k => k.OrderIndex))
+                                {
+                                    var hasTarget = !string.IsNullOrEmpty(kpi.TargetValue);
+                                    var hasActual = !string.IsNullOrEmpty(kpi.ActualValue);
+                                    <tr>
+                                        <td>@kpiIndex</td>
+                                        <td>@kpi.KPIText</td>
+                                        <td class="text-center">
+                                            @if (hasTarget)
+                                            {
+                                                <span class="badge bg-info">@kpi.TargetValue</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (hasActual)
+                                            {
+                                                <span class="badge bg-primary">@kpi.ActualValue</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (hasTarget && hasActual)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else if (hasTarget)
+                                            {
+                                                <i class="bi bi-clock text-warning"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-dash-circle text-muted"></i>
+                                            }
+                                        </td>
+                                    </tr>
+                                    kpiIndex++;
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Multi-Year Progress نسب السنوات -->
+        @if (isMultiYear && Model.YearTargets != null && Model.YearTargets.Any())
+        {
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-calendar-range me-2"></i>تقدم السنوات (مشروع متعدد السنوات)
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach (var yearTarget in Model.YearTargets.OrderBy(y => y.Year))
+                        {
+                            var yearProgressClass = yearTarget.YearCompletionPercentage >= 100 ? "bg-success" :
+                            yearTarget.YearCompletionPercentage >= 70 ? "bg-info" :
+                            yearTarget.YearCompletionPercentage >= 40 ? "bg-warning" : "bg-danger";
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 @(yearTarget.IsYearCompleted ? "border-success" : "")">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">@yearTarget.Year</h5>
+                                        <div class="d-flex justify-content-around mb-2">
+                                            <div>
+                                                <small class="text-muted d-block">المستهدف</small>
+                                                <span class="badge bg-secondary">@yearTarget.TargetPercentage%</span>
+                                            </div>
+                                            <div>
+                                                <small class="text-muted d-block">الفعلي</small>
+                                                <span class="badge bg-primary">@yearTarget.ActualPercentage%</span>
+                                            </div>
+                                        </div>
+                                        <div class="progress mb-2" style="height: 10px;">
+                                            <div class="progress-bar @yearProgressClass" style="width: @yearTarget.YearCompletionPercentage%"></div>
+                                        </div>
+                                        <small class="@(yearTarget.IsYearCompleted ? "text-success fw-bold" : "text-muted")">
+                                            @if (yearTarget.IsYearCompleted)
+                                            {
+                                                <i class="bi bi-check-circle-fill me-1"></i>
+                                                @:مكتمل
+                                            }
+                                            else
+                                            {
+                                                @:@yearTarget.YearCompletionPercentage% من هدف السنة
+                                            }
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @{
+                        var totalTargets = Model.YearTargets.Sum(y => y.TargetPercentage);
+                        var isTargetsValid = Math.Abs(totalTargets - 100) < 0.1m;
+                    }
+                    @if (!isTargetsValid)
+                    {
+                        <div class="alert alert-warning mt-2 mb-0 py-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            مجموع نسب السنوات = @totalTargets% (يجب أن يساوي 100%)
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Steps الخطوات -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-check me-2"></i>الخطوات (@Model.Steps.Count)</span>
+                @if (canManageSteps)
+                {
+                    <a href="/Steps/Create?projectId=@Model.Project.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus me-1"></i>إضافة خطوة
+                    </a>
+                }
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Steps.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width:50px;">#</th>
+                                    <th>الخطوة</th>
+                                    <th style="width:80px;">الوزن</th>
+                                    <th style="width:100px;">الحالة</th>
+                                    <th style="width:140px;">التقدم</th>
+                                    <th style="width:80px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var step in Model.Steps)
+                                {
+                                    var isCompleted = step.ProgressPercentage >= 100;
+                                    var isDelayed = step.ActualEndDate.HasValue &&
+                                    step.ActualEndDate.Value < DateTime.Today &&
+                                    step.ProgressPercentage < 100;
+                                    var isInProgress = step.ProgressPercentage > 0 && !isCompleted;
+
+                                    var sStatusClass = isCompleted ? "badge-completed" :
+                                    isDelayed ? "badge-delayed" :
+                                    isInProgress ? "badge-inprogress" : "badge-draft";
+
+                                    var sStatusText = isCompleted ? "مكتمل" :
+                                    isDelayed ? "متأخر" :
+                                    isInProgress ? "قيد التنفيذ" : "لم يبدأ";
+
+                                    var sProgressClass = step.ProgressPercentage < 40 ? "bg-danger" :
+                                    step.ProgressPercentage < 70 ? "bg-warning" : "bg-success";
+                                    <tr class="@(isDelayed ? "table-danger" : isCompleted ? "table-success" : "")">
+                                        <td class="text-center fw-bold">@step.StepNumber</td>
+                                        <td>
+                                            <a href="/Steps/Details/@step.Id" class="fw-bold">@step.NameAr</a>
+                                            <br><small class="text-muted">@(step.AssignedTo?.FullNameAr ?? "-")</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info">@step.Weight%</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge @sStatusClass">@sStatusText</span>
+                                            @if (isDelayed)
+                                            {
+                                                <i class="bi bi-exclamation-triangle text-danger"></i>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-fill" style="height: 8px;">
+                                                    <div class="progress-bar @sProgressClass" style="width: @step.ProgressPercentage%"></div>
+                                                </div>
+                                                <small class="fw-bold text-nowrap">@step.ProgressPercentage%</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if (canManageSteps)
+                                            {
+                                                <a href="/Steps/Edit/@step.Id" class="btn btn-sm btn-outline-warning" title="تعديل">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="2" class="text-end fw-bold">المجموع:</td>
+                                    <td class="text-center">
+                                        <span class="badge @(isWeightValid ? "bg-success" : "bg-warning")">@totalWeight%</span>
+                                    </td>
+                                    <td></td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="progress flex-fill" style="height: 8px;">
+                                                <div class="progress-bar @progressClass" style="width: @Model.CalculatedProgress%"></div>
+                                            </div>
+                                            <small class="fw-bold text-nowrap">@Model.CalculatedProgress%</small>
+                                        </div>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-list-check" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">لا توجد خطوات</p>
+                        @if (canManageSteps)
+                        {
+                            <a href="/Steps/Create?projectId=@Model.Project.Id" class="btn btn-primary mt-3">
+                                <i class="bi bi-plus-circle me-2"></i>إضافة خطوة
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Notes Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-text me-2"></i>الملاحظات (@Model.Notes.Count)</span>
+            </div>
+            <div class="card-body">
+                <!-- Add Note Form -->
+                <form asp-action="AddNote" asp-controller="Projects" method="post" class="mb-4">
+                    <input type="hidden" name="id" value="@Model.Project.Id" />
+                    <div class="row g-2">
+                        <div class="col">
+                            <textarea name="note" class="form-control" rows="2" placeholder="أضف ملاحظة أو تحديث..." required></textarea>
+                        </div>
+                        <div class="col-auto d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i>إضافة
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Notes List -->
+                @if (Model.Notes.Any())
+                {
+                    <div class="notes-timeline">
+                        @foreach (var note in Model.Notes)
+                        {
+                            <div class="d-flex mb-3 pb-3 border-bottom note-item" id="note-@note.Id">
+                                <div class="flex-shrink-0">
+                                    <div class="avatar bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        <i class="bi bi-chat-text text-secondary"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <strong class="small">@note.CreatedBy?.FullNameAr</strong>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <small class="text-muted">@note.CreatedAt.ToString("yyyy-MM-dd HH:mm")</small>
+                                            @if (isAdmin)
+                                            {
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                                            onclick="editNote(@note.Id, '@Html.Raw(note.NotesAr?.Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))')"
+                                                            title="تعديل">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
+                                                            onclick="deleteNote(@note.Id)"
+                                                            title="حذف">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    <p class="mb-0 mt-1 note-text">@note.NotesAr</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-chat-square-text" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">لا توجد ملاحظات</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Edit/Delete Note Modals -->
+        @if (isAdmin)
+        {
+            <div class="modal fade" id="editNoteModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form asp-action="EditNote" asp-controller="Projects" method="post">
+                            <input type="hidden" name="noteId" id="editNoteId" />
+                            <input type="hidden" name="projectId" value="@Model.Project.Id" />
+                            <div class="modal-header">
+                                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>تعديل الملاحظة</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <textarea name="notes" id="editNoteText" class="form-control" rows="4" required></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="deleteNoteModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form asp-action="DeleteNote" asp-controller="Projects" method="post">
+                            <input type="hidden" name="noteId" id="deleteNoteId" />
+                            <input type="hidden" name="projectId" value="@Model.Project.Id" />
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title"><i class="bi bi-trash me-2"></i>حذف الملاحظة</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>هل أنت متأكد من حذف هذه الملاحظة؟</p>
+                                <p class="text-danger"><small>هذا الإجراء لا يمكن التراجع عنه.</small></p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-danger">حذف</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Side Panel -->
+    <div class="col-lg-4">
+        <!-- Dates Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-calendar me-2"></i>التواريخ
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    @if (Model.Project.PlannedStartDate.HasValue || Model.Project.PlannedEndDate.HasValue)
+                    {
+                        <tr class="table-light">
+                            <td colspan="2" class="fw-bold text-muted small">التواريخ المتوقعة</td>
+                        </tr>
+                        @if (Model.Project.PlannedStartDate.HasValue)
+                        {
+                            <tr>
+                                <td class="text-muted">البداية</td>
+                                <td class="text-end">@Model.Project.PlannedStartDate.Value.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                        @if (Model.Project.PlannedEndDate.HasValue)
+                        {
+                            <tr>
+                                <td class="text-muted">النهاية</td>
+                                <td class="text-end">@Model.Project.PlannedEndDate.Value.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                    }
+
+                    @if (Model.Project.ActualStartDate.HasValue || Model.Project.ActualEndDate.HasValue)
+                    {
+                        <tr class="table-light">
+                            <td colspan="2" class="fw-bold text-muted small pt-2">التواريخ الفعلية</td>
+                        </tr>
+                        @if (Model.Project.ActualStartDate.HasValue)
+                        {
+                            <tr>
+                                <td class="text-muted">البداية</td>
+                                <td class="text-end">@Model.Project.ActualStartDate.Value.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                        @if (Model.Project.ActualEndDate.HasValue)
+                        {
+                            <tr>
+                                <td class="text-muted">النهاية</td>
+                                <td class="text-end">@Model.Project.ActualEndDate.Value.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                    }
+
+                    @if (!Model.Project.PlannedStartDate.HasValue && !Model.Project.PlannedEndDate.HasValue &&
+                                        !Model.Project.ActualStartDate.HasValue && !Model.Project.ActualEndDate.HasValue)
+                    {
+                        <tr>
+                            <td colspan="2" class="text-center text-muted">لم تُحدد التواريخ بعد</td>
+                        </tr>
+                    }
+                </table>
+
+                @if (isMultiYear)
+                {
+                    <div class="alert alert-info py-2 mt-2 mb-0">
+                        <i class="bi bi-calendar-range me-1"></i>
+                        <small>مشروع متعدد السنوات (@Model.Project.ProjectDurationYears سنوات)</small>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Supporting Units الجهات المساندة -->
+        @if (Model.SupportingEntities != null && Model.SupportingEntities.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-building me-2"></i>الجهات المساندة
+                    <span class="badge bg-secondary ms-2">@Model.SupportingEntities.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        @foreach (var unit in Model.SupportingEntities)
+                        {
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <i class="bi bi-diagram-3 me-2 text-muted"></i>
+                                        <strong>@unit.NameAr</strong>
+                                        @if (!string.IsNullOrEmpty(unit.NameEn))
+                                        {
+                                            <br>
+                                            <small class="text-muted ms-4">@unit.NameEn</small>
+                                        }
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(unit.RepresentativeName))
+                                {
+                                    <div class="mt-2 ms-4 p-2 bg-light rounded">
+                                        <small class="text-muted d-block">ممثل الجهة:</small>
+                                        <span class="fw-bold">@unit.RepresentativeRank @unit.RepresentativeName</span>
+                                        @if (!string.IsNullOrEmpty(unit.RepresentativeEmpNumber))
+                                        {
+                                            <br>
+                                            <small class="text-muted">@unit.RepresentativeEmpNumber</small>
+                                        }
+                                    </div>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+
+        <!-- Budget Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-currency-dollar me-2"></i>الميزانية
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted">الميزانية المعتمدة</td>
+                        <td class="text-end">@((Model.Project.Budget ?? 0).ToString("N2")) ر.ع</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">التكلفة الفعلية</td>
+                        <td class="text-end">@((Model.Project.ActualCost ?? 0).ToString("N2")) ر.ع</td>
+                    </tr>
+                    @if (Model.Project.Budget.HasValue && Model.Project.Budget > 0)
+                    {
+                        var utilization = Model.Project.ActualCost.HasValue
+                        ? Math.Round(Model.Project.ActualCost.Value / Model.Project.Budget.Value * 100, 1)
+                        : 0;
+                        <tr>
+                            <td class="text-muted">نسبة الصرف</td>
+                            <td class="text-end">
+                                <span class="badge @(utilization > 100 ? "bg-danger" : utilization > 80 ? "bg-warning" : "bg-success")">
+                                    @utilization%
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+
+        <!-- Info Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-building me-2"></i>معلومات إضافية
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    @if (!string.IsNullOrEmpty(Model.Project.ProjectNumber))
+                    {
+                        <tr>
+                            <td class="text-muted">رقم المشروع</td>
+                            <td class="text-end"><span class="badge bg-secondary">@Model.Project.ProjectNumber</span></td>
+                        </tr>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Project.ExternalUnitName))
+                    {
+                        <tr>
+                            <td class="text-muted">الوحدة التنظيمية</td>
+                            <td class="text-end">@Model.Project.ExternalUnitName</td>
+                        </tr>
+                    }
+                    else if (Model.Project.OrganizationalUnit != null)
+                    {
+                        <tr>
+                            <td class="text-muted">الوحدة التنظيمية</td>
+                            <td class="text-end">@Model.Project.OrganizationalUnit.NameAr</td>
+                        </tr>
+                    }
+                    <tr>
+                        <td class="text-muted">مدير المشروع</td>
+                        <td class="text-end">
+                            @if (!string.IsNullOrEmpty(Model.Project.ProjectManagerName))
+                            {
+                                @Model.Project.ProjectManagerRank @Model.Project.ProjectManagerName
+                            }
+                            else if (Model.Project.ProjectManager != null)
+                            {
+                                @Model.Project.ProjectManager.FullNameAr
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                    </tr>
+                </table>
+
+                @if (!string.IsNullOrEmpty(Model.Project.RiskNotes))
+                {
+                    <hr>
+                    <strong class="text-muted d-block small"><i class="bi bi-exclamation-triangle me-1"></i>ملاحظات المخاطر</strong>
+                    <p class="mb-0 small">@Model.Project.RiskNotes</p>
+                }
+            </div>
+        </div>
+
+        <!-- Audit Info -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-2"></i>سجل التدقيق
+            </div>
+            <div class="card-body">
+                <small class="text-muted d-block">
+                    <strong>أنشئ بواسطة:</strong> @Model.Project.CreatedBy?.FullNameAr
+                </small>
+                <small class="text-muted d-block">
+                    <strong>تاريخ الإنشاء:</strong> @Model.Project.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                </small>
+                @if (Model.Project.LastModifiedAt.HasValue)
+                {
+                    <small class="text-muted d-block mt-2">
+                        <strong>آخر تعديل:</strong> @Model.Project.LastModifiedAt.Value.ToString("yyyy-MM-dd HH:mm")
+                    </small>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function editNote(noteId, noteText) {
+            document.getElementById('editNoteId').value = noteId;
+            document.getElementById('editNoteText').value = noteText;
+            new bootstrap.Modal(document.getElementById('editNoteModal')).show();
+        }
+
+        function deleteNote(noteId) {
+            document.getElementById('deleteNoteId').value = noteId;
+            new bootstrap.Modal(document.getElementById('deleteNoteModal')).show();
+        }
+    </script>
+}

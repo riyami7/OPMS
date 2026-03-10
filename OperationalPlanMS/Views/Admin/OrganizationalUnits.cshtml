@@ -1,0 +1,149 @@
+@model OperationalPlanMS.Models.ViewModels.OrganizationalUnitListViewModel
+@{
+    ViewData["Title"] = "إدارة الوحدات التنظيمية";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1">إدارة الوحدات التنظيمية</h4>
+        <p class="text-muted mb-0">الوحدات التابعة للمنظمات</p>
+    </div>
+    <div>
+        <a href="/Admin/OrganizationalUnitCreate" class="btn btn-success">
+            <i class="bi bi-plus-circle me-2"></i>إضافة وحدة
+        </a>
+        <a href="/Admin" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-arrow-right me-2"></i>رجوع
+        </a>
+    </div>
+</div>
+
+<!-- Messages -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get">
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <input type="text" class="form-control" name="searchTerm" value="@Model.SearchTerm" placeholder="البحث بالاسم أو الكود..." />
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" name="organizationId" asp-items="Model.Organizations">
+                        <option value="">-- كل المنظمات --</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search me-1"></i>بحث
+                    </button>
+                    <a asp-action="OrganizationalUnits" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card border-primary">
+            <div class="card-body text-center py-3">
+                <h4 class="text-primary mb-0">@Model.TotalCount</h4>
+                <small class="text-muted">إجمالي الوحدات</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-success">
+            <div class="card-body text-center py-3">
+                <h4 class="text-success mb-0">@Model.Units.Count(u => u.IsActive)</h4>
+                <small class="text-muted">وحدات نشطة</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>الكود</th>
+                        <th>الاسم بالعربية</th>
+                        <th>الاسم بالإنجليزية</th>
+                        <th>المنظمة</th>
+                        <th>الحالة</th>
+                        <th style="width: 120px;">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Units.Any())
+                    {
+                        @foreach (var item in Model.Units)
+                        {
+                            <tr>
+                                <td><code>@item.Code</code></td>
+                                <td><strong>@item.NameAr</strong></td>
+                                <td class="text-muted" dir="ltr">@item.NameEn</td>
+                                <td>
+                                    <span class="badge bg-info">@item.Organization?.NameAr</span>
+                                </td>
+                                <td>
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge bg-success">نشط</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">غير نشط</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/Admin/OrganizationalUnitEdit/@item.Id" class="btn btn-outline-primary" title="تعديل">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form asp-action="OrganizationalUnitDelete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('هل أنت متأكد من الحذف؟');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-outline-danger" title="حذف">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                <i class="bi bi-diagram-3" style="font-size: 2rem;"></i>
+                                <p class="mt-2 mb-0">لا توجد وحدات تنظيمية</p>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

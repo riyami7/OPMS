@@ -1,0 +1,75 @@
+﻿@model OperationalPlanMS.Models.ViewModels.FiscalYearFormViewModel
+@{
+    ViewData["Title"] = "تعديل سنة مالية";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1">تعديل السنة المالية</h4>
+        <p class="text-muted mb-0">@Model.NameAr (@Model.Year)</p>
+    </div>
+    <a href="/Admin/FiscalYears" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-right me-2"></i>رجوع
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="FiscalYearEdit" method="post">
+                    <input type="hidden" asp-for="Id" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Year" class="form-label"></label>
+                            <input asp-for="Year" type="number" class="form-control" min="2000" max="2100" />
+                            <span asp-validation-for="Year" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="OrganizationId" class="form-label"></label>
+                            <select asp-for="OrganizationId" asp-items="Model.Organizations" class="form-select">
+                                <option value="">-- اختر المنظمة --</option>
+                            </select>
+                            <span asp-validation-for="OrganizationId" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="NameAr" class="form-label"></label>
+                            <input asp-for="NameAr" class="form-control" />
+                            <span asp-validation-for="NameAr" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="NameEn" class="form-label"></label>
+                            <input asp-for="NameEn" class="form-control" dir="ltr" />
+                            <span asp-validation-for="NameEn" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="StartDate" class="form-label"></label>
+                            <input asp-for="StartDate" type="date" class="form-control" />
+                            <span asp-validation-for="StartDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="EndDate" class="form-label"></label>
+                            <input asp-for="EndDate" type="date" class="form-control" />
+                            <span asp-validation-for="EndDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsCurrent" class="form-check-input" />
+                                <label asp-for="IsCurrent" class="form-check-label"></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>حفظ التغييرات
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

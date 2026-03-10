@@ -1,0 +1,458 @@
+@model OperationalPlanMS.Models.ViewModels.InitiativeFormViewModel
+@{
+    ViewData["Title"] = "إضافة مبادرة";
+}
+
+<style>
+    .search-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: 0;
+        z-index: 1050;
+        max-height: 250px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 0.375rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: none;
+    }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .search-dropdown .item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+            .search-dropdown .item:hover {
+                background: #f8f9fa;
+            }
+
+            .search-dropdown .item:last-child {
+                border-bottom: none;
+            }
+
+            .search-dropdown .item .name {
+                font-weight: 500;
+                color: #2c3e50;
+            }
+
+            .search-dropdown .item .info {
+                font-size: 0.8rem;
+                color: #7f8c8d;
+            }
+
+    .selected-item {
+        background: #e8f5e9;
+        border: 1px solid #c8e6c9;
+        border-radius: 0.375rem;
+        padding: 0.5rem 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+        .selected-item .remove-btn {
+            color: #dc3545;
+            cursor: pointer;
+        }
+
+    .cascade-select {
+        transition: all 0.3s;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1">إضافة مبادرة جديدة</h4>
+        <p class="text-muted mb-0">أدخل بيانات المبادرة الجديدة</p>
+    </div>
+    <a href="/Initiatives" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-right me-2"></i>رجوع للقائمة
+    </a>
+</div>
+
+<form asp-action="Create" method="post">
+    <div class="row">
+        <!-- Main Info -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>المعلومات الأساسية
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="Code" class="form-label"></label>
+                            <input asp-for="Code" class="form-control" readonly />
+                            <span asp-validation-for="Code" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="FiscalYearId" class="form-label"></label>
+                            <select asp-for="FiscalYearId" asp-items="Model.FiscalYears" class="form-select">
+                                <option value="">-- اختر السنة المالية --</option>
+                            </select>
+                            <span asp-validation-for="FiscalYearId" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <!-- فارغ للتوازن -->
+                        </div>
+
+                        <!-- الهيكل التنظيمي من API -->
+                        <div class="col-12">
+                            <hr class="my-2">
+                            <h6 class="text-primary mb-3"><i class="bi bi-diagram-3 me-2"></i>الهيكل التنظيمي</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">المستوى الأول</label>
+                            <select id="ExternalLevel1" class="form-select cascade-select">
+                                <option value="">-- اختر --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">المستوى الثاني</label>
+                            <select id="ExternalLevel2" class="form-select cascade-select" disabled>
+                                <option value="">-- اختر المستوى الأول --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">المستوى الثالث</label>
+                            <select id="ExternalLevel3" class="form-select cascade-select" disabled>
+                                <option value="">-- اختر المستوى الثاني --</option>
+                            </select>
+                        </div>
+                        <input type="hidden" asp-for="ExternalUnitId" id="ExternalUnitId" />
+                        <input type="hidden" asp-for="ExternalUnitName" id="ExternalUnitName" />
+
+                        <!-- المشرف من API -->
+                        <div class="col-md-6">
+                            <label class="form-label">المشرف</label>
+                            <div class="position-relative">
+                                <div id="supervisorDisplay" style="display: none;"></div>
+                                <input type="text" id="supervisorSearch" class="form-control"
+                                       placeholder="ابحث برقم الموظف أو الاسم..." autocomplete="off" />
+                                <input type="hidden" asp-for="SupervisorEmpNumber" id="SupervisorEmpNumber" />
+                                <input type="hidden" asp-for="SupervisorName" id="SupervisorName" />
+                                <input type="hidden" asp-for="SupervisorRank" id="SupervisorRank" />
+                                <div id="supervisorResults" class="search-dropdown"></div>
+                            </div>
+                            <small class="text-muted">ابحث عن المشرف من النظام</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <!-- فارغ -->
+                        </div>
+
+                        <div class="col-12">
+                            <hr class="my-2">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="NameAr" class="form-label"></label>
+                            <input asp-for="NameAr" class="form-control" placeholder="أدخل اسم المبادرة بالعربية" />
+                            <span asp-validation-for="NameAr" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="NameEn" class="form-label"></label>
+                            <input asp-for="NameEn" class="form-control" placeholder="Enter initiative name in English" dir="ltr" />
+                            <span asp-validation-for="NameEn" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="DescriptionAr" class="form-label"></label>
+                            <textarea asp-for="DescriptionAr" class="form-control" rows="3" placeholder="وصف المبادرة بالعربية"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="DescriptionEn" class="form-label"></label>
+                            <textarea asp-for="DescriptionEn" class="form-control" rows="3" placeholder="Initiative description in English" dir="ltr"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="StrategicObjective" class="form-label"></label>
+                            <input asp-for="StrategicObjective" class="form-control" placeholder="الهدف الاستراتيجي المرتبط بالمبادرة" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dates -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-calendar me-2"></i>التواريخ الفعلية
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="ActualStartDate" class="form-label"></label>
+                            <input asp-for="ActualStartDate" type="date" class="form-control" />
+                            <small class="text-muted">تاريخ بدء العمل الفعلي على المبادرة</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ActualEndDate" class="form-label"></label>
+                            <input asp-for="ActualEndDate" type="date" class="form-control" />
+                            <small class="text-muted">تاريخ الانتهاء المتوقع أو الفعلي</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Budget -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-currency-dollar me-2"></i>الميزانية
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Budget" class="form-label"></label>
+                            <div class="input-group">
+                                <input asp-for="Budget" type="number" step="0.01" class="form-control" placeholder="0.00" />
+                                <span class="input-group-text">ر.ع</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ActualCost" class="form-label"></label>
+                            <div class="input-group">
+                                <input asp-for="ActualCost" type="number" step="0.01" class="form-control" placeholder="0.00" />
+                                <span class="input-group-text">ر.ع</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="col-lg-4">
+            <!-- Info Box -->
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-lightbulb me-2"></i>معلومات مهمة
+                </div>
+                <div class="card-body">
+                    <p class="small mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        نسبة الإنجاز تُحسب تلقائياً من المشاريع
+                    </p>
+                    <p class="small mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        أضف المشاريع بعد إنشاء المبادرة
+                    </p>
+                    <p class="small mb-0">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        يمكن إضافة الملاحظات من صفحة التفاصيل
+                    </p>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>حفظ المبادرة
+                        </button>
+                        <a href="/Initiatives" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>إلغاء
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let allUnits = [];
+
+        // تحميل الوحدات التنظيمية عند بدء الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrganizationalUnits();
+        });
+
+        // تحميل كل الوحدات من API
+        async function loadOrganizationalUnits() {
+            try {
+                const response = await fetch('/api/OrganizationApi/units/all');
+                if (response.ok) {
+                    const data = await response.json();
+                    allUnits = data.items || data; // التعامل مع {items:[]} أو [] مباشرة
+                    populateLevel1();
+                }
+            } catch (error) {
+                console.error('Error loading units:', error);
+            }
+        }
+
+        // ملء المستوى الأول (الجذور)
+        function populateLevel1() {
+            const select = document.getElementById('ExternalLevel1');
+            const roots = allUnits.filter(u => !u.parentId || u.parentId === 0);
+            select.innerHTML = '<option value="">-- اختر --</option>';
+            roots.forEach(unit => {
+                select.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+            });
+        }
+
+        // عند اختيار المستوى الأول
+        document.getElementById('ExternalLevel1').addEventListener('change', function() {
+            const parentId = parseInt(this.value);
+            const level2 = document.getElementById('ExternalLevel2');
+            const level3 = document.getElementById('ExternalLevel3');
+
+            level2.innerHTML = '<option value="">-- اختر --</option>';
+            level3.innerHTML = '<option value="">-- اختر المستوى الثاني --</option>';
+            level2.disabled = true;
+            level3.disabled = true;
+
+            if (parentId) {
+                const children = allUnits.filter(u => u.parentId === parentId);
+                if (children.length > 0) {
+                    children.forEach(unit => {
+                        level2.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+                    });
+                    level2.disabled = false;
+                }
+                updateSelectedUnit();
+            } else {
+                clearSelectedUnit();
+            }
+        });
+
+        // عند اختيار المستوى الثاني
+        document.getElementById('ExternalLevel2').addEventListener('change', function() {
+            const parentId = parseInt(this.value);
+            const level3 = document.getElementById('ExternalLevel3');
+
+            level3.innerHTML = '<option value="">-- اختر --</option>';
+            level3.disabled = true;
+
+            if (parentId) {
+                const children = allUnits.filter(u => u.parentId === parentId);
+                if (children.length > 0) {
+                    children.forEach(unit => {
+                        level3.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+                    });
+                    level3.disabled = false;
+                }
+                updateSelectedUnit();
+            }
+        });
+
+        // عند اختيار المستوى الثالث
+        document.getElementById('ExternalLevel3').addEventListener('change', function() {
+            updateSelectedUnit();
+        });
+
+        // تحديث الوحدة المختارة
+        function updateSelectedUnit() {
+            const level3 = document.getElementById('ExternalLevel3');
+            const level2 = document.getElementById('ExternalLevel2');
+            const level1 = document.getElementById('ExternalLevel1');
+
+            let selectedId = level3.value || level2.value || level1.value;
+            let selectedText = '';
+
+            if (level3.value) {
+                selectedText = level3.options[level3.selectedIndex].text;
+            } else if (level2.value) {
+                selectedText = level2.options[level2.selectedIndex].text;
+            } else if (level1.value) {
+                selectedText = level1.options[level1.selectedIndex].text;
+            }
+
+            document.getElementById('ExternalUnitId').value = selectedId;
+            document.getElementById('ExternalUnitName').value = selectedText;
+        }
+
+        function clearSelectedUnit() {
+            document.getElementById('ExternalUnitId').value = '';
+            document.getElementById('ExternalUnitName').value = '';
+        }
+
+        // ========== البحث عن المشرف من API ==========
+        let searchTimeout;
+        const supervisorSearch = document.getElementById('supervisorSearch');
+        const supervisorResults = document.getElementById('supervisorResults');
+        const supervisorDisplay = document.getElementById('supervisorDisplay');
+
+        supervisorSearch.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const term = this.value.trim();
+            if (term.length < 2) {
+                supervisorResults.classList.remove('show');
+                return;
+            }
+            searchTimeout = setTimeout(() => searchEmployees(term), 300);
+        });
+
+        async function searchEmployees(term) {
+            try {
+                const response = await fetch(`/api/OrganizationApi/employees/search?term=${encodeURIComponent(term)}`);
+                if (response.ok) {
+                    const employees = await response.json();
+                    showEmployeeResults(employees);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function showEmployeeResults(employees) {
+            if (employees.length === 0) {
+                supervisorResults.innerHTML = '<div class="p-2 text-muted text-center">لا توجد نتائج</div>';
+            } else {
+                supervisorResults.innerHTML = employees.map(emp => `
+                    <div class="item" onclick="selectSupervisor('${emp.empNumber}', '${emp.name}', '${emp.rank || ''}')">
+                        <div class="name">${emp.rank || ''} ${emp.name}</div>
+                        <div class="info">${emp.empNumber} - ${emp.position || ''}</div>
+                    </div>
+                `).join('');
+            }
+            supervisorResults.classList.add('show');
+        }
+
+        function selectSupervisor(empNumber, name, rank) {
+            document.getElementById('SupervisorEmpNumber').value = empNumber;
+            document.getElementById('SupervisorName').value = name;
+            document.getElementById('SupervisorRank').value = rank;
+
+            supervisorSearch.style.display = 'none';
+            supervisorDisplay.innerHTML = `
+                <div class="selected-item">
+                    <div>
+                        <div class="fw-bold">${rank} ${name}</div>
+                        <small class="text-muted">${empNumber}</small>
+                    </div>
+                    <span class="remove-btn" onclick="clearSupervisor()">
+                        <i class="bi bi-x-circle"></i>
+                    </span>
+                </div>
+            `;
+            supervisorDisplay.style.display = 'block';
+            supervisorResults.classList.remove('show');
+        }
+
+        function clearSupervisor() {
+            document.getElementById('SupervisorEmpNumber').value = '';
+            document.getElementById('SupervisorName').value = '';
+            document.getElementById('SupervisorRank').value = '';
+            supervisorSearch.value = '';
+            supervisorSearch.style.display = 'block';
+            supervisorDisplay.style.display = 'none';
+        }
+
+        // إخفاء النتائج عند النقر خارجها
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#supervisorSearch') && !e.target.closest('#supervisorResults')) {
+                supervisorResults.classList.remove('show');
+            }
+        });
+    </script>
+}

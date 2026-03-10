@@ -1,0 +1,317 @@
+@model OperationalPlanMS.Models.ViewModels.StrategicOverviewViewModel
+@{
+    ViewData["Title"] = "الخطة الاستراتيجية";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 3rem 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .hero-section h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-section p {
+        opacity: 0.9;
+        font-size: 1.1rem;
+    }
+
+    .nav-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    @@media (max-width: 992px) {
+        .nav-cards { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @@media (max-width: 576px) {
+        .nav-cards { grid-template-columns: 1fr; }
+    }
+
+    .nav-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        box-shadow: 0 5px 25px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        border: 2px solid transparent;
+    }
+
+    .nav-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .nav-card.vision-mission {
+        border-top: 5px solid #3498db;
+    }
+
+    .nav-card.vision-mission:hover {
+        border-color: #3498db;
+    }
+
+    .nav-card.objectives {
+        border-top: 5px solid #6f42c1;
+    }
+
+    .nav-card.objectives:hover {
+        border-color: #6f42c1;
+    }
+
+    .nav-card.values {
+        border-top: 5px solid #e74c3c;
+    }
+
+    .nav-card.values:hover {
+        border-color: #e74c3c;
+    }
+
+    .nav-card .card-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.25rem;
+    }
+
+    .nav-card.vision-mission .card-icon {
+        background: linear-gradient(135deg, #e8f4fc, #d0ebff);
+    }
+
+    .nav-card.objectives .card-icon {
+        background: linear-gradient(135deg, #f3e8ff, #e5d0ff);
+    }
+
+    .nav-card.values .card-icon {
+        background: linear-gradient(135deg, #ffe8e8, #ffd0d0);
+    }
+
+    .nav-card .card-icon i {
+        font-size: 2.2rem;
+    }
+
+    .nav-card.vision-mission .card-icon i { color: #3498db; }
+    .nav-card.objectives .card-icon i { color: #6f42c1; }
+    .nav-card.values .card-icon i { color: #e74c3c; }
+
+    .nav-card h3 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+
+    .nav-card p {
+        color: #7f8c8d;
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+    }
+
+    .nav-card .stats {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+    }
+
+    .nav-card .stat {
+        text-align: center;
+    }
+
+    .nav-card .stat .num {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .nav-card .stat .lbl {
+        font-size: 0.75rem;
+        color: #95a5a6;
+    }
+
+    .nav-card .btn-view {
+        margin-top: 1rem;
+        padding: 0.5rem 1.5rem;
+        border-radius: 25px;
+        font-size: 0.9rem;
+    }
+
+    .nav-card.vision-mission .btn-view {
+        background: #3498db;
+        color: white;
+        border: none;
+    }
+
+    .nav-card.objectives .btn-view {
+        background: #6f42c1;
+        color: white;
+        border: none;
+    }
+
+    .nav-card.values .btn-view {
+        background: #e74c3c;
+        color: white;
+        border: none;
+    }
+
+    /* Quick Stats */
+    .quick-stats {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .quick-stats h5 {
+        font-size: 1rem;
+        color: #7f8c8d;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1rem;
+    }
+
+    @@media (max-width: 768px) {
+        .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: white;
+        border-radius: 12px;
+    }
+
+    .stat-item .number {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #6f42c1;
+    }
+
+    .stat-item .label {
+        font-size: 0.8rem;
+        color: #7f8c8d;
+        margin-top: 0.25rem;
+    }
+</style>
+
+<!-- Hero Section -->
+<div class="hero-section">
+    <h1><i class="bi bi-bullseye me-2"></i>الخطة الاستراتيجية</h1>
+    <p>رؤيتنا ومهمتنا وأهدافنا الاستراتيجية وقيمنا المؤسسية</p>
+</div>
+
+<!-- Quick Stats -->
+<div class="quick-stats">
+    <h5><i class="bi bi-bar-chart me-2"></i>نظرة سريعة</h5>
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="number">@(Model.SystemSettings != null ? 1 : 0)</div>
+            <div class="label">رؤية ومهمة</div>
+        </div>
+        <div class="stat-item">
+            <div class="number">@Model.UnitSettings.Count</div>
+            <div class="label">وحدة تنظيمية</div>
+        </div>
+        <div class="stat-item">
+            <div class="number">@Model.Axes.Count(a => a.IsActive)</div>
+            <div class="label">محور</div>
+        </div>
+        <div class="stat-item">
+            <div class="number">@Model.StrategicObjectives.Count(s => s.IsActive)</div>
+            <div class="label">هدف استراتيجي</div>
+        </div>
+        <div class="stat-item">
+            <div class="number">@Model.CoreValues.Count(v => v.IsActive)</div>
+            <div class="label">قيمة</div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation Cards -->
+<div class="nav-cards">
+    <!-- Vision & Mission Card -->
+    <a href="/Home/VisionMission" class="nav-card vision-mission">
+        <div class="card-icon">
+            <i class="bi bi-eye-fill"></i>
+        </div>
+        <h3>الرؤية والمهمة</h3>
+        <p>رؤية ومهمة المؤسسة والوحدات التنظيمية</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="num">1</div>
+                <div class="lbl">المؤسسة</div>
+            </div>
+            <div class="stat">
+                <div class="num">@Model.UnitSettings.Count</div>
+                <div class="lbl">الوحدات</div>
+            </div>
+        </div>
+        <button class="btn btn-view">
+            <i class="bi bi-arrow-left me-1"></i>عرض
+        </button>
+    </a>
+
+    <!-- Objectives Card -->
+    <a href="/Home/StrategicObjectives" class="nav-card objectives">
+        <div class="card-icon">
+            <i class="bi bi-diagram-3-fill"></i>
+        </div>
+        <h3>المحاور والأهداف</h3>
+        <p>المحاور والأهداف الاستراتيجية والرئيسية والفرعية</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="num">@Model.Axes.Count(a => a.IsActive)</div>
+                <div class="lbl">محور</div>
+            </div>
+            <div class="stat">
+                <div class="num">@Model.MainObjectives.Count(m => m.IsActive)</div>
+                <div class="lbl">هدف</div>
+            </div>
+        </div>
+        <button class="btn btn-view">
+            <i class="bi bi-arrow-left me-1"></i>عرض
+        </button>
+    </a>
+
+    <!-- Values Card -->
+    <a href="/Home/CoreValues" class="nav-card values">
+        <div class="card-icon">
+            <i class="bi bi-gem"></i>
+        </div>
+        <h3>القيم المؤسسية</h3>
+        <p>المبادئ والقيم التي نؤمن بها</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="num">@Model.CoreValues.Count(v => v.IsActive)</div>
+                <div class="lbl">قيمة</div>
+            </div>
+        </div>
+        <button class="btn btn-view">
+            <i class="bi bi-arrow-left me-1"></i>عرض
+        </button>
+    </a>
+</div>

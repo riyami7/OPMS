@@ -1,0 +1,225 @@
+@model OperationalPlanMS.Models.ViewModels.ProfileViewModel
+@{
+    ViewData["Title"] = "الملف الشخصي";
+}
+
+<div class="row">
+    <!-- Profile Card -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <!-- Profile Image -->
+                <div class="position-relative d-inline-block mb-3">
+                    @if (!string.IsNullOrEmpty(Model.ProfileImage))
+                    {
+                        <img src="@Model.ProfileImage" alt="@Model.FullNameAr" 
+                             class="rounded-circle border border-3 border-primary" 
+                             style="width: 150px; height: 150px; object-fit: cover;">
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto"
+                             style="width: 150px; height: 150px;">
+                            <span class="text-white" style="font-size: 3.5rem;">
+                                @Model.FullNameAr?.FirstOrDefault()
+                            </span>
+                        </div>
+                    }
+                </div>
+
+                <h4 class="mb-1">@Model.FullNameAr</h4>
+                <p class="text-muted mb-2">@Model.FullNameEn</p>
+                <span class="badge bg-primary fs-6">@Model.RoleName</span>
+
+                <hr class="my-3">
+
+                <!-- Upload Image Form -->
+                <form asp-action="UploadImage" method="post" enctype="multipart/form-data" class="mb-2">
+                    @Html.AntiForgeryToken()
+                    <div class="d-flex gap-2 justify-content-center">
+                        <label class="btn btn-outline-primary btn-sm mb-0">
+                            <i class="bi bi-camera me-1"></i>تغيير الصورة
+                            <input type="file" name="profileImage" accept="image/*" 
+                                   onchange="this.form.submit()" hidden>
+                        </label>
+                        @if (!string.IsNullOrEmpty(Model.ProfileImage))
+                        {
+                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                                    onclick="document.getElementById('removeImageForm').submit()">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        }
+                    </div>
+                    <small class="text-muted d-block mt-2">JPG, PNG أو GIF - الحد الأقصى 2MB</small>
+                </form>
+
+                <!-- Remove Image Form (hidden) -->
+                <form id="removeImageForm" asp-action="RemoveImage" method="post" class="d-none">
+                    @Html.AntiForgeryToken()
+                </form>
+            </div>
+        </div>
+
+        <!-- Contact Info Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-person-lines-fill me-2"></i>معلومات التواصل
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-light rounded-circle p-2 me-3">
+                        <i class="bi bi-person text-primary"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">اسم المستخدم</small>
+                        <span>@Model.ADUsername</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-light rounded-circle p-2 me-3">
+                        <i class="bi bi-envelope text-primary"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">البريد الإلكتروني</small>
+                        <span>@(Model.Email ?? "غير محدد")</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-light rounded-circle p-2 me-3">
+                        <i class="bi bi-building text-primary"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">المنظمة</small>
+                        <span>@Model.OrganizationName</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="bg-light rounded-circle p-2 me-3">
+                        <i class="bi bi-diagram-3 text-primary"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">الوحدة التنظيمية</small>
+                        <span>@(Model.OrganizationalUnitName ?? "غير محدد")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Stats Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3 col-6">
+                <div class="card bg-primary text-white h-100">
+                    <div class="card-body text-center py-3">
+                        <i class="bi bi-lightning-charge fs-2"></i>
+                        <h3 class="mb-0 mt-2">@Model.SupervisedInitiativesCount</h3>
+                        <small>المبادرات</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card bg-success text-white h-100">
+                    <div class="card-body text-center py-3">
+                        <i class="bi bi-folder fs-2"></i>
+                        <h3 class="mb-0 mt-2">@Model.ManagedProjectsCount</h3>
+                        <small>المشاريع</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card bg-info text-white h-100">
+                    <div class="card-body text-center py-3">
+                        <i class="bi bi-list-check fs-2"></i>
+                        <h3 class="mb-0 mt-2">@Model.AssignedStepsCount</h3>
+                        <small>الخطوات</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card bg-warning text-dark h-100">
+                    <div class="card-body text-center py-3">
+                        <i class="bi bi-check-circle fs-2"></i>
+                        <h3 class="mb-0 mt-2">@Model.CompletedStepsCount</h3>
+                        <small>مكتملة</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-gear me-2"></i>إعدادات الحساب
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <a href="/Profile/Edit" class="card text-decoration-none h-100 border-0 shadow-sm hover-shadow">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 rounded-circle p-3 me-3">
+                                    <i class="bi bi-pencil-square text-primary fs-4"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1 text-dark">تعديل البيانات الشخصية</h6>
+                                    <small class="text-muted">تحديث الاسم والبريد الإلكتروني</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/Profile/ChangePassword" class="card text-decoration-none h-100 border-0 shadow-sm hover-shadow">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="bg-warning bg-opacity-10 rounded-circle p-3 me-3">
+                                    <i class="bi bi-key text-warning fs-4"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1 text-dark">تغيير كلمة المرور</h6>
+                                    <small class="text-muted">تحديث كلمة مرور الحساب</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Info Card -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>معلومات الحساب
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-calendar-plus text-muted me-2"></i>
+                            <div>
+                                <small class="text-muted d-block">تاريخ الإنشاء</small>
+                                <span>@Model.CreatedAt.ToString("yyyy-MM-dd")</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-box-arrow-in-left text-muted me-2"></i>
+                            <div>
+                                <small class="text-muted d-block">آخر تسجيل دخول</small>
+                                <span>@(Model.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "لم يتم التسجيل")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-shadow:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.3s ease;
+    }
+</style>

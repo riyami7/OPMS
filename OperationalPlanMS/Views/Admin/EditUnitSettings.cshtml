@@ -1,0 +1,279 @@
+@model OperationalPlanMS.Models.ViewModels.UnitSettingsFormViewModel
+@{
+    ViewData["Title"] = "تعديل إعدادات الوحدة";
+}
+
+<style>
+    .cascade-select {
+        transition: all 0.3s;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1">تعديل إعدادات الوحدة</h4>
+        <p class="text-muted mb-0">@Model.UnitName</p>
+    </div>
+    <a href="/Admin/VisionMission" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-right me-2"></i>رجوع
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-diagram-3 me-2"></i>الرؤية والمهمة للوحدة التنظيمية
+            </div>
+            <div class="card-body">
+                <form asp-action="EditUnitSettings" method="post">
+                    <input type="hidden" asp-for="Id" />
+
+                    <!-- الهيكل التنظيمي من API -->
+                    <div class="mb-4">
+                        <label class="form-label"><i class="bi bi-diagram-3 me-1"></i>الوحدة التنظيمية</label>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <select id="ExternalLevel1" class="form-select cascade-select">
+                                    <option value="">-- المستوى الأول --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select id="ExternalLevel2" class="form-select cascade-select" disabled>
+                                    <option value="">-- المستوى الثاني --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select id="ExternalLevel3" class="form-select cascade-select" disabled>
+                                    <option value="">-- المستوى الثالث --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" asp-for="ExternalUnitId" id="ExternalUnitId" />
+                        <input type="hidden" asp-for="ExternalUnitName" id="ExternalUnitName" />
+                    </div>
+
+                    <div class="row">
+                        <!-- الرؤية -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <i class="bi bi-eye me-2"></i>الرؤية
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">الرؤية بالعربية</label>
+                                        <textarea asp-for="VisionAr" class="form-control" rows="4"></textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">الرؤية بالإنجليزية</label>
+                                        <textarea asp-for="VisionEn" class="form-control" rows="4" dir="ltr"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- المهمة -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-success">
+                                <div class="card-header bg-success text-white">
+                                    <i class="bi bi-bullseye me-2"></i>المهمة
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">المهمة بالعربية</label>
+                                        <textarea asp-for="MissionAr" class="form-control" rows="4"></textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">المهمة بالإنجليزية</label>
+                                        <textarea asp-for="MissionEn" class="form-control" rows="4" dir="ltr"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- الوصف الإضافي -->
+                        <div class="col-12 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="bi bi-file-text me-2"></i>وصف إضافي (اختياري)
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3 mb-md-0">
+                                            <label class="form-label">الوصف بالعربية</label>
+                                            <textarea asp-for="DescriptionAr" class="form-control" rows="3"></textarea>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">الوصف بالإنجليزية</label>
+                                            <textarea asp-for="DescriptionEn" class="form-control" rows="3" dir="ltr"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="/Admin/VisionMission" class="btn btn-secondary">إلغاء</a>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-lg me-2"></i>حفظ التعديلات
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let allUnits = [];
+        const savedExternalUnitId = @(Model.ExternalUnitId?.ToString() ?? "null");
+
+        // تحميل الوحدات عند بدء الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrganizationalUnits();
+        });
+
+        // تحميل كل الوحدات من API
+        async function loadOrganizationalUnits() {
+            try {
+                const response = await fetch('/api/OrganizationApi/units/all');
+                if (response.ok) {
+                    const data = await response.json();
+                    allUnits = data.items || data;
+                    populateLevel1();
+
+                    // استعادة القيم المحفوظة
+                    if (savedExternalUnitId) {
+                        restoreSelectedUnit(savedExternalUnitId);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading units:', error);
+            }
+        }
+
+        // استعادة الوحدة المختارة
+        function restoreSelectedUnit(unitId) {
+            const unit = allUnits.find(u => u.id === unitId);
+            if (!unit) return;
+
+            // البحث عن التسلسل الهرمي
+            let hierarchy = [];
+            let current = unit;
+            while (current) {
+                hierarchy.unshift(current);
+                current = allUnits.find(u => u.id === current.parentId);
+            }
+
+            // ملء المستويات
+            if (hierarchy.length >= 1) {
+                document.getElementById('ExternalLevel1').value = hierarchy[0].id;
+                document.getElementById('ExternalLevel1').dispatchEvent(new Event('change'));
+            }
+
+            setTimeout(() => {
+                if (hierarchy.length >= 2) {
+                    document.getElementById('ExternalLevel2').value = hierarchy[1].id;
+                    document.getElementById('ExternalLevel2').dispatchEvent(new Event('change'));
+                }
+
+                setTimeout(() => {
+                    if (hierarchy.length >= 3) {
+                        document.getElementById('ExternalLevel3').value = hierarchy[2].id;
+                    }
+                    updateSelectedUnit();
+                }, 100);
+            }, 100);
+        }
+
+        // ملء المستوى الأول
+        function populateLevel1() {
+            const select = document.getElementById('ExternalLevel1');
+            const roots = allUnits.filter(u => !u.parentId || u.parentId === 0);
+            select.innerHTML = '<option value="">-- المستوى الأول --</option>';
+            roots.forEach(unit => {
+                select.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+            });
+        }
+
+        // عند اختيار المستوى الأول
+        document.getElementById('ExternalLevel1').addEventListener('change', function() {
+            const parentId = parseInt(this.value);
+            const level2 = document.getElementById('ExternalLevel2');
+            const level3 = document.getElementById('ExternalLevel3');
+
+            level2.innerHTML = '<option value="">-- المستوى الثاني --</option>';
+            level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
+            level2.disabled = true;
+            level3.disabled = true;
+
+            if (parentId) {
+                const children = allUnits.filter(u => u.parentId === parentId);
+                if (children.length > 0) {
+                    children.forEach(unit => {
+                        level2.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+                    });
+                    level2.disabled = false;
+                }
+                updateSelectedUnit();
+            } else {
+                clearSelectedUnit();
+            }
+        });
+
+        // عند اختيار المستوى الثاني
+        document.getElementById('ExternalLevel2').addEventListener('change', function() {
+            const parentId = parseInt(this.value);
+            const level3 = document.getElementById('ExternalLevel3');
+
+            level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
+            level3.disabled = true;
+
+            if (parentId) {
+                const children = allUnits.filter(u => u.parentId === parentId);
+                if (children.length > 0) {
+                    children.forEach(unit => {
+                        level3.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+                    });
+                    level3.disabled = false;
+                }
+                updateSelectedUnit();
+            }
+        });
+
+        // عند اختيار المستوى الثالث
+        document.getElementById('ExternalLevel3').addEventListener('change', function() {
+            updateSelectedUnit();
+        });
+
+        // تحديث الوحدة المختارة
+        function updateSelectedUnit() {
+            const level3 = document.getElementById('ExternalLevel3');
+            const level2 = document.getElementById('ExternalLevel2');
+            const level1 = document.getElementById('ExternalLevel1');
+
+            let selectedId = level3.value || level2.value || level1.value;
+            let selectedText = '';
+
+            if (level3.value) {
+                selectedText = level3.options[level3.selectedIndex].text;
+            } else if (level2.value) {
+                selectedText = level2.options[level2.selectedIndex].text;
+            } else if (level1.value) {
+                selectedText = level1.options[level1.selectedIndex].text;
+            }
+
+            document.getElementById('ExternalUnitId').value = selectedId;
+            document.getElementById('ExternalUnitName').value = selectedText;
+        }
+
+        function clearSelectedUnit() {
+            document.getElementById('ExternalUnitId').value = '';
+            document.getElementById('ExternalUnitName').value = '';
+        }
+    </script>
+}

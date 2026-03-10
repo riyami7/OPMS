@@ -1,0 +1,233 @@
+@{
+    ViewData["Title"] = "مزامنة البيانات الخارجية";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1"><i class="bi bi-cloud-download me-2"></i>@ViewData["Title"]</h4>
+            <p class="text-muted mb-0">مزامنة الوحدات التنظيمية والموظفين من النظام الخارجي</p>
+        </div>
+        <a href="/Admin" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-right me-1"></i>رجوع
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Organizational Units Sync -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-diagram-3 me-2"></i>الوحدات التنظيمية
+                </div>
+                <div class="card-body">
+                    <div id="unitsStatus" class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">الحالة:</span>
+                            <span id="unitsStatusBadge" class="badge bg-secondary">جاري التحقق...</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">عدد الوحدات:</span>
+                            <span id="unitsCount" class="fw-bold">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">آخر مزامنة:</span>
+                            <span id="unitsLastSync" class="fw-bold">-</span>
+                        </div>
+                    </div>
+
+                    <div id="unitsSyncResult" class="alert d-none mb-3"></div>
+
+                    <button type="button" class="btn btn-primary w-100" onclick="syncUnits()" id="syncUnitsBtn">
+                        <i class="bi bi-cloud-download me-2"></i>مزامنة الآن
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employees Info -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-people me-2"></i>الموظفين
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">المصدر:</span>
+                            <span class="badge bg-info">API مباشر</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">الحالة:</span>
+                            <span id="employeesStatus" class="badge bg-secondary">جاري التحقق...</span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <small>بيانات الموظفين تُجلب مباشرة من API عند البحث ولا تُخزن محلياً.</small>
+                    </div>
+
+                    <button type="button" class="btn btn-success w-100" onclick="testEmployeesApi()">
+                        <i class="bi bi-check-circle me-2"></i>اختبار الاتصال
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Settings Info -->
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-gear me-2"></i>إعدادات API
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="text-muted" style="width: 150px;">Base URL:</td>
+                            <td><code id="apiBaseUrl">-</code></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Tenant ID:</td>
+                            <td><code id="apiTenantId">-</code></td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <div class="alert alert-warning mb-0 py-2">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <small>لتغيير الإعدادات، عدّل ملف <code>appsettings.json</code></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            checkUnitsStatus();
+            checkEmployeesApi();
+            loadApiSettings();
+        });
+
+        // التحقق من حالة الوحدات
+        async function checkUnitsStatus() {
+            try {
+                const response = await fetch('/api/OrganizationApi/units/sync-status');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    document.getElementById('unitsCount').textContent = data.totalCount || 0;
+                    
+                    if (data.lastSyncAt) {
+                        const date = new Date(data.lastSyncAt);
+                        document.getElementById('unitsLastSync').textContent = date.toLocaleString('ar-OM');
+                    } else {
+                        document.getElementById('unitsLastSync').textContent = 'لم تتم المزامنة';
+                    }
+
+                    if (data.hasData) {
+                        document.getElementById('unitsStatusBadge').className = 'badge bg-success';
+                        document.getElementById('unitsStatusBadge').textContent = 'متصل';
+                    } else {
+                        document.getElementById('unitsStatusBadge').className = 'badge bg-warning';
+                        document.getElementById('unitsStatusBadge').textContent = 'لا توجد بيانات';
+                    }
+                }
+            } catch (error) {
+                document.getElementById('unitsStatusBadge').className = 'badge bg-danger';
+                document.getElementById('unitsStatusBadge').textContent = 'خطأ';
+                console.error('Error:', error);
+            }
+        }
+
+        // مزامنة الوحدات
+        async function syncUnits() {
+            const btn = document.getElementById('syncUnitsBtn');
+            const resultDiv = document.getElementById('unitsSyncResult');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جاري المزامنة...';
+            resultDiv.className = 'alert d-none';
+
+            try {
+                const response = await fetch('/api/OrganizationApi/units/sync', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.className = 'alert alert-success mb-3';
+                    resultDiv.innerHTML = `
+                        <i class="bi bi-check-circle me-1"></i>
+                        <strong>تمت المزامنة بنجاح!</strong><br>
+                        <small>إضافة: ${data.addedCount} | تحديث: ${data.updatedCount} | المجموع: ${data.totalCount}</small>
+                    `;
+                    checkUnitsStatus();
+                } else {
+                    resultDiv.className = 'alert alert-danger mb-3';
+                    resultDiv.innerHTML = `
+                        <i class="bi bi-x-circle me-1"></i>
+                        <strong>فشلت المزامنة</strong><br>
+                        <small>${data.message || 'حدث خطأ غير معروف'}</small>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'alert alert-danger mb-3';
+                resultDiv.innerHTML = `
+                    <i class="bi bi-x-circle me-1"></i>
+                    <strong>خطأ في الاتصال</strong><br>
+                    <small>${error.message}</small>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cloud-download me-2"></i>مزامنة الآن';
+            }
+        }
+
+        // اختبار API الموظفين
+        async function checkEmployeesApi() {
+            try {
+                const response = await fetch('/api/OrganizationApi/employees/search?term=أحمد');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        document.getElementById('employeesStatus').className = 'badge bg-success';
+                        document.getElementById('employeesStatus').textContent = 'متصل';
+                    } else {
+                        document.getElementById('employeesStatus').className = 'badge bg-warning';
+                        document.getElementById('employeesStatus').textContent = 'لا توجد بيانات';
+                    }
+                } else {
+                    document.getElementById('employeesStatus').className = 'badge bg-danger';
+                    document.getElementById('employeesStatus').textContent = 'غير متصل';
+                }
+            } catch (error) {
+                document.getElementById('employeesStatus').className = 'badge bg-danger';
+                document.getElementById('employeesStatus').textContent = 'خطأ';
+            }
+        }
+
+        async function testEmployeesApi() {
+            const statusBadge = document.getElementById('employeesStatus');
+            statusBadge.className = 'badge bg-secondary';
+            statusBadge.textContent = 'جاري الاختبار...';
+            await checkEmployeesApi();
+        }
+
+        // تحميل إعدادات API
+        function loadApiSettings() {
+            // هذه القيم ستُعرض من الـ ViewBag إذا أردت
+            document.getElementById('apiBaseUrl').textContent = '@(ViewBag.ApiBaseUrl ?? "غير محدد")';
+            document.getElementById('apiTenantId').textContent = '@(ViewBag.ApiTenantId ?? "1")';
+        }
+    </script>
+}

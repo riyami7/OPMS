@@ -1,0 +1,590 @@
+@model OperationalPlanMS.Models.ViewModels.InitiativeDetailsViewModel
+@using OperationalPlanMS.Models.Entities
+@{
+    ViewData["Title"] = Model.Initiative.NameAr;
+    var canEdit = (bool)(ViewBag.CanEdit ?? false);
+    var isAdmin = (ViewBag.UserRole as UserRole?) == UserRole.Admin;
+
+    var unitName = !string.IsNullOrEmpty(Model.Initiative.ExternalUnitName)
+        ? Model.Initiative.ExternalUnitName
+        : Model.Initiative.OrganizationalUnit?.NameAr ?? "-";
+
+    var supervisorName = !string.IsNullOrEmpty(Model.Initiative.SupervisorName)
+        ? Model.Initiative.SupervisorName
+        : Model.Initiative.Supervisor?.FullNameAr ?? "-";
+
+    var supervisorRank = !string.IsNullOrEmpty(Model.Initiative.SupervisorRank)
+        ? Model.Initiative.SupervisorRank
+        : "";
+
+    var supervisorEmpNumber = !string.IsNullOrEmpty(Model.Initiative.SupervisorEmpNumber)
+        ? Model.Initiative.SupervisorEmpNumber
+        : "";
+
+    var externalUnitId = Model.Initiative.ExternalUnitId;
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-3">
+            <h4 class="mb-0">@Model.Initiative.NameAr</h4>
+        </div>
+        <p class="text-muted mb-0">@Model.Initiative.Code | @Model.Initiative.NameEn</p>
+    </div>
+    <div>
+        @if (canEdit)
+        {
+            <a href="/Initiatives/Edit/@Model.Initiative.Id" class="btn btn-warning">
+                <i class="bi bi-pencil me-2"></i>تعديل
+            </a>
+        }
+        <a href="/Initiatives" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-arrow-right me-2"></i>رجوع
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100 border-primary">
+            <div class="card-body">
+                <i class="bi bi-folder text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">@Model.TotalProjects</h3>
+                <p class="text-muted mb-0">المشاريع</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100 border-success">
+            <div class="card-body">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">@Model.CompletedProjects</h3>
+                <p class="text-muted mb-0">مشاريع مكتملة</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100 border-info">
+            <div class="card-body">
+                <i class="bi bi-percent text-info" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">@Model.AverageProgress%</h3>
+                <p class="text-muted mb-0">متوسط الإنجاز</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100 border-warning">
+            <div class="card-body">
+                <i class="bi bi-cash text-warning" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">@Model.TotalBudget.ToString("N0")</h3>
+                <p class="text-muted mb-0">إجمالي الميزانية</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Basic Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>المعلومات الأساسية
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong class="text-muted d-block">الوصف بالعربية</strong>
+                        <p>@(Model.Initiative.DescriptionAr ?? "لا يوجد وصف")</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong class="text-muted d-block">الوصف بالإنجليزية</strong>
+                        <p dir="ltr" class="text-end">@(Model.Initiative.DescriptionEn ?? "No description")</p>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.Initiative.StrategicObjective))
+                    {
+                        <div class="col-12">
+                            <strong class="text-muted d-block">الهدف الاستراتيجي</strong>
+                            <p class="mb-0">@Model.Initiative.StrategicObjective</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Projects -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-folder me-2"></i>المشاريع (@Model.Projects.Count)</span>
+                @if (canEdit)
+                {
+                    <a href="/Projects/Create?initiativeId=@Model.Initiative.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus me-1"></i>إضافة مشروع
+                    </a>
+                }
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Projects.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>المشروع</th>
+                                    <th>مدير المشروع</th>
+                                    <th>الخطوات</th>
+                                    <th>التقدم</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var project in Model.Projects)
+                                {
+                                    var stepsCount = project.Steps?.Count(s => !s.IsDeleted) ?? 0;
+                                    var completedSteps = project.Steps?.Count(s => !s.IsDeleted && s.ProgressPercentage >= 100) ?? 0;
+                                    var progressClass = project.ProgressPercentage < 40 ? "bg-danger" :
+                                    project.ProgressPercentage < 70 ? "bg-warning" : "bg-success";
+                                    <tr>
+                                        <td>
+                                            <a href="/Projects/Details/@project.Id" class="fw-bold">@project.NameAr</a>
+                                            <br><small class="text-muted">@project.Code</small>
+                                        </td>
+                                        <td>@(project.ProjectManager?.FullNameAr ?? "-")</td>
+                                        <td>
+                                            <span class="badge bg-secondary">@completedSteps / @stepsCount</span>
+                                        </td>
+                                        <td style="width: 180px;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-fill" style="height: 8px;">
+                                                    <div class="progress-bar @progressClass" style="width: @project.ProgressPercentage%"></div>
+                                                </div>
+                                                <small class="text-nowrap fw-bold">@project.ProgressPercentage%</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <a href="/Projects/Details/@project.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            @if (canEdit)
+                                            {
+                                                <a href="/Projects/Edit/@project.Id" class="btn btn-sm btn-outline-warning">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-folder" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">لا توجد مشاريع</p>
+                        @if (canEdit)
+                        {
+                            <a href="/Projects/Create?initiativeId=@Model.Initiative.Id" class="btn btn-primary mt-3">
+                                <i class="bi bi-plus-circle me-2"></i>إضافة مشروع
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Notes Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-text me-2"></i>الملاحظات (@Model.Notes.Count)</span>
+            </div>
+            <div class="card-body">
+                @if (canEdit)
+                {
+                    <form asp-action="AddNote" asp-controller="Initiatives" method="post" class="mb-4">
+                        <input type="hidden" name="id" value="@Model.Initiative.Id" />
+                        <div class="row g-2">
+                            <div class="col">
+                                <textarea name="notes" class="form-control" rows="2" placeholder="أضف ملاحظة جديدة..." required></textarea>
+                            </div>
+                            <div class="col-auto d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>إضافة
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                }
+
+                @if (Model.Notes.Any())
+                {
+                    <div class="notes-timeline">
+                        @foreach (var note in Model.Notes)
+                        {
+                            <div class="d-flex mb-3 pb-3 border-bottom note-item" id="note-@note.Id">
+                                <div class="flex-shrink-0">
+                                    <div class="avatar bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        <i class="bi bi-person text-secondary"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <strong class="small">@note.CreatedBy?.FullNameAr</strong>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <small class="text-muted">@note.CreatedAt.ToString("yyyy-MM-dd HH:mm")</small>
+                                            @if (isAdmin)
+                                            {
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                                            onclick="editNote(@note.Id, '@Html.Raw(note.NotesAr?.Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))')"
+                                                            title="تعديل">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
+                                                            onclick="deleteNote(@note.Id)"
+                                                            title="حذف">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    <p class="mb-0 mt-1 note-text">@note.NotesAr</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-chat-square-text" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">لا توجد ملاحظات</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (isAdmin)
+        {
+            <div class="modal fade" id="editNoteModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form asp-action="EditNote" asp-controller="Initiatives" method="post">
+                            <input type="hidden" name="noteId" id="editNoteId" />
+                            <input type="hidden" name="initiativeId" value="@Model.Initiative.Id" />
+                            <div class="modal-header">
+                                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>تعديل الملاحظة</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <textarea name="notes" id="editNoteText" class="form-control" rows="4" required></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="deleteNoteModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form asp-action="DeleteNote" asp-controller="Initiatives" method="post">
+                            <input type="hidden" name="noteId" id="deleteNoteId" />
+                            <input type="hidden" name="initiativeId" value="@Model.Initiative.Id" />
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title"><i class="bi bi-trash me-2"></i>حذف الملاحظة</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>هل أنت متأكد من حذف هذه الملاحظة؟</p>
+                                <p class="text-danger"><small>هذا الإجراء لا يمكن التراجع عنه.</small></p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-danger">حذف</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Side Panel -->
+    <div class="col-lg-4">
+        <!-- Organizational Unit Hierarchy Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-diagram-3 me-2"></i>الوحدة التنظيمية
+            </div>
+            <div class="card-body">
+                @if (externalUnitId.HasValue)
+                {
+                    <div id="unitHierarchy">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">جاري التحميل...</span>
+                            </div>
+                            <small class="text-muted d-block mt-2">جاري تحميل الهيكل التنظيمي...</small>
+                        </div>
+                    </div>
+                    <input type="hidden" id="externalUnitId" value="@externalUnitId" />
+                }
+                else if (Model.Initiative.OrganizationalUnit != null)
+                {
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-building text-primary"></i>
+                        <span class="fw-bold">@Model.Initiative.OrganizationalUnit.Organization?.NameAr</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 me-4">
+                        <i class="bi bi-arrow-return-left text-muted"></i>
+                        <span>@Model.Initiative.OrganizationalUnit.NameAr</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-2">
+                        <i class="bi bi-building" style="font-size: 1.5rem;"></i>
+                        <p class="mb-0 mt-2">لم تُحدد الوحدة التنظيمية</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Supervisor Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-person-badge me-2"></i>المشرف
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(Model.Initiative.SupervisorName) || Model.Initiative.Supervisor != null)
+                {
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="flex-shrink-0">
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                <i class="bi bi-person text-success" style="font-size: 1.5rem;"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">@supervisorName</h6>
+                            @if (!string.IsNullOrEmpty(supervisorRank))
+                            {
+                                <span class="badge bg-secondary mb-2">@supervisorRank</span>
+                            }
+                            @if (!string.IsNullOrEmpty(supervisorEmpNumber))
+                            {
+                                <div class="text-muted small">
+                                    <i class="bi bi-hash me-1"></i>رقم الموظف: <strong>@supervisorEmpNumber</strong>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-2">
+                        <i class="bi bi-person-x" style="font-size: 1.5rem;"></i>
+                        <p class="mb-0 mt-2">لم يُحدد المشرف</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Dates Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-calendar me-2"></i>التواريخ
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    @if (Model.Initiative.ActualStartDate.HasValue)
+                    {
+                        <tr>
+                            <td class="text-muted">تاريخ البداية</td>
+                            <td class="text-end">@Model.Initiative.ActualStartDate.Value.ToString("yyyy-MM-dd")</td>
+                        </tr>
+                    }
+                    @if (Model.Initiative.ActualEndDate.HasValue)
+                    {
+                        <tr>
+                            <td class="text-muted">تاريخ النهاية</td>
+                            <td class="text-end">@Model.Initiative.ActualEndDate.Value.ToString("yyyy-MM-dd")</td>
+                        </tr>
+                    }
+                    @if (!Model.Initiative.ActualStartDate.HasValue && !Model.Initiative.ActualEndDate.HasValue)
+                    {
+                        <tr>
+                            <td colspan="2" class="text-center text-muted">لم تُحدد التواريخ بعد</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+
+        <!-- Budget Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-currency-dollar me-2"></i>الميزانية
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted">الميزانية المعتمدة</td>
+                        <td class="text-end">@((Model.Initiative.Budget ?? 0).ToString("N2")) ر.ع</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">التكلفة الفعلية</td>
+                        <td class="text-end">@((Model.Initiative.ActualCost ?? 0).ToString("N2")) ر.ع</td>
+                    </tr>
+                    @if (Model.Initiative.Budget.HasValue && Model.Initiative.Budget > 0)
+                    {
+                        var utilization = Model.Initiative.ActualCost.HasValue
+                        ? Math.Round(Model.Initiative.ActualCost.Value / Model.Initiative.Budget.Value * 100, 1)
+                        : 0;
+                        <tr>
+                            <td class="text-muted">نسبة الصرف</td>
+                            <td class="text-end">
+                                <span class="badge @(utilization > 100 ? "bg-danger" : utilization > 80 ? "bg-warning" : "bg-success")">
+                                    @utilization%
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+
+        <!-- Additional Info Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>معلومات إضافية
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted">السنة المالية</td>
+                        <td class="text-end">@(Model.Initiative.FiscalYear?.NameAr ?? "-")</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Audit Info -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-2"></i>سجل التدقيق
+            </div>
+            <div class="card-body">
+                <small class="text-muted d-block">
+                    <strong>أنشئ بواسطة:</strong> @Model.Initiative.CreatedBy?.FullNameAr
+                </small>
+                <small class="text-muted d-block">
+                    <strong>تاريخ الإنشاء:</strong> @Model.Initiative.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                </small>
+                @if (Model.Initiative.LastModifiedAt.HasValue)
+                {
+                    <small class="text-muted d-block mt-2">
+                        <strong>آخر تعديل:</strong> @Model.Initiative.LastModifiedAt.Value.ToString("yyyy-MM-dd HH:mm")
+                    </small>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function editNote(noteId, noteText) {
+            document.getElementById('editNoteId').value = noteId;
+            document.getElementById('editNoteText').value = noteText;
+            new bootstrap.Modal(document.getElementById('editNoteModal')).show();
+        }
+
+        function deleteNote(noteId) {
+            document.getElementById('deleteNoteId').value = noteId;
+            new bootstrap.Modal(document.getElementById('deleteNoteModal')).show();
+        }
+
+        // تحميل الهيكل التنظيمي للوحدة
+        document.addEventListener('DOMContentLoaded', function() {
+            var externalUnitIdEl = document.getElementById('externalUnitId');
+            if (externalUnitIdEl && externalUnitIdEl.value) {
+                loadUnitHierarchy(parseInt(externalUnitIdEl.value));
+            }
+        });
+
+        function loadUnitHierarchy(unitId) {
+            fetch('/api/OrganizationApi/units/all')
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(function(data) {
+                    console.log('Units loaded for hierarchy:', data.length);
+                    var unit = data.find(function(u) { return u.id === unitId; });
+                    if (unit) {
+                        var hierarchy = buildHierarchy(data, unit);
+                        displayHierarchy(hierarchy);
+                    } else {
+                        document.getElementById('unitHierarchy').innerHTML = '<div class="text-center text-muted py-2">لم يتم العثور على الوحدة</div>';
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error loading hierarchy:', error);
+                    document.getElementById('unitHierarchy').innerHTML = '<div class="text-center text-danger py-2"><i class="bi bi-exclamation-triangle me-2"></i>فشل في تحميل البيانات</div>';
+                });
+        }
+
+        function buildHierarchy(allUnits, targetUnit) {
+            var hierarchy = [];
+            var current = targetUnit;
+
+            while (current) {
+                hierarchy.unshift(current);
+                var parentId = current.parentId;
+                current = allUnits.find(function(u) { return u.id === parentId; });
+            }
+
+            return hierarchy;
+        }
+
+        function displayHierarchy(hierarchy) {
+            var icons = ['bi-building', 'bi-diagram-2', 'bi-geo-alt'];
+            var colors = ['primary', 'info', 'success'];
+            var labels = ['المستوى الأول', 'المستوى الثاني', 'المستوى الثالث'];
+
+            var html = '<div class="unit-hierarchy">';
+
+            hierarchy.forEach(function(unit, index) {
+                var indent = index * 20;
+                var icon = icons[index] || 'bi-dot';
+                var color = colors[index] || 'secondary';
+                var label = labels[index] || 'المستوى ' + (index + 1);
+                var isLast = index === hierarchy.length - 1;
+
+                html += '<div class="d-flex align-items-center gap-2 mb-2" style="margin-right: ' + indent + 'px;">' +
+                    '<i class="bi ' + icon + ' text-' + color + '"></i>' +
+                    '<div class="flex-grow-1">' +
+                        '<small class="text-muted d-block">' + label + '</small>' +
+                        '<span class="' + (isLast ? 'fw-bold text-' + color : '') + '">' + unit.name + '</span>' +
+                        (unit.code ? ' <small class="text-muted">(' + unit.code + ')</small>' : '') +
+                    '</div>' +
+                '</div>';
+
+                if (index < hierarchy.length - 1) {
+                    html += '<div class="border-start border-2 border-' + color + '" style="height: 15px; margin-right: ' + (indent + 10) + 'px;"></div>';
+                }
+            });
+
+            html += '</div>';
+            document.getElementById('unitHierarchy').innerHTML = html;
+        }
+    </script>
+}

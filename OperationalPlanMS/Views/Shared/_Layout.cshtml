@@ -1,0 +1,305 @@
+﻿@using OperationalPlanMS.Models
+@{
+    var userRoleStr = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    Enum.TryParse<UserRole>(userRoleStr, out UserRole userRole);
+
+    var isAdmin = userRole == UserRole.Admin;
+    var isExecutive = userRole == UserRole.Executive;
+    var isSupervisor = userRole == UserRole.Supervisor;
+    var isUser = userRole == UserRole.User;
+
+    // صلاحيات العرض
+    var canViewDashboard = isAdmin || isExecutive;
+    var canViewInitiatives = isAdmin || isExecutive || isSupervisor;
+    var canViewProjects = true; // الكل يرى المشاريع
+    var canViewSteps = true; // الكل يرى الخطوات
+    var canViewReports = isAdmin || isExecutive || isSupervisor;
+    var canViewAdmin = isAdmin;
+
+    // الصورة الشخصية من Claims
+    var profileImage = User.FindFirst("ProfileImage")?.Value;
+
+    var strategicActions = new[] { "StrategicOverview", "VisionMission", "StrategicObjectives", "CoreValues" };
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var isStrategicActive = strategicActions.Contains(currentAction);
+}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - نظام إدارة الخطط التشغيلية</title>
+
+    <!-- Tajawal Font (Local) -->
+    <style>
+        @@font-face {
+            font-family: 'Tajawal';
+            src: url('/lib/fonts/Tajawal/Tajawal-Regular.ttf') format('truetype');
+            font-weight: 400;
+            font-display: swap;
+        }
+
+        @@font-face {
+            font-family: 'Tajawal';
+            src: url('/lib/fonts/Tajawal/Tajawal-Medium.ttf') format('truetype');
+            font-weight: 500;
+            font-display: swap;
+        }
+
+        @@font-face {
+            font-family: 'Tajawal';
+            src: url('/lib/fonts/Tajawal/Tajawal-Bold.ttf') format('truetype');
+            font-weight: 700;
+            font-display: swap;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+    </style>
+
+    <!-- Bootstrap 5 RTL CSS (Local) -->
+    <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons (Local) -->
+    <link href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>   
+    <div class="wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="bi bi-clipboard-data"></i>
+                <div class="sidebar-brand">
+                    <span class="brand-text">نظام الخطط التشغيلية</span>
+                    <small>OPS</small>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul class="nav flex-column">
+
+                    <!-- الخطة الاستراتيجية - للجميع -->
+                 
+                    <li class="nav-item">
+                        <a class="nav-link @(isStrategicActive ? "active" : "")" href="/Home/StrategicOverview">
+                            <i class="bi bi-bullseye"></i>
+                            <span>الخطة الاستراتيجية</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" href="/">
+                            <i class="bi bi-house"></i>
+                            <span>الرئيسية</span>
+                        </a>
+                    </li>
+                    <!-- لوحة المعلومات - Admin & Executive فقط -->
+                    @*   @if (canViewDashboard)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" href="/Dashboard">
+                                <i class="bi bi-speedometer2"></i>
+                                <span>لوحة المعلومات</span>
+                            </a>
+                        </li>
+                    } *@
+
+                    <li class="nav-section">الإدارة</li>
+
+                    <!-- المبادرات - Admin, Executive, Supervisor -->
+                    @if (canViewInitiatives)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Initiatives" ? "active" : "")" href="/Initiatives">
+                                <i class="bi bi-lightning-charge"></i>
+                                <span>@(isSupervisor ? "مبادراتي" : "المبادرات")</span>
+                            </a>
+                        </li>
+                    }
+
+                    <!-- المشاريع - للجميع -->
+                    @if (canViewProjects)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Projects" ? "active" : "")" href="/Projects">
+                                <i class="bi bi-folder"></i>
+                                <span>@(isUser ? "مشاريعي" : "المشاريع")</span>
+                            </a>
+                        </li>
+                    }
+
+                    <!-- الخطوات - للجميع -->
+                    @if (canViewSteps)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Steps" && ViewContext.RouteData.Values["action"]?.ToString() != "PendingApprovals" ? "active" : "")" href="/Steps">
+                                <i class="bi bi-list-check"></i>
+                                <span>@(isUser ? "مهامي" : "الخطوات")</span>
+                            </a>
+                        </li>
+                    }
+
+                    <!-- الخطوات المعلقة - للمؤكدين فقط -->
+                    @{
+                        var isStepApproverClaim = User.FindFirst("IsStepApprover")?.Value;
+                        var isStepApprover = isStepApproverClaim == "True" || isStepApproverClaim == "true";
+                    }
+                    @if (isStepApprover)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "PendingApprovals" ? "active" : "")" href="/Steps/PendingApprovals">
+                                <i class="bi bi-clipboard-check"></i>
+                                <span>تأكيد الخطوات</span>
+                            </a>
+                        </li>
+                    }
+
+                    <!-- التقارير - Admin, Executive, Supervisor -->
+                    @if (canViewReports)
+                    {
+                        <li class="nav-section">التقارير</li>
+
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" ? "active" : "")" href="/Reports">
+                                <i class="bi bi-file-earmark-bar-graph"></i>
+                                <span>التقارير</span>
+                            </a>
+                        </li>
+                    }
+
+                    <!-- إعدادات النظام - Admin فقط -->
+                    @if (canViewAdmin)
+                    {
+                        <li class="nav-section">النظام</li>
+
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" ? "active" : "")" href="/Admin">
+                                <i class="bi bi-gear"></i>
+                                <span>إعدادات النظام</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <small>&copy; 2026 OPS</small>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <button class="btn btn-link sidebar-toggle" id="sidebarToggle">
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <div class="header-title">
+                    <h5 class="mb-0">@ViewData["Title"]</h5>
+                </div>
+
+                <div class="header-actions">
+                    <!-- Notifications -->
+                    @*       <div class="dropdown me-3">
+                        <button class="btn btn-link position-relative" data-bs-toggle="dropdown">
+                            <i class="bi bi-bell"></i>
+                            <span class="badge-dot"></span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-start">
+                            <li><h6 class="dropdown-header">الإشعارات</h6></li>
+                            <li><a class="dropdown-item" href="#">لا توجد إشعارات جديدة</a></li>
+                        </ul>
+                    </div> *@
+
+                    <!-- User Menu -->
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <div class="dropdown user-menu">
+                            <button class="btn btn-link dropdown-toggle" data-bs-toggle="dropdown">
+                                <div class="user-avatar">
+                                    @if (!string.IsNullOrEmpty(profileImage))
+                                    {
+                                        <img src="@profileImage" alt="Profile" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person"></i>
+                                    }
+                                </div>
+                                <div class="user-info d-none d-md-block">
+                                    <span class="user-name">@User.Identity.Name</span>
+                                    <small class="user-role">@User.FindFirst("RoleNameAr")?.Value</small>
+                                </div>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-start">
+                                <li>
+                                    <a class="dropdown-item" href="/Profile">
+                                        <i class="bi bi-person me-2"></i>الملف الشخصي
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="/Profile/ChangePassword">
+                                        <i class="bi bi-key me-2"></i>تغيير كلمة المرور
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form asp-controller="Account" asp-action="Logout" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="bi bi-box-arrow-left me-2"></i>تسجيل الخروج
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="page-content">
+                <!-- Alert Messages -->
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                @RenderBody()
+            </main>
+
+            <!-- Footer -->
+            <footer class="main-footer">
+                <span>&copy; 2026 نظام إدارة الخطط التشغيلية - OPS</span>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS (Local) -->
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Sidebar Toggle
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            document.querySelector('.wrapper').classList.toggle('sidebar-collapsed');
+        });
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

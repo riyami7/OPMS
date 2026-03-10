@@ -1,0 +1,562 @@
+﻿@model OperationalPlanMS.Models.ViewModels.DashboardViewModel
+@using OperationalPlanMS.Models.Entities
+@{
+    ViewData["Title"] = "لوحة التحكم";
+    var userRole = ViewBag.UserRole as UserRole? ?? UserRole.User;
+    var userName = ViewBag.UserName as string ?? "المستخدم";
+    var roleNameAr = ViewBag.RoleNameAr as string ?? "مستخدم";
+}
+
+<style>
+    .dashboard-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+
+    .stat-card-new {
+        padding: 1.5rem;
+        border-radius: 12px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .stat-card-new::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: rgba(255,255,255,0.1);
+            transform: rotate(30deg);
+        }
+
+        .stat-card-new .stat-icon {
+            font-size: 3rem;
+            opacity: 0.3;
+            position: absolute;
+            left: 1rem;
+            bottom: 0.5rem;
+        }
+
+        .stat-card-new .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .stat-card-new .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .bg-gradient-success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .bg-gradient-info {
+        background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+    }
+
+    .bg-gradient-warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .bg-gradient-danger {
+        background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    }
+
+    .bg-gradient-dark {
+        background: linear-gradient(135deg, #232526 0%, #414345 100%);
+    }
+
+    .progress-ring {
+        width: 120px;
+        height: 120px;
+    }
+
+    .quick-action-btn {
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+
+        .quick-action-btn:hover {
+            transform: scale(1.02);
+        }
+
+    .list-item-hover:hover {
+        background-color: #f8f9fa;
+    }
+
+    .welcome-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        color: white;
+    }
+
+    .badge-role {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+    }
+</style>
+
+<!-- Welcome Banner -->
+<div class="welcome-banner mb-4">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h3 class="mb-2">مرحباً، @userName 👋</h3>
+            <p class="mb-0 opacity-75">
+                @switch (userRole)
+                {
+                    case UserRole.Admin:
+                        <text>لديك صلاحيات كاملة لإدارة النظام والمستخدمين والبيانات</text>
+                        break;
+                    case UserRole.Executive:
+                        <text>يمكنك متابعة جميع المبادرات والمشاريع في المنظمة</text>
+                        break;
+                    case UserRole.Supervisor:
+                        <text>يمكنك إدارة ومتابعة المبادرات المعينة لك</text>
+                        break;
+                    case UserRole.User:
+                        <text>يمكنك متابعة وإدارة المشاريع والمهام المعينة لك</text>
+                        break;
+                }
+            </p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <span class="badge-role bg-white text-primary">
+                <i class="bi bi-person-badge me-1"></i>@roleNameAr
+            </span>
+        </div>
+    </div>
+</div>
+
+@if (ViewBag.DatabaseError != null)
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        خطأ في الاتصال: @ViewBag.DatabaseError
+    </div>
+}
+
+<!-- Stats Cards - Based on Role -->
+<div class="row mb-4">
+    @if (userRole == UserRole.Admin || userRole == UserRole.Executive || userRole == UserRole.Supervisor)
+    {
+        <div class="col-md-6 col-xl-3 mb-3">
+            <div class="stat-card-new bg-gradient-primary">
+                <div class="stat-value">@Model.TotalInitiatives</div>
+                <div class="stat-label">@(userRole == UserRole.Supervisor ? "مبادراتي" : "إجمالي المبادرات")</div>
+                <i class="bi bi-lightning-charge stat-icon"></i>
+            </div>
+        </div>
+    }
+
+    <div class="col-md-6 col-xl-3 mb-3">
+        <div class="stat-card-new bg-gradient-success">
+            <div class="stat-value">@Model.TotalProjects</div>
+            <div class="stat-label">@(userRole == UserRole.User ? "مشاريعي" : "المشاريع")</div>
+            <i class="bi bi-folder stat-icon"></i>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-xl-3 mb-3">
+        <div class="stat-card-new bg-gradient-info">
+            <div class="stat-value">@Model.TotalSteps</div>
+            <div class="stat-label">الخطوات</div>
+            <i class="bi bi-list-check stat-icon"></i>
+        </div>
+    </div>
+
+    @if (userRole == UserRole.Admin)
+    {
+        <div class="col-md-6 col-xl-3 mb-3">
+            <div class="stat-card-new bg-gradient-dark">
+                <div class="stat-value">@Model.TotalUsers</div>
+                <div class="stat-label">المستخدمين</div>
+                <i class="bi bi-people stat-icon"></i>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="col-md-6 col-xl-3 mb-3">
+            <div class="stat-card-new bg-gradient-warning">
+                <div class="stat-value">@(userRole == UserRole.User ? Model.DelayedProjects : Model.DelayedInitiatives)</div>
+                <div class="stat-label">متأخرة</div>
+                <i class="bi bi-exclamation-triangle stat-icon"></i>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Progress Overview -->
+<div class="row mb-4">
+    @if (userRole != UserRole.User)
+    {
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-3">تقدم المبادرات</h6>
+                    <div class="position-relative d-inline-block mb-3">
+                        <svg class="progress-ring" viewBox="0 0 36 36">
+                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                  fill="none" stroke="#e9ecef" stroke-width="3" />
+                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                  fill="none" stroke="#667eea" stroke-width="3"
+                                  stroke-dasharray="@Model.AverageInitiativeProgress, 100" />
+                        </svg>
+                        <div class="position-absolute top-50 start-50 translate-middle">
+                            <span class="h4 mb-0">@Model.AverageInitiativeProgress.ToString("0")%</span>
+                        </div>
+                    </div>
+                    <div class="row text-center small">
+                        <div class="col-4">
+                            <div class="text-success fw-bold">@Model.CompletedInitiatives</div>
+                            <div class="text-muted">مكتملة</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-primary fw-bold">@Model.InProgressInitiatives</div>
+                            <div class="text-muted">جارية</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-danger fw-bold">@Model.DelayedInitiatives</div>
+                            <div class="text-muted">متأخرة</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card dashboard-card h-100">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-3">تقدم المشاريع</h6>
+                <div class="position-relative d-inline-block mb-3">
+                    <svg class="progress-ring" viewBox="0 0 36 36">
+                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                              fill="none" stroke="#e9ecef" stroke-width="3" />
+                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                              fill="none" stroke="#11998e" stroke-width="3"
+                              stroke-dasharray="@Model.AverageProjectProgress, 100" />
+                    </svg>
+                    <div class="position-absolute top-50 start-50 translate-middle">
+                        <span class="h4 mb-0">@Model.AverageProjectProgress.ToString("0")%</span>
+                    </div>
+                </div>
+                <div class="row text-center small">
+                    <div class="col-4">
+                        <div class="text-success fw-bold">@Model.CompletedProjects</div>
+                        <div class="text-muted">مكتملة</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-primary fw-bold">@Model.InProgressProjects</div>
+                        <div class="text-muted">جارية</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-danger fw-bold">@(userRole == UserRole.User ? Model.DelayedProjects : (Model.TotalProjects - Model.CompletedProjects - Model.InProgressProjects))</div>
+                        <div class="text-muted">أخرى</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-12 col-lg-4 mb-3">
+        <div class="card dashboard-card h-100">
+            <div class="card-header bg-transparent border-0">
+                <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>إجراءات سريعة</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    @if (userRole == UserRole.Admin || userRole == UserRole.Executive)
+                    {
+                        <a href="/Initiatives/Create" class="btn btn-primary quick-action-btn">
+                            <i class="bi bi-plus-circle me-2"></i>مبادرة جديدة
+                        </a>
+                        <a href="/Initiatives" class="btn btn-outline-primary quick-action-btn">
+                            <i class="bi bi-list-ul me-2"></i>جميع المبادرات
+                        </a>
+                    }
+                    @if (userRole == UserRole.Supervisor)
+                    {
+                        <a href="/Initiatives" class="btn btn-primary quick-action-btn">
+                            <i class="bi bi-lightning-charge me-2"></i>مبادراتي
+                        </a>
+                        <a href="/Projects" class="btn btn-outline-success quick-action-btn">
+                            <i class="bi bi-folder me-2"></i>مشاريع المبادرات
+                        </a>
+                    }
+                    @if (userRole == UserRole.User)
+                    {
+                        <a href="/Projects" class="btn btn-success quick-action-btn">
+                            <i class="bi bi-folder me-2"></i>مشاريعي
+                        </a>
+                        <a href="/Steps" class="btn btn-outline-info quick-action-btn">
+                            <i class="bi bi-list-check me-2"></i>مهامي
+                        </a>
+                    }
+                    @if (userRole == UserRole.Admin)
+                    {
+                        <a href="/Admin" class="btn btn-dark quick-action-btn">
+                            <i class="bi bi-gear me-2"></i>إعدادات النظام
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Tables -->
+<div class="row">
+    @if (userRole != UserRole.User && Model.RecentInitiatives.Any())
+    {
+        <div class="col-lg-6 mb-4">
+            <div class="card dashboard-card">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-lightning-charge me-2 text-primary"></i>@(userRole == UserRole.Supervisor ? "مبادراتي" : "آخر المبادرات")</h6>
+                    <a href="/Initiatives" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>المبادرة</th>
+                                    <th>الحالة</th>
+                                    <th>التقدم</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.RecentInitiatives)
+                                {
+                                    <tr class="list-item-hover">
+                                        <td>
+                                            <a href="/Initiatives/Details/@item.Id" class="text-decoration-none">
+                                                <div class="fw-semibold">@item.NameAr</div>
+                                                <small class="text-muted">@item.Code</small>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            @{
+                                                var statusClass = item.Status switch
+                                                {
+                                                    Status.Completed => "success",
+                                                    Status.InProgress => "primary",
+                                                    Status.OnHold => "warning",
+                                                    Status.Cancelled => "danger",
+                                                    _ => "secondary"
+                                                };
+                                                var statusName = item.Status switch
+                                                {
+                                                    Status.Draft => "مسودة",
+                                                    Status.Pending => "معلقة",
+                                                    Status.InProgress => "جارية",
+                                                    Status.OnHold => "متوقفة",
+                                                    Status.Completed => "مكتملة",
+                                                    Status.Cancelled => "ملغاة",
+                                                    _ => "غير محدد"
+                                                };
+                                            }
+                                            <span class="badge bg-@statusClass">@statusName</span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="progress flex-grow-1 me-2" style="height: 6px; width: 60px;">
+                                                    <div class="progress-bar bg-primary" style="width: @item.ProgressPercentage%"></div>
+                                                </div>
+                                                <small>@item.ProgressPercentage%</small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.RecentProjects.Any())
+    {
+        <div class="col-lg-6 mb-4">
+            <div class="card dashboard-card">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-folder me-2 text-success"></i>@(userRole == UserRole.User ? "مشاريعي" : "آخر المشاريع")</h6>
+                    <a href="/Projects" class="btn btn-sm btn-outline-success">عرض الكل</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>المشروع</th>
+                                    <th>المبادرة</th>
+                                    <th>التقدم</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.RecentProjects)
+                                {
+                                    <tr class="list-item-hover">
+                                        <td>
+                                            <a href="/Projects/Details/@item.Id" class="text-decoration-none">
+                                                <div class="fw-semibold">@item.NameAr</div>
+                                                <small class="text-muted">@item.Code</small>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">@item.Initiative?.NameAr</small>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="progress flex-grow-1 me-2" style="height: 6px; width: 60px;">
+                                                    <div class="progress-bar bg-success" style="width: @item.ProgressPercentage%"></div>
+                                                </div>
+                                                <small>@item.ProgressPercentage%</small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Overdue Items Alert -->
+@if ((Model.OverdueInitiatives.Any() && userRole != UserRole.User) || Model.OverdueProjects.Any())
+{
+    <div class="row">
+        <div class="col-12">
+            <div class="card dashboard-card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    تنبيه: عناصر متأخرة تحتاج اهتمامك
+                </div>
+                <div class="card-body">
+                    @if (Model.OverdueInitiatives.Any() && userRole != UserRole.User)
+                    {
+                        <h6 class="text-danger"><i class="bi bi-lightning-charge me-1"></i>مبادرات متأخرة:</h6>
+                        <ul class="list-unstyled mb-3">
+                            @foreach (var item in Model.OverdueInitiatives)
+                            {
+                                var daysOverdue = (DateTime.Today - item.PlannedEndDate).Days;
+                                <li class="mb-2">
+                                    <a href="/Initiatives/Details/@item.Id" class="text-decoration-none">
+                                        <i class="bi bi-arrow-left-circle me-1"></i>
+                                        @item.NameAr
+                                        <span class="badge bg-danger ms-2">متأخرة @daysOverdue يوم</span>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    @if (Model.OverdueProjects.Any())
+                    {
+                        <h6 class="text-danger"><i class="bi bi-folder me-1"></i>مشاريع متأخرة:</h6>
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var item in Model.OverdueProjects)
+                            {
+                                var daysOverdue = item.PlannedEndDate.HasValue ? (DateTime.Today - item.PlannedEndDate.Value).Days : 0;
+                                <li class="mb-2">
+                                    <a href="/Projects/Details/@item.Id" class="text-decoration-none">
+                                        <i class="bi bi-arrow-left-circle me-1"></i>
+                                        @item.NameAr
+                                        <span class="badge bg-danger ms-2">متأخر @daysOverdue يوم</span>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- User's Steps (Only for User Role) -->
+@if (userRole == UserRole.User && Model.MySteps.Any())
+{
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card dashboard-card">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-list-check me-2 text-info"></i>مهامي القادمة</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>المهمة</th>
+                                    <th>المشروع</th>
+                                    <th>تاريخ الانتهاء</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var step in Model.MySteps)
+                                {
+                                    var isOverdue = step.PlannedEndDate < DateTime.Today && step.Status != StepStatus.Completed;
+                                    <tr class="@(isOverdue ? "table-danger" : "")">
+                                        <td>
+                                            <div class="fw-semibold">@step.NameAr</div>
+                                            <small class="text-muted">خطوة @step.StepNumber</small>
+                                        </td>
+                                        <td><small>@step.Project?.NameAr</small></td>
+                                        <td>
+                                            <small class="@(isOverdue ? "text-danger fw-bold" : "")">
+                                                @step.PlannedEndDate.ToString("yyyy/MM/dd")
+                                            </small>
+                                        </td>
+                                        <td>
+                                            @{
+                                                var stepStatusClass = step.Status switch
+                                                {
+                                                    StepStatus.Completed => "success",
+                                                    StepStatus.InProgress => "primary",
+                                                    _ => "secondary"
+                                                };
+                                                var stepStatusName = step.Status switch
+                                                {
+                                                    StepStatus.NotStarted => "لم تبدأ",
+                                                    StepStatus.InProgress => "جارية",
+                                                    StepStatus.Completed => "مكتملة",
+                                                    StepStatus.OnHold => "متوقفة",
+                                                    _ => "غير محدد"
+                                                };
+                                            }
+                                            <span class="badge bg-@stepStatusClass">@stepStatusName</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

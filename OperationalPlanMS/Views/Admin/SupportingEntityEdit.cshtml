@@ -1,0 +1,79 @@
+@model OperationalPlanMS.Models.ViewModels.SupportingEntityFormViewModel
+@{
+    ViewData["Title"] = "تعديل جهة مساندة";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="mb-1">تعديل جهة مساندة</h4>
+                    <p class="text-muted mb-0">
+                        <code>@Model.Code</code> - @ViewBag.OrganizationName
+                    </p>
+                </div>
+                <a href="/Admin/SupportingEntities" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-right me-2"></i>رجوع
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form asp-action="SupportingEntityEdit" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="Code" />
+                        <input type="hidden" asp-for="OrganizationId" />
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">الكود</label>
+                                <input type="text" class="form-control" value="@Model.Code" disabled />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">المنظمة</label>
+                                <input type="text" class="form-control" value="@ViewBag.OrganizationName" disabled />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="NameAr" class="form-label">الاسم بالعربية <span class="text-danger">*</span></label>
+                                <input asp-for="NameAr" class="form-control" />
+                                <span asp-validation-for="NameAr" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="NameEn" class="form-label">الاسم بالإنجليزية <span class="text-danger">*</span></label>
+                                <input asp-for="NameEn" class="form-control" dir="ltr" />
+                                <span asp-validation-for="NameEn" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                                <label asp-for="IsActive" class="form-check-label">نشط</label>
+                            </div>
+                            <small class="text-muted">الجهات غير النشطة لا تظهر في قوائم اختيار المشاريع</small>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="/Admin/SupportingEntities" class="btn btn-secondary">إلغاء</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-2"></i>حفظ التعديلات
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

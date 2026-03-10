@@ -1,0 +1,431 @@
+@model OperationalPlanMS.Models.ViewModels.StrategicOverviewViewModel
+@{
+    ViewData["Title"] = "المحاور والأهداف";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+        .page-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+            .page-header h2 i {
+                color: #6f42c1;
+            }
+
+    /* Legend */
+    .legend-bar {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 0.875rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        align-items: center;
+    }
+
+        .legend-bar span {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.85rem;
+    }
+
+    .legend-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+    }
+
+        .legend-dot.purple {
+            background: #6f42c1;
+        }
+
+        .legend-dot.blue {
+            background: #3498db;
+        }
+
+        .legend-dot.green {
+            background: #27ae60;
+        }
+
+        .legend-dot.teal {
+            background: #17a2b8;
+        }
+
+    /* Level 1: Axis */
+    .axis-box {
+        background: white;
+        border-radius: 14px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 1.5rem;
+        border: 2px solid #6f42c1;
+        overflow: hidden;
+    }
+
+    .axis-header {
+        background: linear-gradient(135deg, #6f42c1, #8363d1);
+        color: white;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .axis-num {
+        width: 38px;
+        height: 38px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .axis-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .axis-body {
+        padding: 1.25rem;
+    }
+
+    /* Level 2: Strategic Objective */
+    .strat-obj {
+        background: #f0f7ff;
+        border-radius: 10px;
+        border-right: 4px solid #3498db;
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+
+        .strat-obj:last-child {
+            margin-bottom: 0;
+        }
+
+    .strat-obj-header {
+        background: rgba(52, 152, 219, 0.12);
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        border-bottom: 1px solid rgba(52, 152, 219, 0.15);
+    }
+
+    .strat-obj-icon {
+        width: 30px;
+        height: 30px;
+        background: #3498db;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.8rem;
+    }
+
+    .strat-obj-title {
+        flex: 1;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .strat-obj-body {
+        padding: 1rem;
+    }
+
+    /* Level 3: Main Objective */
+    .main-obj {
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #d4edda;
+        border-right: 4px solid #27ae60;
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+    }
+
+        .main-obj:last-child {
+            margin-bottom: 0;
+        }
+
+    .main-obj-header {
+        background: #f0fff4;
+        padding: 0.625rem 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-bottom: 1px solid #d4edda;
+    }
+
+    .main-obj-icon {
+        width: 26px;
+        height: 26px;
+        background: #27ae60;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.7rem;
+    }
+
+    .main-obj-title {
+        flex: 1;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .main-obj-body {
+        padding: 0.75rem;
+        background: #fafffe;
+    }
+
+    /* Level 4: Sub Objective */
+    .sub-obj-label {
+        font-size: 0.78rem;
+        color: #777;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .sub-obj {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-right: 3px solid #17a2b8;
+        border-radius: 6px;
+        padding: 0.5rem 0.625rem;
+        margin-bottom: 0.4rem;
+    }
+
+        .sub-obj:last-child {
+            margin-bottom: 0;
+        }
+
+    .sub-obj-icon {
+        width: 20px;
+        height: 20px;
+        background: #17a2b8;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.6rem;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    .sub-obj-content {
+        flex: 1;
+    }
+
+    .sub-obj-name {
+        font-size: 0.85rem;
+        color: #34495e;
+        margin-bottom: 0.2rem;
+    }
+
+    .sub-obj-unit {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        background: #e3f2fd;
+        color: #1565c0;
+        font-size: 0.7rem;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+    }
+
+    .no-items {
+        color: #aaa;
+        font-size: 0.85rem;
+        font-style: italic;
+        padding: 0.5rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #aaa;
+    }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 0.75rem;
+        }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <h2><i class="bi bi-diagram-3-fill"></i> المحاور والأهداف</h2>
+    <a href="/Home/StrategicOverview" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-right me-1"></i>رجوع
+    </a>
+</div>
+
+<!-- Legend -->
+<div class="legend-bar">
+    <span><i class="bi bi-info-circle me-1"></i>دليل الألوان:</span>
+    <div class="legend-item">
+        <span class="legend-dot purple"></span>
+        <span>المحور الرئيسي</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-dot blue"></span>
+        <span>الهدف الاستراتيجي</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-dot green"></span>
+        <span>الهدف الرئيسي</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-dot teal"></span>
+        <span>الهدف الفرعي</span>
+    </div>
+</div>
+
+@if (Model.Axes.Any(a => a.IsActive))
+{
+    var axisNum = 1;
+
+    foreach (var axis in Model.Axes.Where(a => a.IsActive).OrderBy(a => a.OrderIndex))
+    {
+        var strategicObjs = Model.StrategicObjectives
+            .Where(so => so.StrategicAxisId == axis.Id && so.IsActive)
+            .OrderBy(so => so.OrderIndex)
+            .ToList();
+
+        <div class="axis-box">
+            <div class="axis-header">
+                <div class="axis-num">@axisNum</div>
+                <h3 class="axis-title">@axis.NameAr</h3>
+            </div>
+            <div class="axis-body">
+                @if (strategicObjs.Any())
+                {
+                    foreach (var stratObj in strategicObjs)
+                    {
+                        var mainObjs = Model.MainObjectives
+                        .Where(mo => mo.StrategicObjectiveId == stratObj.Id && mo.IsActive)
+                        .OrderBy(mo => mo.OrderIndex)
+                        .ToList();
+
+                        <div class="strat-obj">
+                            <div class="strat-obj-header">
+                                <div class="strat-obj-icon"><i class="bi bi-star-fill"></i></div>
+                                <h4 class="strat-obj-title">@stratObj.NameAr</h4>
+                            </div>
+                            <div class="strat-obj-body">
+                                @if (mainObjs.Any())
+                                {
+                                    foreach (var mainObj in mainObjs)
+                                    {
+                                        var subObjs = Model.SubObjectives
+                                        .Where(so => so.MainObjectiveId == mainObj.Id && so.IsActive)
+                                        .OrderBy(so => so.OrderIndex)
+                                        .ToList();
+
+                                        <div class="main-obj">
+                                            <div class="main-obj-header">
+                                                <div class="main-obj-icon"><i class="bi bi-flag-fill"></i></div>
+                                                <h5 class="main-obj-title">@mainObj.NameAr</h5>
+                                            </div>
+                                            <div class="main-obj-body">
+                                                @if (subObjs.Any())
+                                                {
+                                                    <div class="sub-obj-label">
+                                                        <i class="bi bi-list-nested"></i>
+                                                        الأهداف الفرعية (@subObjs.Count)
+                                                    </div>
+
+                                                    foreach (var subObj in subObjs)
+                                                    {
+                                                        <div class="sub-obj">
+                                                            <div class="sub-obj-icon">
+                                                                <i class="bi bi-check-lg"></i>
+                                                            </div>
+                                                            <div class="sub-obj-content">
+                                                                <div class="sub-obj-name">@subObj.NameAr</div>
+                                                                @if (!string.IsNullOrEmpty(subObj.UnitDisplayName))
+                                                                {
+                                                                    <span class="sub-obj-unit">
+                                                                        <i class="bi bi-building"></i>
+                                                                        @subObj.UnitDisplayName
+                                                                    </span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="no-items">
+                                                        <i class="bi bi-info-circle me-1"></i>لا توجد أهداف فرعية
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="no-items">
+                                        <i class="bi bi-info-circle me-1"></i>لا توجد أهداف رئيسية
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="no-items">
+                        <i class="bi bi-info-circle me-1"></i>لا توجد أهداف استراتيجية لهذا المحور
+                    </div>
+                }
+            </div>
+        </div>
+
+        axisNum++;
+    }
+}
+else
+{
+    <div class="empty-state">
+        <i class="bi bi-diagram-3"></i>
+        <h5>لا توجد محاور</h5>
+        <p>سيتم عرض المحاور والأهداف هنا عند إضافتها</p>
+    </div>
+}

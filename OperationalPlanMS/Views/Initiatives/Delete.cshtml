@@ -1,0 +1,55 @@
+@model OperationalPlanMS.Models.Entities.Initiative
+@{
+    ViewData["Title"] = "حذف مبادرة";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                تأكيد حذف المبادرة
+            </div>
+            <div class="card-body text-center">
+                <i class="bi bi-trash text-danger" style="font-size: 4rem;"></i>
+                <h4 class="mt-3">هل أنت متأكد من حذف هذه المبادرة؟</h4>
+                <p class="text-muted">سيتم حذف المبادرة وجميع البيانات المرتبطة بها</p>
+
+                <div class="card bg-light mt-4">
+                    <div class="card-body text-start">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <td class="text-muted" style="width: 120px;">الكود:</td>
+                                <td><strong>@Model.Code</strong></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">الاسم:</td>
+                                <td><strong>@Model.NameAr</strong></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">الوحدة:</td>
+                                <td>@Model.OrganizationalUnit?.NameAr</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">السنة المالية:</td>
+                                <td>@Model.FiscalYear?.NameAr</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <form asp-action="Delete" method="post" class="mt-4">
+                    <input type="hidden" asp-for="Id" />
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-trash me-2"></i>نعم، احذف
+                        </button>
+                        <a href="/Initiatives" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle me-2"></i>إلغاء
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

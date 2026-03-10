@@ -1,0 +1,179 @@
+@model OperationalPlanMS.Models.ViewModels.StrategicOverviewViewModel
+@{
+    ViewData["Title"] = "القيم المؤسسية";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .page-header h2 i {
+        color: #e74c3c;
+    }
+
+    .intro-text {
+        text-align: center;
+        max-width: 700px;
+        margin: 0 auto 2rem;
+        color: #666;
+        font-size: 1.05rem;
+        line-height: 1.8;
+    }
+
+    .values-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .value-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        box-shadow: 0 5px 25px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .value-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, #e74c3c, #c0392b);
+    }
+
+    .value-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    }
+
+    .value-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #fff0f0, #ffe0e0);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.25rem;
+    }
+
+    .value-icon i {
+        font-size: 2rem;
+        color: #e74c3c;
+    }
+
+    .value-card h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 0.75rem;
+    }
+
+    .value-card p {
+        color: #666;
+        font-size: 0.95rem;
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    .value-number {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        width: 30px;
+        height: 30px;
+        background: #f8f9fa;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #e74c3c;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem;
+        color: #aaa;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+    <h2><i class="bi bi-gem"></i> القيم المؤسسية</h2>
+    <a href="/Home/StrategicOverview" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-right me-1"></i>رجوع
+    </a>
+</div>
+
+<p class="intro-text">
+    القيم المؤسسية هي المبادئ والمعتقدات الأساسية التي توجه سلوكنا وقراراتنا،
+    وتشكل ثقافة العمل لدينا وتحدد طريقة تعاملنا مع بعضنا ومع عملائنا.
+</p>
+
+@if (Model.CoreValues.Any(v => v.IsActive))
+{
+    <div class="values-grid">
+        @{
+            var valueNum = 1;
+        }
+        @foreach (var value in Model.CoreValues.Where(v => v.IsActive).OrderBy(v => v.OrderIndex))
+        {
+            <div class="value-card">
+                <span class="value-number">@valueNum</span>
+                <div class="value-icon">
+                    @if (!string.IsNullOrEmpty(value.Icon))
+                    {
+                        <i class="bi @value.Icon"></i>
+                    }
+                    else
+                    {
+                        <i class="bi bi-gem"></i>
+                    }
+                </div>
+                <h3>@value.NameAr</h3>
+                @if (!string.IsNullOrEmpty(value.MeaningAr))
+                {
+                    <p>@value.MeaningAr</p>
+                }
+            </div>
+            valueNum++;
+        }
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <i class="bi bi-gem"></i>
+        <h5>لا توجد قيم مؤسسية</h5>
+        <p>سيتم عرض القيم هنا عند إضافتها</p>
+    </div>
+}

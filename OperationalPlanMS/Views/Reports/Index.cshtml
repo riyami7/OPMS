@@ -1,0 +1,1011 @@
+﻿@model OperationalPlanMS.Models.ViewModels.ReportsDashboardViewModel
+@{
+    ViewData["Title"] = "لوحة المتابعة التنفيذية";
+
+    // حساب مؤشر الصحة العامة
+    var totalItems = Model.TotalProjects + Model.TotalSteps;
+    var delayedItems = Model.DelayedProjects + Model.OverdueSteps.Count;
+    var healthScore = totalItems > 0 ? (int)Math.Round((1 - ((decimal)delayedItems / totalItems)) * 100) : 100;
+    healthScore = Math.Max(0, Math.Min(100, healthScore));
+    var healthColor = healthScore >= 80 ? "success" : healthScore >= 60 ? "warning" : "danger";
+    var healthStatus = healthScore >= 80 ? "ممتاز" : healthScore >= 60 ? "يحتاج متابعة" : "يحتاج تدخل";
+}
+
+
+<!-- Executive Header -->
+<div class="executive-header">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="mb-1">
+                <i class="bi bi-speedometer2 me-2"></i>لوحة المتابعة التنفيذية
+            </h4>
+            <p class="mb-0 opacity-75">
+                @if (Model.CurrentFiscalYear != null)
+                {
+                    <span>@Model.CurrentFiscalYear.NameAr</span>
+                    <span class="mx-2">|</span>
+                }
+                <span>@DateTime.Now.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("ar-OM"))</span>
+                @if (!string.IsNullOrEmpty(Model.SelectedUnitName))
+                {
+                    <span class="mx-2">|</span>
+                    <span class="badge bg-light text-dark"><i class="bi bi-building me-1"></i>@Model.SelectedUnitName</span>
+                }
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="d-flex justify-content-end align-items-center gap-3">
+                <!-- Health Score -->
+                <div class="health-indicator bg-@healthColor">
+                    <span style="font-size: 1.5rem;">@healthScore%</span>
+                    <small style="font-size: 0.65rem;">@healthStatus</small>
+                </div>
+                <!-- Export -->
+                <div class="dropdown">
+                    <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-download me-1"></i>تصدير
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/Reports/Export?type=initiatives&fiscalYearId=@Model.FiscalYearId&externalUnitId=@Model.ExternalUnitId">المبادرات</a></li>
+                        <li><a class="dropdown-item" href="/Reports/Export?type=projects&fiscalYearId=@Model.FiscalYearId&externalUnitId=@Model.ExternalUnitId">المشاريع</a></li>
+                        <li><a class="dropdown-item" href="/Reports/Export?type=steps&fiscalYearId=@Model.FiscalYearId&externalUnitId=@Model.ExternalUnitId">الخطوات</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="/Reports/Export?type=overdue&externalUnitId=@Model.ExternalUnitId">المتأخرات</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats in Header -->
+    <div class="row mt-3 g-2">
+        <div class="col">
+            <div class="quick-stat">
+                <div style="font-size: 1.4rem; font-weight: bold;">@Model.TotalInitiatives</div>
+                <small class="opacity-75">مبادرة</small>
+            </div>
+        </div>
+        <div class="col">
+            <div class="quick-stat">
+                <div style="font-size: 1.4rem; font-weight: bold;">@Model.TotalProjects</div>
+                <small class="opacity-75">مشروع</small>
+            </div>
+        </div>
+        <div class="col">
+            <div class="quick-stat">
+                <div style="font-size: 1.4rem; font-weight: bold;">@Model.TotalSteps</div>
+                <small class="opacity-75">خطوة</small>
+            </div>
+        </div>
+        <div class="col">
+            <div class="quick-stat">
+                <div style="font-size: 1.4rem; font-weight: bold;">@Model.OverallProgress%</div>
+                <small class="opacity-75">الإنجاز</small>
+            </div>
+        </div>
+        <div class="col">
+            <div class="quick-stat" style="@(Model.DelayedProjects > 0 ? "background: rgba(239,68,68,0.3);" : "")">
+                <div style="font-size: 1.4rem; font-weight: bold;">@(Model.DelayedProjects + Model.OverdueSteps.Count)</div>
+                <small class="opacity-75">متأخر</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Card - مفتوح افتراضياً مع فلتر 3 مستويات -->
+<div class="card mb-4">
+    <div class="card-header py-2 bg-light" data-bs-toggle="collapse" data-bs-target="#filterSection" style="cursor: pointer;">
+        <div class="d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-funnel me-2"></i><strong>فلاتر البحث</strong></span>
+            <i class="bi bi-chevron-down"></i>
+        </div>
+    </div>
+    <div class="collapse show" id="filterSection">
+        <div class="card-body">
+            <form method="get" asp-action="Index" id="filterForm">
+                <div class="row g-3">
+                    <!-- السنة المالية -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-calendar3 me-1 text-primary"></i>السنة المالية
+                        </label>
+                        <select class="form-select" asp-for="FiscalYearId" asp-items="Model.FiscalYears">
+                            <option value="">-- جميع السنوات --</option>
+                        </select>
+                    </div>
+
+                    <!-- المستوى الأول -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-building me-1 text-primary"></i>المستوى الأول
+                        </label>
+                        <select class="form-select" id="filterLevel1">
+                            <option value="">-- جاري التحميل --</option>
+                        </select>
+                    </div>
+
+                    <!-- المستوى الثاني -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-diagram-2 me-1 text-info"></i>المستوى الثاني
+                        </label>
+                        <select class="form-select" id="filterLevel2" disabled>
+                            <option value="">-- اختر المستوى الأول --</option>
+                        </select>
+                    </div>
+
+                    <!-- المستوى الثالث -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-geo-alt me-1 text-success"></i>المستوى الثالث
+                        </label>
+                        <select class="form-select" id="filterLevel3" disabled>
+                            <option value="">-- اختر المستوى الثاني --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Hidden field for selected unit -->
+                <input type="hidden" id="ExternalUnitId" name="ExternalUnitId" value="@Model.ExternalUnitId" />
+
+                <!-- أزرار التحكم -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <!-- عرض الوحدة المختارة -->
+                            <div id="selectedUnitDisplay">
+                                @if (!string.IsNullOrEmpty(Model.SelectedUnitName))
+                                {
+                                    <span class="badge bg-primary fs-6">
+                                        <i class="bi bi-building me-1"></i>@Model.SelectedUnitName
+                                    </span>
+                                }
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-funnel me-1"></i>تطبيق الفلتر
+                                </button>
+                                <a href="/Reports" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-lg me-1"></i>إعادة تعيين
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Row 1: KPIs -->
+<div class="row mb-4 g-3">
+    <!-- نسبة إكمال المشاريع -->
+    <div class="col-md-3">
+        <div class="card kpi-card h-100">
+            <div class="card-body text-center">
+                <div class="kpi-value text-primary">@Model.ProjectCompletionRate%</div>
+                <div class="kpi-label">نسبة إكمال المشاريع</div>
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar bg-primary" style="width: @Model.ProjectCompletionRate%"></div>
+                </div>
+                <small class="text-muted">@Model.CompletedProjects من @Model.TotalProjects</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- نسبة إكمال الخطوات -->
+    <div class="col-md-3">
+        <div class="card kpi-card h-100">
+            <div class="card-body text-center">
+                <div class="kpi-value text-success">@Model.StepCompletionRate%</div>
+                <div class="kpi-label">نسبة إكمال الخطوات</div>
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar bg-success" style="width: @Model.StepCompletionRate%"></div>
+                </div>
+                <small class="text-muted">@Model.CompletedSteps من @Model.TotalSteps</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- استخدام الميزانية -->
+    <div class="col-md-3">
+        <div class="card kpi-card h-100">
+            <div class="card-body text-center">
+                <div class="kpi-value @(Model.BudgetUtilization > 100 ? "text-danger" : Model.BudgetUtilization > 80 ? "text-warning" : "text-info")">
+                    @Model.BudgetUtilization%
+                </div>
+                <div class="kpi-label">استخدام الميزانية</div>
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar @(Model.BudgetUtilization > 100 ? "bg-danger" : "bg-info")"
+                         style="width: @Math.Min(Model.BudgetUtilization, 100)%"></div>
+                </div>
+                <small class="text-muted">@Model.TotalActualCost.ToString("N0") / @Model.TotalBudget.ToString("N0")</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- المتأخرات -->
+    <div class="col-md-3">
+        <div class="card kpi-card h-100 @(Model.DelayedProjects > 0 || Model.OverdueSteps.Any() ? "border-danger border-2" : "border-success border-2")">
+            <div class="card-body text-center">
+                <div class="kpi-value @(Model.DelayedProjects > 0 ? "text-danger" : "text-success")">
+                    @(Model.DelayedProjects + Model.OverdueSteps.Count)
+                </div>
+                <div class="kpi-label">عناصر متأخرة</div>
+                <div class="mt-3">
+                    @if (Model.DelayedProjects > 0 || Model.OverdueSteps.Any())
+                    {
+                        <span class="badge bg-danger">@Model.DelayedProjects مشروع</span>
+                        <span class="badge bg-warning text-dark">@Model.OverdueSteps.Count خطوة</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>لا يوجد تأخير</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Charts -->
+<div class="row mb-4 g-3">
+    <!-- توزيع حالات المشاريع -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header py-2">
+                <i class="bi bi-pie-chart me-2"></i>توزيع حالات المشاريع
+                <small class="text-muted float-end"><i class="bi bi-hand-index"></i> تفاعلي</small>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center" style="cursor: pointer;">
+                <canvas id="projectStatusChart" style="max-height: 220px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- الإنجاز حسب الوحدات -->
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header py-2">
+                <i class="bi bi-bar-chart me-2"></i>أداء الوحدات التنظيمية
+                <small class="text-muted float-end"><i class="bi bi-hand-index"></i> تفاعلي</small>
+            </div>
+            <div class="card-body" style="cursor: pointer;">
+                <canvas id="unitPerformanceChart" style="max-height: 220px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 3: Alerts & Top Performers -->
+<div class="row mb-4 g-3">
+    <!-- تنبيهات تحتاج انتباه -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header py-2 bg-danger text-white">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                يتطلب انتباه فوري
+                @if (Model.OverdueProjects.Any() || Model.OverdueSteps.Any())
+                {
+                    <span class="badge bg-white text-danger float-end">@(Model.OverdueProjects.Count + Model.OverdueSteps.Count)</span>
+                }
+            </div>
+            <div class="card-body p-2" style="max-height: 320px; overflow-y: auto;">
+                @if (Model.OverdueProjects.Any() || Model.OverdueSteps.Any())
+                {
+                    @foreach (var project in Model.OverdueProjects.Take(5))
+                    {
+                        var daysOverdue = project.ActualEndDate.HasValue
+                        ? Math.Max(0, (DateTime.Today - project.ActualEndDate.Value).Days)
+                        : 0;
+                        var delayedSteps = project.Steps?.Count(s => !s.IsDeleted && s.ProgressPercentage < 100 &&
+                        s.ActualEndDate.HasValue && s.ActualEndDate.Value < DateTime.Today) ?? 0;
+
+                        <div class="alert-item @(daysOverdue > 7 ? "alert-critical" : "alert-warning")">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="badge bg-primary me-1">مشروع</span>
+                                    <a href="/Projects/Details/@project.Id" class="fw-bold text-dark text-decoration-none">@project.NameAr</a>
+                                    <br>
+                                    <small class="text-muted">@project.Initiative?.NameAr</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-danger">@project.ProgressPercentage%</span>
+                                    @if (daysOverdue > 0)
+                                    {
+                                        <br>
+
+                                        <small class="text-danger fw-bold">متأخر @daysOverdue يوم</small>
+                                    }
+                                    else if (delayedSteps > 0)
+                                    {
+                                        <br>
+
+                                        <small class="text-warning">@delayedSteps خطوة متأخرة</small>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @foreach (var step in Model.OverdueSteps.Take(3))
+                    {
+                        var daysOverdue = step.ActualEndDate.HasValue
+                        ? Math.Max(0, (DateTime.Today - step.ActualEndDate.Value).Days)
+                        : 0;
+
+                        <div class="alert-item alert-warning">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="badge bg-info me-1">خطوة</span>
+                                    <a href="/Steps/Details/@step.Id" class="fw-bold text-dark text-decoration-none">@step.NameAr</a>
+                                    <br>
+                                    <small class="text-muted">@step.Project?.NameAr</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-warning text-dark">@step.ProgressPercentage%</span>
+                                    @if (daysOverdue > 0)
+                                    {
+                                        <br>
+
+                                        <small class="text-danger">متأخر @daysOverdue يوم</small>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (Model.OverdueProjects.Count > 5 || Model.OverdueSteps.Count > 3)
+                    {
+                        <div class="text-center mt-2">
+                            <a href="/Reports/Export?type=overdue&externalUnitId=@Model.ExternalUnitId" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-download me-1"></i>تحميل القائمة الكاملة
+                            </a>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-center py-4">
+                        <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+                        <p class="mt-2 mb-0 text-success fw-bold">لا توجد عناصر متأخرة</p>
+                        <small class="text-muted">جميع المشاريع والخطوات تسير حسب الجدول</small>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- أفضل المبادرات أداءً -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header py-2 bg-success text-white">
+                <i class="bi bi-trophy me-2"></i>أفضل المبادرات أداءً
+            </div>
+            <div class="card-body p-0">
+                @if (Model.TopInitiatives.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>المبادرة</th>
+                                    <th class="text-center">المشاريع</th>
+                                    <th>الإنجاز</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.TopInitiatives.Take(5))
+                                {
+                                    <tr>
+                                        <td>
+                                            <a href="/Initiatives/Details/@item.Id" class="text-dark text-decoration-none">@item.Name</a>
+                                            <br><small class="text-muted">@item.UnitName</small>
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <span class="badge bg-success">@item.CompletedProjectsCount</span>/@item.ProjectsCount
+                                        </td>
+                                        <td class="align-middle" style="width: 120px;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 8px;">
+                                                    <div class="progress-bar bg-success" style="width: @item.Progress%"></div>
+                                                </div>
+                                                <small class="fw-bold">@item.Progress%</small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">لا توجد مبادرات بعد</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 4: Unit Summary Table -->
+@if (Model.UnitSummaries.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header py-2">
+            <i class="bi bi-building me-2"></i>ملخص أداء الوحدات التنظيمية
+            <small class="text-muted float-end"><i class="bi bi-hand-index"></i> اضغط على أي صف للتفاصيل</small>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>الوحدة التنظيمية</th>
+                            <th class="text-center">المبادرات</th>
+                            <th class="text-center">المشاريع</th>
+                            <th class="text-center">
+                                <span class="text-success">مكتمل</span> /
+                                <span class="text-danger">متأخر</span>
+                            </th>
+                            <th style="width: 200px;">نسبة الإنجاز</th>
+                            <th class="text-end">الميزانية (ر.ع)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var unit in Model.UnitSummaries)
+                        {
+                            var progressColor = unit.AverageProgress >= 80 ? "success" :
+                            unit.AverageProgress >= 50 ? "primary" :
+                            unit.AverageProgress >= 30 ? "warning" : "danger";
+
+                            // استخدام ExternalUnitId إذا متوفر، وإلا UnitId
+                            var unitIdForLink = unit.ExternalUnitId ?? unit.UnitId ?? 0;
+
+                            <tr style="cursor: pointer;" onclick="showUnitDrillDown('@Html.Raw(unit.UnitName?.Replace("'", "\\'"))', @unitIdForLink)">
+                                <td><strong>@unit.UnitName</strong></td>
+                                <td class="text-center">@unit.InitiativeCount</td>
+                                <td class="text-center">@unit.ProjectCount</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success">@unit.CompletedCount</span>
+                                    @if (unit.DelayedCount > 0)
+                                    {
+                                        <span class="badge bg-danger">@unit.DelayedCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">0</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="unit-progress-bar">
+                                        <div class="progress-bar bg-@progressColor d-flex align-items-center justify-content-center"
+                                             style="width: @Math.Max(unit.AverageProgress, 15)%; height: 100%;">
+                                            <small class="fw-bold @(unit.AverageProgress < 30 ? "text-dark" : "text-white")">
+                                                @unit.AverageProgress%
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <span class="fw-bold">@unit.TotalBudget.ToString("N0")</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Row 5: Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card summary-card bg-primary text-white h-100">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="bi bi-lightning-charge me-2"></i>المبادرات</h6>
+                <div class="row text-center">
+                    <div class="col-3">
+                        <div class="fs-5 fw-bold">@Model.CompletedInitiatives</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">مكتمل</small>
+                    </div>
+                    <div class="col-3">
+                        <div class="fs-5 fw-bold">@Model.InProgressInitiatives</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">قيد التنفيذ</small>
+                    </div>
+                    <div class="col-3">
+                        <div class="fs-5 fw-bold">@Model.NotStartedInitiatives</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">لم يبدأ</small>
+                    </div>
+                    <div class="col-3">
+                        <div class="fs-5 fw-bold">@Model.DelayedInitiatives</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">متأخر</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card summary-card bg-success text-white h-100">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="bi bi-folder me-2"></i>المشاريع</h6>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="fs-5 fw-bold">@Model.CompletedProjects</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">مكتمل</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="fs-5 fw-bold">@Model.InProgressProjects</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">قيد التنفيذ</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="fs-5 fw-bold">@Model.DelayedProjects</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">متأخر</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card summary-card bg-info text-white h-100">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="bi bi-list-check me-2"></i>الخطوات</h6>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="fs-5 fw-bold">@Model.CompletedSteps</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">مكتمل</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="fs-5 fw-bold">@Model.InProgressSteps</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">قيد التنفيذ</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="fs-5 fw-bold">@Model.NotStartedSteps</div>
+                        <small class="opacity-75" style="font-size: 0.7rem;">لم يبدأ</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Drill-Down Modal -->
+<div class="modal fade" id="drillDownModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="drillDownTitle">
+                    <i class="bi bi-list-ul me-2"></i>
+                    <span id="drillDownLabel">التفاصيل</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="drillDownContent">
+                <!-- Content loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="drillDownLink" class="btn btn-primary btn-sm">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>عرض الكل
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        // ======== Unit Filter Logic ========
+        var allUnits = [];
+        var selectedExternalUnitId = '@(Model.ExternalUnitId?.ToString() ?? "")';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrganizationalUnits();
+
+            // Event listeners للقوائم
+            document.getElementById('filterLevel1').addEventListener('change', onLevel1Change);
+            document.getElementById('filterLevel2').addEventListener('change', onLevel2Change);
+            document.getElementById('filterLevel3').addEventListener('change', onLevel3Change);
+        });
+
+        function loadOrganizationalUnits() {
+            fetch('/api/OrganizationApi/units/all')
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(function(data) {
+                    console.log('Units loaded:', data.length);
+                    allUnits = data;
+                    populateFilterLevel1();
+
+                    if (selectedExternalUnitId) {
+                        restoreFilterSelection(parseInt(selectedExternalUnitId));
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error loading units:', error);
+                    document.getElementById('filterLevel1').innerHTML = '<option value="">-- فشل التحميل --</option>';
+                });
+        }
+
+        function populateFilterLevel1() {
+            var level1Units = allUnits.filter(function(u) {
+                return u.parentId === null || u.parentId === 0;
+            });
+            var select = document.getElementById('filterLevel1');
+            select.innerHTML = '<option value="">-- جميع الوحدات --</option>';
+
+            level1Units.forEach(function(unit) {
+                var option = document.createElement('option');
+                option.value = unit.id;
+                option.textContent = unit.name;
+                select.appendChild(option);
+            });
+        }
+
+        function onLevel1Change() {
+            var selectedId = parseInt(this.value);
+            var level2Select = document.getElementById('filterLevel2');
+            var level3Select = document.getElementById('filterLevel3');
+
+            level2Select.innerHTML = '';
+            level2Select.disabled = true;
+            level3Select.innerHTML = '<option value="">-- اختر المستوى الثاني --</option>';
+            level3Select.disabled = true;
+
+            if (selectedId) {
+                var children = allUnits.filter(function(u) { return u.parentId === selectedId; });
+
+                if (children.length > 0) {
+                    level2Select.innerHTML = '<option value="">-- جميع الفروع --</option>';
+                    children.forEach(function(unit) {
+                        var option = document.createElement('option');
+                        option.value = unit.id;
+                        option.textContent = unit.name;
+                        level2Select.appendChild(option);
+                    });
+                    level2Select.disabled = false;
+                } else {
+                    level2Select.innerHTML = '<option value="">-- لا توجد فروع --</option>';
+                }
+
+                updateSelectedUnit(selectedId);
+            } else {
+                level2Select.innerHTML = '<option value="">-- اختر المستوى الأول --</option>';
+                document.getElementById('ExternalUnitId').value = '';
+                updateSelectedUnitDisplay('');
+            }
+        }
+
+        function onLevel2Change() {
+            var selectedId = parseInt(this.value);
+            var level3Select = document.getElementById('filterLevel3');
+
+            level3Select.innerHTML = '';
+            level3Select.disabled = true;
+
+            if (selectedId) {
+                var children = allUnits.filter(function(u) { return u.parentId === selectedId; });
+
+                if (children.length > 0) {
+                    level3Select.innerHTML = '<option value="">-- جميع الأقسام --</option>';
+                    children.forEach(function(unit) {
+                        var option = document.createElement('option');
+                        option.value = unit.id;
+                        option.textContent = unit.name;
+                        level3Select.appendChild(option);
+                    });
+                    level3Select.disabled = false;
+                } else {
+                    level3Select.innerHTML = '<option value="">-- لا توجد أقسام --</option>';
+                }
+
+                updateSelectedUnit(selectedId);
+            } else {
+                level3Select.innerHTML = '<option value="">-- اختر المستوى الثاني --</option>';
+                var level1Val = parseInt(document.getElementById('filterLevel1').value);
+                if (level1Val) {
+                    updateSelectedUnit(level1Val);
+                }
+            }
+        }
+
+        function onLevel3Change() {
+            var selectedId = parseInt(this.value);
+
+            if (selectedId) {
+                updateSelectedUnit(selectedId);
+            } else {
+                var level2Val = parseInt(document.getElementById('filterLevel2').value);
+                if (level2Val) {
+                    updateSelectedUnit(level2Val);
+                }
+            }
+        }
+
+        function updateSelectedUnit(unitId) {
+            document.getElementById('ExternalUnitId').value = unitId;
+            var unit = allUnits.find(function(u) { return u.id === unitId; });
+            if (unit) {
+                updateSelectedUnitDisplay(unit.name);
+            }
+        }
+
+        function updateSelectedUnitDisplay(unitName) {
+            var display = document.getElementById('selectedUnitDisplay');
+            if (unitName) {
+                display.innerHTML = '<span class="badge bg-primary fs-6"><i class="bi bi-building me-1"></i>' + unitName + '</span>';
+            } else {
+                display.innerHTML = '';
+            }
+        }
+
+        function restoreFilterSelection(unitId) {
+            var unit = allUnits.find(function(u) { return u.id === unitId; });
+            if (!unit) return;
+
+            var hierarchy = [];
+            var current = unit;
+
+            while (current) {
+                hierarchy.unshift(current);
+                var parentId = current.parentId;
+                current = allUnits.find(function(u) { return u.id === parentId; });
+            }
+
+            if (hierarchy.length >= 1) {
+                document.getElementById('filterLevel1').value = hierarchy[0].id;
+                onLevel1Change.call(document.getElementById('filterLevel1'));
+
+                setTimeout(function() {
+                    if (hierarchy.length >= 2) {
+                        document.getElementById('filterLevel2').value = hierarchy[1].id;
+                        onLevel2Change.call(document.getElementById('filterLevel2'));
+
+                        setTimeout(function() {
+                            if (hierarchy.length >= 3) {
+                                document.getElementById('filterLevel3').value = hierarchy[2].id;
+                                updateSelectedUnit(hierarchy[2].id);
+                            }
+                        }, 100);
+                    }
+                }, 100);
+            }
+        }
+
+        // ======== Drill-Down Functions ========
+        function showStatusDrillDown(status, label, color, count) {
+            const modal = new bootstrap.Modal(document.getElementById('drillDownModal'));
+            document.getElementById('drillDownLabel').innerHTML = `<span class="badge" style="background: ${color}">${count}</span> ${label}`;
+
+            let filterParam = '';
+            let statusText = '';
+
+            if (status === 'completed') {
+                filterParam = 'status=completed';
+                statusText = 'المشاريع المكتملة';
+            } else if (status === 'inProgress') {
+                filterParam = 'status=inprogress';
+                statusText = 'المشاريع قيد التنفيذ';
+            } else if (status === 'delayed') {
+                filterParam = 'status=delayed';
+                statusText = 'المشاريع المتأخرة';
+            }
+
+            document.getElementById('drillDownLink').href = `/Projects?${filterParam}`;
+
+            let html = `
+                <div class="text-center py-3">
+                    <div class="mb-3">
+                        <span class="badge fs-1" style="background: ${color}; padding: 1rem 2rem;">${count}</span>
+                    </div>
+                    <h5>${statusText}</h5>
+                    <p class="text-muted">اضغط على "عرض الكل" لرؤية قائمة المشاريع</p>
+                </div>
+            `;
+
+            // If delayed, show quick list from available data
+            if (status === 'delayed') {
+                html = `<div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>المشروع</th>
+                                <th>المبادرة</th>
+                                <th>الإنجاز</th>
+                                <th>التأخير</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                @foreach (var p in Model.OverdueProjects.Take(10))
+                {
+                            var days = p.ActualEndDate.HasValue ? Math.Max(0, (DateTime.Today - p.ActualEndDate.Value).Days) : 0;
+                            var progressColor = p.ProgressPercentage >= 50 ? "warning" : "danger";
+                            <text>
+                        html += `<tr>
+                            <td><strong>@Html.Raw(p.NameAr?.Replace("'", "\\'"))</strong><br><small class="text-muted">@p.Code</small></td>
+                            <td><small>@Html.Raw(p.Initiative?.NameAr?.Replace("'", "\\'") ?? "-")</small></td>
+                            <td>
+                                <div class="progress" style="width: 50px; height: 6px;">
+                                    <div class="progress-bar bg-@progressColor" style="width: @(p.ProgressPercentage)%"></div>
+                                </div>
+                                <small>@(p.ProgressPercentage)%</small>
+                            </td>
+                            <td><span class="badge bg-danger">@days يوم</span></td>
+                            <td><a href="/Projects/Details/@p.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
+                        </tr>`;
+                            </text>
+                }
+
+                html += `</tbody></table></div>`;
+
+                @if (Model.OverdueProjects.Count > 10)
+                {
+                            <text>
+                        html += `<div class="text-center py-2 border-top">
+                            <small class="text-muted">يوجد @(Model.OverdueProjects.Count - 10) مشروع آخر...</small>
+                        </div>`;
+                            </text>
+                }
+            }
+
+            document.getElementById('drillDownContent').innerHTML = html;
+            modal.show();
+        }
+
+        // Function to show unit drill-down - استخدام ExternalUnitId
+        function showUnitDrillDown(unitName, unitId) {
+            const modal = new bootstrap.Modal(document.getElementById('drillDownModal'));
+            document.getElementById('drillDownLabel').innerHTML = `<i class="bi bi-building me-1"></i> ${unitName}`;
+            document.getElementById('drillDownLink').href = `/Initiatives?ExternalUnitId=${unitId}`;
+
+            document.getElementById('drillDownContent').innerHTML = `
+                <div class="row g-3 p-3">
+                    <div class="col-md-6">
+                        <a href="/Initiatives?ExternalUnitId=${unitId}" class="card text-decoration-none h-100">
+                            <div class="card-body text-center">
+                                <i class="bi bi-lightning-charge text-primary" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2 text-dark">المبادرات</h6>
+                                <small class="text-muted">عرض مبادرات هذه الوحدة</small>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/Projects?ExternalUnitId=${unitId}" class="card text-decoration-none h-100">
+                            <div class="card-body text-center">
+                                <i class="bi bi-folder text-success" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2 text-dark">المشاريع</h6>
+                                <small class="text-muted">عرض مشاريع هذه الوحدة</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            `;
+            modal.show();
+        }
+
+        // ======== Charts ========
+        // Project Status Doughnut Chart with Click Handler
+        const statusChart = new Chart(document.getElementById('projectStatusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['مكتمل', 'قيد التنفيذ', 'متأخر'],
+                datasets: [{
+                    data: [@Model.CompletedProjects, @Model.InProgressProjects, @Model.DelayedProjects],
+                    backgroundColor: ['#10b981', '#3b82f6', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '60%',
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const statuses = ['completed', 'inProgress', 'delayed'];
+                        const labels = ['مكتمل', 'قيد التنفيذ', 'متأخر'];
+                        const colors = ['#10b981', '#3b82f6', '#ef4444'];
+                        const counts = [@Model.CompletedProjects, @Model.InProgressProjects, @Model.DelayedProjects];
+                        showStatusDrillDown(statuses[index], labels[index], colors[index], counts[index]);
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { family: 'Tajawal', size: 11 },
+                            padding: 12,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                return '👆 اضغط للتفاصيل';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Unit Performance Horizontal Bar Chart with Click Handler
+        @if (Model.UnitSummaries.Any())
+        {
+                    <text>
+                    const unitIds = [@Html.Raw(string.Join(",", Model.UnitSummaries.Take(6).Select(u => u.ExternalUnitId ?? u.UnitId ?? 0)))];
+                    const unitNames = [@Html.Raw(string.Join(",", Model.UnitSummaries.Take(6).Select(u => $"'{u.UnitName?.Replace("'", "\\'") ?? ""}'")))];
+
+                    new Chart(document.getElementById('unitPerformanceChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: unitNames,
+                            datasets: [{
+                                label: 'نسبة الإنجاز',
+                                data: [@string.Join(",", Model.UnitSummaries.Take(6).Select(u => u.AverageProgress))],
+                                backgroundColor: [
+                                    @Html.Raw(string.Join(",", Model.UnitSummaries.Take(6).Select(u =>
+                                        u.AverageProgress >= 80 ? "'#10b981'" :
+                                        u.AverageProgress >= 50 ? "'#3b82f6'" :
+                                        u.AverageProgress >= 30 ? "'#f59e0b'" : "'#ef4444'")))
+                ],
+                borderRadius: 6,
+                barThickness: 25
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            onClick: (event, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    showUnitDrillDown(unitNames[index], unitIds[index]);
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 100,
+                    grid: { display: false },
+                    ticks: {
+                        callback: function(value) { return value + '%'; },
+                        font: { family: 'Tajawal' }
+                    }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { family: 'Tajawal', size: 11 }
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.x + '%';
+                        },
+                        afterLabel: function(context) {
+                            return '👆 اضغط للتفاصيل';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    </text>
+        }
+    </script>
+}

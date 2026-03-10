@@ -1,0 +1,626 @@
+@model OperationalPlanMS.Models.ViewModels.StepDetailsViewModel
+@using OperationalPlanMS.Models
+@using OperationalPlanMS.Models.Entities
+@{
+    ViewData["Title"] = Model.Step.NameAr;
+    var canEdit = (bool)(ViewBag.CanEdit ?? false);
+    var isAdmin = (ViewBag.UserRole as UserRole?) == UserRole.Admin;
+    var isStepApprover = (bool)(ViewBag.IsStepApprover ?? false);
+    var isPendingApproval = Model.Step.ApprovalStatus == ApprovalStatus.Pending;
+    var isApproved = Model.Step.ApprovalStatus == ApprovalStatus.Approved;
+    var isRejected = Model.Step.ApprovalStatus == ApprovalStatus.Rejected;
+
+    // اسم المسؤول - من API أو من النظام القديم
+    var assignedToName = !string.IsNullOrEmpty(Model.Step.AssignedToName)
+        ? $"{Model.Step.AssignedToRank} {Model.Step.AssignedToName}".Trim()
+        : Model.Step.AssignedTo?.FullNameAr ?? "غير معين";
+    var assignedToEmpNumber = Model.Step.AssignedToEmpNumber;
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="badge bg-primary fs-6">خطوة @Model.Step.StepNumber</span>
+            <h4 class="mb-0">@Model.Step.NameAr</h4>
+            <span class="badge @Model.StatusBadgeClass">@Model.StatusText</span>
+            @if (isPendingApproval)
+            {
+                <span class="badge bg-warning text-dark">
+                    <i class="bi bi-hourglass-split me-1"></i>بانتظار التأكيد
+                </span>
+            }
+            else if (isApproved)
+            {
+                <span class="badge bg-success">
+                    <i class="bi bi-check-circle me-1"></i>مؤكدة
+                </span>
+            }
+            else if (isRejected)
+            {
+                <span class="badge bg-danger">
+                    <i class="bi bi-x-circle me-1"></i>مرفوضة
+                </span>
+            }
+        </div>
+        <p class="text-muted mb-0">
+            @Model.Step.NameEn
+            <br>
+            <small>
+                <a href="/Projects/Details/@Model.Step.ProjectId">
+                    <i class="bi bi-folder me-1"></i>@Model.Step.Project?.NameAr
+                </a>
+                @if (Model.Step.Project?.Initiative != null)
+                {
+                    <span class="mx-2">|</span>
+                    <a href="/Initiatives/Details/@Model.Step.Project.Initiative.Id">
+                        <i class="bi bi-lightning-charge me-1"></i>@Model.Step.Project.Initiative.NameAr
+                    </a>
+                }
+            </small>
+        </p>
+    </div>
+    <div>
+        @if (canEdit)
+        {
+            <a href="/Steps/Edit/@Model.Step.Id" class="btn btn-warning">
+                <i class="bi bi-pencil me-2"></i>تعديل
+            </a>
+        }
+        <a href="/Projects/Details/@Model.Step.ProjectId" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-arrow-right me-2"></i>رجوع للمشروع
+        </a>
+    </div>
+</div>
+
+<!-- Alert if rejected -->
+@if (isRejected && !string.IsNullOrEmpty(Model.Step.RejectionReason))
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-x-circle me-2"></i>
+        <strong>تم رفض الخطوة!</strong>
+        <p class="mb-0 mt-2">
+            <strong>سبب الرفض:</strong> @Model.Step.RejectionReason
+        </p>
+        <small class="text-muted">يرجى مراجعة الملاحظات وإعادة إرسال الخطوة للتأكيد</small>
+    </div>
+}
+
+<!-- Alert if pending -->
+@if (isPendingApproval)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-hourglass-split me-2"></i>
+        <strong>الخطوة بانتظار التأكيد</strong>
+        <p class="mb-0 mt-1">
+            تم إرسال الخطوة للتأكيد بتاريخ @Model.Step.SubmittedForApprovalAt?.ToString("yyyy/MM/dd hh:mm tt")
+        </p>
+    </div>
+}
+
+<!-- Alert if delayed -->
+@if (Model.IsDelayed && !isPendingApproval && !isApproved)
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>تنبيه:</strong> هذه الخطوة متأخرة! تجاوز تاريخ النهاية المتوقع ونسبة الإنجاز أقل من 100%
+    </div>
+}
+
+<!-- Approver Actions -->
+@if (isStepApprover && isPendingApproval)
+{
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning bg-opacity-25">
+            <i class="bi bi-clipboard-check me-2"></i>إجراءات المؤكد
+        </div>
+        <div class="card-body">
+            <div class="d-flex gap-3">
+                <form asp-action="ApproveStep" asp-route-id="@Model.Step.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('هل أنت متأكد من تأكيد هذه الخطوة؟ سيتم احتساب الوزن في المشروع.')">
+                        <i class="bi bi-check-lg me-2"></i>تأكيد الخطوة
+                    </button>
+                </form>
+                <button type="button" class="btn btn-danger btn-lg" data-bs-toggle="modal" data-bs-target="#rejectStepModal">
+                    <i class="bi bi-x-lg me-2"></i>رفض الخطوة
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100 @(Model.IsCompleted && isApproved ? "border-success" : Model.IsDelayed ? "border-danger" : isPendingApproval ? "border-warning" : "border-primary")">
+            <div class="card-body">
+                <i class="bi bi-percent @(Model.IsCompleted && isApproved ? "text-success" : Model.IsDelayed ? "text-danger" : isPendingApproval ? "text-warning" : "text-primary")" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">@Model.Step.ProgressPercentage%</h3>
+                <p class="text-muted mb-0">نسبة الإنجاز</p>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar @(Model.IsCompleted && isApproved ? "bg-success" : Model.IsDelayed ? "bg-danger" : isPendingApproval ? "bg-warning" : "bg-primary")" style="width: @Model.Step.ProgressPercentage%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100 border-info">
+            <div class="card-body">
+                <i class="bi bi-bar-chart text-info" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">@Model.Step.Weight%</h3>
+                <p class="text-muted mb-0">الوزن من المشروع</p>
+                <small class="text-muted">
+                    @if (isApproved)
+                    {
+                        <span class="text-success">✓ مُضاف للمشروع</span>
+                    }
+                    else if (isPendingApproval)
+                    {
+                        <span class="text-warning">⏳ بانتظار التأكيد</span>
+                    }
+                    else
+                    {
+                        <span>يُضاف بعد التأكيد</span>
+                    }
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="bi bi-person text-secondary" style="font-size: 2rem;"></i>
+                <h5 class="mt-2 mb-0">@assignedToName</h5>
+                <p class="text-muted mb-0">المسؤول</p>
+                @if (!string.IsNullOrEmpty(assignedToEmpNumber))
+                {
+                    <small class="text-muted">@assignedToEmpNumber</small>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="bi bi-flag @Model.StatusBadgeClass.Replace("bg-", "text-")" style="font-size: 2rem;"></i>
+                <h5 class="mt-2 mb-0">@Model.StatusText</h5>
+                <p class="text-muted mb-0">الحالة</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Description -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>التفاصيل
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong class="text-muted d-block">الوصف بالعربية</strong>
+                        <p>@(Model.Step.DescriptionAr ?? "لا يوجد وصف")</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong class="text-muted d-block">الوصف بالإنجليزية</strong>
+                        <p dir="ltr" class="text-end">@(Model.Step.DescriptionEn ?? "No description")</p>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.Step.Notes))
+                    {
+                        <div class="col-12">
+                            <strong class="text-muted d-block">ملاحظات الخطوة</strong>
+                            <p class="mb-0">@Model.Step.Notes</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Completion Details & Attachments -->
+        @if (!string.IsNullOrEmpty(Model.Step.CompletionDetails) || (Model.Step.Attachments != null && Model.Step.Attachments.Any()))
+        {
+            <div class="card mb-4 @(isApproved ? "border-success" : isPendingApproval ? "border-warning" : "")">
+                <div class="card-header @(isApproved ? "bg-success text-white" : isPendingApproval ? "bg-warning" : "")">
+                    <i class="bi bi-file-check me-2"></i>توثيق الإتمام
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.Step.CompletionDetails))
+                    {
+                        <div class="mb-3">
+                            <strong class="text-muted d-block">تفاصيل الإتمام:</strong>
+                            <p class="mb-0">@Model.Step.CompletionDetails</p>
+                        </div>
+                    }
+                    @if (Model.Step.Attachments != null && Model.Step.Attachments.Any())
+                    {
+                        <div>
+                            <strong class="text-muted d-block mb-2">المرفقات:</strong>
+                            @foreach (var attachment in Model.Step.Attachments)
+                            {
+                                var isPdf = attachment.ContentType.Contains("pdf");
+                                <button type="button" class="btn btn-outline-primary me-2 mb-2"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#attachmentModal_@attachment.Id">
+                                    <i class="bi @(isPdf ? "bi-file-pdf text-danger" : "bi-file-image text-success") me-1"></i>
+                                    @attachment.FileName
+                                    <small class="text-muted">(@(attachment.FileSize / 1024) KB)</small>
+                                </button>
+
+                                <!-- Modal للمرفق -->
+                                <div class="modal fade" id="attachmentModal_@attachment.Id" tabindex="-1">
+                                    <div class="modal-dialog modal-xl modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">
+                                                    <i class="bi @(isPdf ? "bi-file-pdf text-danger" : "bi-file-image text-success") me-2"></i>
+                                                    @attachment.FileName
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body text-center p-0" style="min-height: 500px;">
+                                                @if (isPdf)
+                                                {
+                                                    <iframe src="@attachment.FilePath" style="width: 100%; height: 600px; border: none;"></iframe>
+                                                }
+                                                else
+                                                {
+                                                    <img src="@attachment.FilePath" alt="@attachment.FileName" class="img-fluid" style="max-height: 600px;">
+                                                }
+                                            </div>
+                                            <div class="modal-footer justify-content-between">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-person me-1"></i>@attachment.UploadedBy?.FullNameAr
+                                                    <span class="mx-2">|</span>
+                                                    <i class="bi bi-calendar me-1"></i>@attachment.UploadedAt.ToString("yyyy/MM/dd hh:mm tt")
+                                                </small>
+                                                <div>
+                                                    <a href="@attachment.FilePath" download class="btn btn-outline-primary">
+                                                        <i class="bi bi-download me-1"></i>تحميل
+                                                    </a>
+                                                    <a href="@attachment.FilePath" target="_blank" class="btn btn-primary">
+                                                        <i class="bi bi-box-arrow-up-right me-1"></i>فتح في نافذة جديدة
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (isApproved && Model.Step.ApprovedBy != null)
+                    {
+                        <hr>
+                        <small class="text-muted">
+                            <i class="bi bi-check-circle text-success me-1"></i>
+                            تم التأكيد بواسطة <strong>@Model.Step.ApprovedBy.FullNameAr</strong>
+                            بتاريخ @Model.Step.ApprovedAt?.ToString("yyyy/MM/dd hh:mm tt")
+                        </small>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Notes Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-text me-2"></i>سجل الملاحظات والتحديثات (@Model.Notes.Count)</span>
+            </div>
+            <div class="card-body">
+                <!-- Add Note Form -->
+                @if (canEdit)
+                {
+                    <form asp-action="AddNote" asp-controller="Steps" method="post" class="mb-4">
+                        <input type="hidden" name="id" value="@Model.Step.Id" />
+                        <div class="row g-2">
+                            <div class="col">
+                                <textarea name="notes" class="form-control" rows="2" placeholder="أضف ملاحظة أو تحديث..." required></textarea>
+                            </div>
+                            <div class="col-auto d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>إضافة
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                }
+
+                <!-- Notes List -->
+                @if (Model.Notes.Any())
+                {
+                    <div class="notes-timeline">
+                        @foreach (var note in Model.Notes)
+                        {
+                            var isProgressUpdate = note.ProgressPercentage > 0 || note.PreviousPercentage > 0;
+                            var isNoteType = note.UpdateType == UpdateType.Note;
+                            <div class="d-flex mb-3 pb-3 border-bottom note-item" id="note-@note.Id">
+                                <div class="flex-shrink-0">
+                                    <div class="avatar @(isProgressUpdate ? "bg-success" : "bg-light") rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        <i class="bi @(isProgressUpdate ? "bi-graph-up text-white" : "bi-chat-text text-secondary")"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <strong class="small">@note.CreatedBy?.FullNameAr</strong>
+                                            @if (isProgressUpdate)
+                                            {
+                                                <span class="badge bg-success ms-2">
+                                                    @note.PreviousPercentage% → @note.ProgressPercentage%
+                                                </span>
+                                            }
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <small class="text-muted">@note.CreatedAt.ToString("yyyy-MM-dd HH:mm")</small>
+                                            @if (isAdmin && isNoteType)
+                                            {
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                                            onclick="editNote(@note.Id, '@Html.Raw(note.NotesAr?.Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))')"
+                                                            title="تعديل">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
+                                                            onclick="deleteNote(@note.Id)"
+                                                            title="حذف">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(note.NotesAr))
+                                    {
+                                        <p class="mb-0 mt-1 note-text">@note.NotesAr</p>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-chat-square-text" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">لا توجد ملاحظات أو تحديثات</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Edit/Delete Note Modals -->
+        @if (isAdmin)
+        {
+            <div class="modal fade" id="editNoteModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form asp-action="EditNote" asp-controller="Steps" method="post">
+                            <input type="hidden" name="noteId" id="editNoteId" />
+                            <input type="hidden" name="stepId" value="@Model.Step.Id" />
+                            <div class="modal-header">
+                                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>تعديل الملاحظة</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <textarea name="notes" id="editNoteText" class="form-control" rows="4" required></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="deleteNoteModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form asp-action="DeleteNote" asp-controller="Steps" method="post">
+                            <input type="hidden" name="noteId" id="deleteNoteId" />
+                            <input type="hidden" name="stepId" value="@Model.Step.Id" />
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title"><i class="bi bi-trash me-2"></i>حذف الملاحظة</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>هل أنت متأكد من حذف هذه الملاحظة؟</p>
+                                <p class="text-danger"><small>هذا الإجراء لا يمكن التراجع عنه.</small></p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-danger">حذف</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Side Panel -->
+    <div class="col-lg-4">
+        <!-- Dates -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-calendar me-2"></i>التواريخ
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    @if (Model.Step.ActualStartDate.HasValue)
+                    {
+                        <tr>
+                            <td class="text-muted">تاريخ البداية</td>
+                            <td class="text-end">@Model.Step.ActualStartDate.Value.ToString("yyyy-MM-dd")</td>
+                        </tr>
+                    }
+                    @if (Model.Step.ActualEndDate.HasValue)
+                    {
+                        <tr>
+                            <td class="text-muted">تاريخ النهاية المتوقع</td>
+                            <td class="text-end @(Model.IsDelayed ? "text-danger fw-bold" : "")">
+                                @Model.Step.ActualEndDate.Value.ToString("yyyy-MM-dd")
+                                @if (Model.IsDelayed)
+                                {
+                                    <i class="bi bi-exclamation-triangle ms-1"></i>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Step.ActualStartDate.HasValue && !Model.Step.ActualEndDate.HasValue)
+                    {
+                        <tr>
+                            <td colspan="2" class="text-center text-muted">لم تُحدد التواريخ بعد</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+
+        <!-- Submit for Approval Form -->
+        @if (canEdit && !Model.IsCompleted && !isPendingApproval)
+        {
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-send me-2"></i>إرسال للتأكيد
+                </div>
+                <div class="card-body">
+                    <form asp-action="SubmitForApproval" asp-controller="Steps" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="id" value="@Model.Step.Id" />
+
+                        <div class="mb-3">
+                            <label class="form-label">تفاصيل الإتمام</label>
+                            <textarea name="completionDetails" class="form-control" rows="3" placeholder="اكتب تفاصيل ما تم إنجازه..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                ملف التوثيق <span class="text-danger">*</span>
+                            </label>
+                            <input type="file" name="attachmentFile" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required />
+                            <small class="text-muted">PDF أو صورة (JPG, PNG) - حد أقصى 10 MB</small>
+                        </div>
+
+                        <div class="alert alert-info py-2 mb-3">
+                            <small>
+                                <i class="bi bi-info-circle me-1"></i>
+                                بعد الإرسال، ستنتقل الخطوة لمؤكد الخطوات للمراجعة والتأكيد
+                            </small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-send me-2"></i>إرسال للتأكيد
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <!-- Update Progress (only if not pending and not completed) -->
+        @if (canEdit && !Model.IsCompleted && !isPendingApproval && Model.Step.ApprovalStatus != ApprovalStatus.Approved)
+        {
+            <div class="card mb-4 border-success">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-graph-up me-2"></i>تحديث نسبة الإنجاز
+                </div>
+                <div class="card-body">
+                    <form asp-action="UpdateProgress" asp-controller="Steps" method="post">
+                        <input type="hidden" name="id" value="@Model.Step.Id" />
+                        <div class="mb-3">
+                            <label class="form-label">نسبة الإنجاز الجديدة</label>
+                            <div class="input-group">
+                                <input type="number" name="progress" class="form-control" value="@Model.Step.ProgressPercentage" min="0" max="99" step="1" />
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="text-muted">للوصول لـ 100% استخدم "إرسال للتأكيد"</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">ملاحظات (اختياري)</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="سبب التحديث..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check me-2"></i>تحديث النسبة
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <!-- Audit Info -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>معلومات إضافية
+            </div>
+            <div class="card-body">
+                <small class="text-muted d-block">
+                    <strong>أنشئ بواسطة:</strong> @Model.Step.CreatedBy?.FullNameAr
+                </small>
+                <small class="text-muted d-block">
+                    <strong>تاريخ الإنشاء:</strong> @Model.Step.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                </small>
+                @if (Model.Step.LastModifiedAt.HasValue)
+                {
+                    <small class="text-muted d-block mt-2">
+                        <strong>آخر تعديل:</strong> @Model.Step.LastModifiedAt.Value.ToString("yyyy-MM-dd HH:mm")
+                    </small>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Step Modal (for approvers) -->
+@if (isStepApprover && isPendingApproval)
+{
+    <div class="modal fade" id="rejectStepModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="RejectStep" asp-route-id="@Model.Step.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-x-circle me-2"></i>رفض الخطوة
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">
+                            <strong>الخطوة:</strong> @Model.Step.NameAr
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label">سبب الرفض <span class="text-danger">*</span></label>
+                            <textarea name="rejectionReason" class="form-control" rows="4" required
+                                  placeholder="اكتب سبب رفض الخطوة بالتفصيل..."></textarea>
+                            <small class="text-muted">سيتم إرسال هذا السبب لمسؤول الخطوة</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-lg me-1"></i>تأكيد الرفض
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        function editNote(noteId, noteText) {
+            document.getElementById('editNoteId').value = noteId;
+            document.getElementById('editNoteText').value = noteText;
+            new bootstrap.Modal(document.getElementById('editNoteModal')).show();
+        }
+
+        function deleteNote(noteId) {
+            document.getElementById('deleteNoteId').value = noteId;
+            new bootstrap.Modal(document.getElementById('deleteNoteModal')).show();
+        }
+    </script>
+}

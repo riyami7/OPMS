@@ -1,0 +1,234 @@
+@model OperationalPlanMS.Models.ViewModels.StepListViewModel
+@{
+    ViewData["Title"] = "الخطوات";
+    var canEdit = (bool)(ViewBag.CanEdit ?? false);
+}
+
+<style>
+    .welcome-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        color: white;
+    }
+</style>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4 welcome-banner">
+    <div>
+        <h4 class="mb-1">إدارة الخطوات</h4>
+        <p class="text-white mb-0">عرض جميع الخطوات - لإضافة خطوة جديدة، اذهب إلى صفحة المشروع</p>
+    </div>
+</div>
+
+<!-- Filters Card -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" asp-action="Index">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">البحث</label>
+                    <input type="text" class="form-control" asp-for="SearchTerm" placeholder="البحث بالاسم..." />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">الحالة</label>
+                    <select class="form-select" asp-for="StatusFilter" asp-items="Model.Statuses">
+                        <option value="">-- الكل --</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">المشروع</label>
+                    <select class="form-select" asp-for="ProjectId" asp-items="Model.Projects">
+                        <option value="">-- الكل --</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="bi bi-search me-1"></i>بحث
+                    </button>
+                    <a href="/Steps" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results Info -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-muted">عرض @Model.Steps.Count من @Model.TotalCount نتيجة</span>
+</div>
+
+<!-- Steps Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">#</th>
+                        <th>الخطوة</th>
+                        <th>المشروع</th>
+                        <th>المسؤول</th>
+                        <th style="width: 80px;">الوزن</th>
+                        <th style="width: 100px;">الحالة</th>
+                        <th style="width: 140px;">التقدم</th>
+                        <th style="width: 100px;">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Steps.Any())
+                    {
+                        @foreach (var item in Model.Steps)
+                        {
+                            var supervisorName = !string.IsNullOrEmpty(item.AssignedToName)
+                            ? item.AssignedToName
+                            : item.AssignedTo?.FullNameAr ?? "-";
+
+                            var supervisorRank = !string.IsNullOrEmpty(item.AssignedToRank)
+                            ? item.AssignedToRank
+                            : "";
+
+                            var supervisorEmpNumber = !string.IsNullOrEmpty(item.AssignedToEmpNumber)
+                            ? item.AssignedToEmpNumber
+                            : "";
+
+                            // حساب الحالة تلقائياً
+                            var isCompleted = item.ProgressPercentage >= 100;
+                            var isDelayed = item.ActualEndDate.HasValue && 
+                                           item.ActualEndDate.Value < DateTime.Today && 
+                                           item.ProgressPercentage < 100;
+                            var isInProgress = item.ProgressPercentage > 0 && !isCompleted;
+                            
+                            var statusClass = isCompleted ? "badge-completed" :
+                                             isDelayed ? "badge-delayed" :
+                                             isInProgress ? "badge-inprogress" :
+                                             item.Status == StepStatus.OnHold ? "badge-onhold" :
+                                             item.Status == StepStatus.Cancelled ? "badge-cancelled" : "badge-draft";
+                            
+                            var statusText = isCompleted ? "مكتمل" :
+                                            isDelayed ? "متأخر" :
+                                            isInProgress ? "قيد التنفيذ" :
+                                            item.Status == StepStatus.OnHold ? "متوقف" :
+                                            item.Status == StepStatus.Cancelled ? "ملغي" : "لم يبدأ";
+                            
+                            var progressClass = item.ProgressPercentage < 40 ? "bg-danger" :
+                                               item.ProgressPercentage < 70 ? "bg-warning" : "bg-success";
+                            <tr class="@(isDelayed ? "table-danger" : "")">
+                                <td class="text-center fw-bold">@item.StepNumber</td>
+                                <td>
+                                    <a href="/Steps/Details/@item.Id" class="fw-bold text-decoration-none">
+                                        @item.NameAr
+                                    </a>
+                                    @if (!string.IsNullOrEmpty(item.NameEn))
+                                    {
+                                        <br>
+                                        <small class="text-muted">@item.NameEn</small>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="/Projects/Details/@item.ProjectId" class="text-decoration-none">
+                                        <i class="bi bi-folder text-success me-1"></i>@item.Project?.NameAr
+                                    </a>
+                                    @if (item.Project?.Initiative != null)
+                                    {
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="bi bi-lightning-charge me-1"></i>@item.Project.Initiative.NameAr
+                                        </small>
+                                    }
+                                </td>
+                                <td>
+                                
+                                    <span>@supervisorName</span>
+                                    @if (!string.IsNullOrEmpty(supervisorRank))
+                                    {
+                                        <br>
+                                        <small class="text-muted">@supervisorRank</small>
+                                    }
+                                    @if (!string.IsNullOrEmpty(supervisorEmpNumber))
+                                    {
+                                        <br>
+                                        <small class="text-secondary"><i class="bi bi-person-badge me-1"></i>@supervisorEmpNumber</small>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-info">@item.Weight%</span>
+                                </td>
+                                <td>
+                                    <span class="badge @statusClass">@statusText</span>
+                                    @if (isDelayed)
+                                    {
+                                        <i class="bi bi-exclamation-triangle text-danger ms-1"></i>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-fill" style="height: 6px;">
+                                            <div class="progress-bar @progressClass" style="width: @item.ProgressPercentage%"></div>
+                                        </div>
+                                        <small class="text-nowrap fw-bold">@item.ProgressPercentage%</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/Steps/Details/@item.Id" class="btn btn-outline-primary" title="عرض">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        @if (canEdit)
+                                        {
+                                            <a href="/Steps/Edit/@item.Id" class="btn btn-outline-warning" title="تعديل">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="/Steps/Delete/@item.Id" class="btn btn-outline-danger" title="حذف">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="bi bi-list-check text-muted" style="font-size: 3rem;"></i>
+                                <p class="text-muted mt-2 mb-0">لا توجد خطوات</p>
+                                <p class="text-muted small">لإضافة خطوة، اذهب إلى صفحة المشروع المطلوب</p>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="?CurrentPage=@(Model.CurrentPage - 1)&SearchTerm=@Model.SearchTerm&StatusFilter=@Model.StatusFilter&ProjectId=@Model.ProjectId">
+                    السابق
+                </a>
+            </li>
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                    <a class="page-link" href="?CurrentPage=@i&SearchTerm=@Model.SearchTerm&StatusFilter=@Model.StatusFilter&ProjectId=@Model.ProjectId">
+                        @i
+                    </a>
+                </li>
+            }
+            <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="?CurrentPage=@(Model.CurrentPage + 1)&SearchTerm=@Model.SearchTerm&StatusFilter=@Model.StatusFilter&ProjectId=@Model.ProjectId">
+                    التالي
+                </a>
+            </li>
+        </ul>
+    </nav>
+}

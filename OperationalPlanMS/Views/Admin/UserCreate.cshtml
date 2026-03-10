@@ -1,0 +1,441 @@
+@model OperationalPlanMS.Models.ViewModels.UserFormViewModel
+@{
+    ViewData["Title"] = "إضافة مستخدم";
+}
+
+<style>
+    .employee-search-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        color: white;
+        margin-bottom: 1.5rem;
+    }
+
+    .employee-info-card {
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        display: none;
+    }
+
+        .employee-info-card.has-data {
+            display: block;
+            border: 2px solid #28a745;
+            background: #f0fff4;
+        }
+
+    .info-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-bottom: 0.25rem;
+    }
+
+    .info-value {
+        font-weight: 600;
+        color: #1a1a2e;
+    }
+
+    .search-input-group {
+        position: relative;
+    }
+
+        .search-input-group .form-control {
+            padding-left: 2.5rem;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+
+        .search-input-group .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+
+    .btn-search {
+        background: white;
+        color: #667eea;
+        border: none;
+        font-weight: 600;
+    }
+
+        .btn-search:hover {
+            background: #f0f0f0;
+            color: #764ba2;
+        }
+
+    .loading-spinner {
+        display: none;
+    }
+
+        .loading-spinner.show {
+            display: inline-block;
+        }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1">إضافة مستخدم جديد</h4>
+        <p class="text-muted mb-0">ابحث برقم الموظف لتعبئة البيانات تلقائياً</p>
+    </div>
+    <a href="/Admin/Users" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-right me-2"></i>رجوع
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+
+        <!-- Employee Search Section -->
+        <div class="employee-search-card">
+            <h5 class="mb-3"><i class="bi bi-search me-2"></i>البحث عن الموظف</h5>
+            <div class="row align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label text-white-50">رقم الموظف</label>
+                    <div class="search-input-group">
+                        <i class="bi bi-person-badge search-icon"></i>
+                        <input type="text"
+                               id="employeeNumberSearch"
+                               class="form-control form-control-lg"
+                               placeholder="مثال: C1-1234"
+                               dir="ltr"
+                               style="text-align: left;" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <button type="button" id="btnSearchEmployee" class="btn btn-search btn-lg w-100">
+                        <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
+                        <i class="bi bi-search me-2 search-icon-btn"></i>
+                        <span class="btn-text">بحث</span>
+                    </button>
+                </div>
+            </div>
+            <div id="searchError" class="alert alert-warning mt-3 mb-0" style="display: none;">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <span id="searchErrorText"></span>
+            </div>
+        </div>
+
+        <!-- Employee Info Display -->
+        <div id="employeeInfoCard" class="employee-info-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 text-success">
+                    <i class="bi bi-check-circle me-2"></i>بيانات الموظف
+                </h5>
+                <button type="button" id="btnClearEmployee" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-x-lg me-1"></i>مسح
+                </button>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="info-label">رقم الموظف</div>
+                    <div class="info-value" id="displayEmpNumber">-</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-label">الاسم</div>
+                    <div class="info-value" id="displayEmpName">-</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-label">الرتبة</div>
+                    <div class="info-value" id="displayEmpRank">-</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-label">الوحدة</div>
+                    <div class="info-value" id="displayEmpUnit">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Form -->
+        <div class="card">
+            <div class="card-header bg-light">
+                <i class="bi bi-person-plus me-2"></i>بيانات المستخدم
+            </div>
+            <div class="card-body">
+                <form asp-action="UserCreate" method="post" id="userForm">
+
+                    <!-- Hidden fields for API data -->
+                    <input type="hidden" asp-for="EmployeeRank" id="hiddenEmployeeRank" />
+                    <input type="hidden" asp-for="EmployeePosition" id="hiddenEmployeePosition" />
+                    <input type="hidden" asp-for="BranchName" id="hiddenBranchName" />
+                    <input type="hidden" asp-for="ExternalUnitId" id="hiddenExternalUnitId" />
+                    <input type="hidden" asp-for="ExternalUnitName" id="hiddenExternalUnitName" />
+
+                    <div class="row g-3">
+                        <!-- رقم الموظف / ADUsername -->
+                        <div class="col-md-6">
+                            <label asp-for="ADUsername" class="form-label">
+                                <i class="bi bi-person-badge me-1 text-primary"></i>رقم الموظف
+                            </label>
+                            <input asp-for="ADUsername"
+                                   class="form-control"
+                                   id="inputADUsername"
+                                   placeholder="C1-1234"
+                                   dir="ltr"
+                                   readonly />
+                            <span asp-validation-for="ADUsername" class="text-danger small"></span>
+                            <small class="text-muted">يُملأ تلقائياً من البحث</small>
+                        </div>
+
+                        <!-- البريد الإلكتروني -->
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="form-label">
+                                <i class="bi bi-envelope me-1 text-info"></i>البريد الإلكتروني
+                            </label>
+                            <input asp-for="Email" type="email" class="form-control" dir="ltr" placeholder="example@domain.com" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+
+                        <!-- الاسم بالعربية -->
+                        <div class="col-md-6">
+                            <label asp-for="FullNameAr" class="form-label">
+                                <i class="bi bi-person me-1 text-success"></i>الاسم بالعربية
+                            </label>
+                            <input asp-for="FullNameAr"
+                                   class="form-control"
+                                   id="inputFullNameAr"
+                                   placeholder="الاسم الكامل" />
+                            <span asp-validation-for="FullNameAr" class="text-danger small"></span>
+                        </div>
+
+                        <!-- الاسم بالإنجليزية -->
+                        <div class="col-md-6">
+                            <label asp-for="FullNameEn" class="form-label">
+                                <i class="bi bi-person me-1 text-secondary"></i>الاسم بالإنجليزية
+                            </label>
+                            <input asp-for="FullNameEn"
+                                   class="form-control"
+                                   id="inputFullNameEn"
+                                   dir="ltr"
+                                   placeholder="Full Name" />
+                            <span asp-validation-for="FullNameEn" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <hr class="my-2">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-shield-lock me-2"></i>الصلاحيات والإعدادات
+                            </h6>
+                        </div>
+
+                        <!-- الدور -->
+                        <div class="col-md-4">
+                            <label asp-for="RoleId" class="form-label">
+                                <i class="bi bi-person-gear me-1 text-warning"></i>الدور
+                            </label>
+                            <select asp-for="RoleId" asp-items="Model.Roles" class="form-select">
+                                <option value="">-- اختر الدور --</option>
+                            </select>
+                            <span asp-validation-for="RoleId" class="text-danger small"></span>
+                        </div>
+
+                        <!-- المنظمة -->
+                        <div class="col-md-4">
+                            <label asp-for="OrganizationId" class="form-label">
+                                <i class="bi bi-building me-1 text-primary"></i>المنظمة
+                            </label>
+                            <select asp-for="OrganizationId" asp-items="Model.Organizations" class="form-select">
+                                <option value="">-- اختر المنظمة --</option>
+                            </select>
+                            <span asp-validation-for="OrganizationId" class="text-danger small"></span>
+                        </div>
+
+                        <!-- الوحدة التنظيمية المحلية -->
+                        <div class="col-md-4">
+                            <label asp-for="OrganizationalUnitId" class="form-label">
+                                <i class="bi bi-diagram-3 me-1 text-info"></i>الوحدة المحلية
+                            </label>
+                            <select asp-for="OrganizationalUnitId" asp-items="Model.OrganizationalUnits" class="form-select">
+                                <option value="">-- اختياري --</option>
+                            </select>
+                            <small class="text-muted">اختياري - الوحدة من API تُحفظ تلقائياً</small>
+                        </div>
+
+                        <!-- Switches -->
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsActive" class="form-check-input" checked />
+                                <label asp-for="IsActive" class="form-check-label">
+                                    <i class="bi bi-toggle-on me-1 text-success"></i>نشط
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsStepApprover" class="form-check-input" />
+                                <label asp-for="IsStepApprover" class="form-check-label">
+                                    <i class="bi bi-check2-square me-1 text-primary"></i>مؤكد الخطوات
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill" id="btnSubmit" disabled>
+                            <i class="bi bi-check-circle me-2"></i>حفظ المستخدم
+                        </button>
+                        <a href="/Admin/Users" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-2"></i>إلغاء
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // العناصر
+            var btnSearch = document.getElementById('btnSearchEmployee');
+            var btnClear = document.getElementById('btnClearEmployee');
+            var btnSubmit = document.getElementById('btnSubmit');
+            var searchInput = document.getElementById('employeeNumberSearch');
+            var searchError = document.getElementById('searchError');
+            var searchErrorText = document.getElementById('searchErrorText');
+            var employeeInfoCard = document.getElementById('employeeInfoCard');
+
+            // البحث عند الضغط على زر البحث
+            btnSearch.addEventListener('click', function() {
+                searchEmployee();
+            });
+
+            // البحث عند الضغط على Enter
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchEmployee();
+                }
+            });
+
+            // مسح البيانات
+            btnClear.addEventListener('click', function() {
+                clearEmployeeData();
+            });
+
+            // دالة البحث عن الموظف
+            function searchEmployee() {
+                var empNumber = searchInput.value.trim();
+
+                if (!empNumber) {
+                    showError('الرجاء إدخال رقم الموظف');
+                    return;
+                }
+
+                // التحقق من الصيغة
+                var pattern = /^[A-Za-z]\d+-\d+$/;
+                if (!pattern.test(empNumber)) {
+                    showError('صيغة رقم الموظف غير صحيحة. الصيغة الصحيحة: C1-1234');
+                    return;
+                }
+
+                // إظهار التحميل
+                setLoading(true);
+                hideError();
+
+                // إرسال الطلب
+                fetch('/api/OrganizationApi/employees/by-number?empNumber=' + encodeURIComponent(empNumber))
+                    .then(function(response) {
+                        if (response.ok) {
+                            return response.json();
+                        } else if (response.status === 404) {
+                            throw new Error('لم يتم العثور على موظف بهذا الرقم');
+                        } else {
+                            throw new Error('حدث خطأ أثناء البحث');
+                        }
+                    })
+                    .then(function(data) {
+                        setLoading(false);
+                        if (data && data.empNumber) {
+                            fillEmployeeData(data);
+                        } else {
+                            showError('لم يتم العثور على موظف بهذا الرقم');
+                        }
+                    })
+                    .catch(function(error) {
+                        setLoading(false);
+                        showError(error.message || 'حدث خطأ أثناء البحث. حاول مرة أخرى.');
+                    });
+            }
+
+            // تعبئة بيانات الموظف
+            function fillEmployeeData(emp) {
+                // عرض البيانات في الكارد
+                document.getElementById('displayEmpNumber').textContent = emp.empNumber || '-';
+                document.getElementById('displayEmpName').textContent = emp.name || '-';
+                document.getElementById('displayEmpRank').textContent = emp.rank || '-';
+                document.getElementById('displayEmpUnit').textContent = emp.unit || '-';
+                employeeInfoCard.classList.add('has-data');
+
+                // تعبئة الحقول في الفورم
+                document.getElementById('inputADUsername').value = emp.empNumber || '';
+                document.getElementById('inputFullNameAr').value = emp.name || '';
+                document.getElementById('inputFullNameEn').value = emp.name || '';
+
+                // الحقول المخفية
+                document.getElementById('hiddenEmployeeRank').value = emp.rank || '';
+                document.getElementById('hiddenEmployeePosition').value = emp.position || '';
+                document.getElementById('hiddenBranchName').value = emp.branchName || '';
+                document.getElementById('hiddenExternalUnitName').value = emp.unit || '';
+
+                // تفعيل زر الحفظ
+                btnSubmit.disabled = false;
+            }
+
+            // مسح البيانات
+            function clearEmployeeData() {
+                employeeInfoCard.classList.remove('has-data');
+                searchInput.value = '';
+
+                document.getElementById('inputADUsername').value = '';
+                document.getElementById('inputFullNameAr').value = '';
+                document.getElementById('inputFullNameEn').value = '';
+
+                document.getElementById('hiddenEmployeeRank').value = '';
+                document.getElementById('hiddenEmployeePosition').value = '';
+                document.getElementById('hiddenBranchName').value = '';
+                document.getElementById('hiddenExternalUnitId').value = '';
+                document.getElementById('hiddenExternalUnitName').value = '';
+
+                btnSubmit.disabled = true;
+            }
+
+            // إظهار التحميل
+            function setLoading(isLoading) {
+                var spinner = document.querySelector('.loading-spinner');
+                var searchIcon = document.querySelector('.search-icon-btn');
+                var btnText = document.querySelector('.btn-text');
+
+                if (isLoading) {
+                    spinner.classList.add('show');
+                    searchIcon.style.display = 'none';
+                    btnText.textContent = 'جاري البحث...';
+                    btnSearch.disabled = true;
+                } else {
+                    spinner.classList.remove('show');
+                    searchIcon.style.display = '';
+                    btnText.textContent = 'بحث';
+                    btnSearch.disabled = false;
+                }
+            }
+
+            // إظهار رسالة خطأ
+            function showError(message) {
+                searchErrorText.textContent = message;
+                searchError.style.display = 'block';
+            }
+
+            // إخفاء رسالة الخطأ
+            function hideError() {
+                searchError.style.display = 'none';
+            }
+        });
+    </script>
+}
