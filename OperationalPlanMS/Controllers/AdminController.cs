@@ -90,6 +90,10 @@ namespace OperationalPlanMS.Controllers
                 model.UpdateEntity(entity);
                 _db.Users.Add(entity);
                 await _db.SaveChangesAsync();
+
+                // ربط المشاريع والخطوات التي عُيِّن عليها هذا الموظف مسبقاً
+                await SyncUserAssignments(entity.Id, entity.ADUsername);
+
                 TempData["SuccessMessage"] = "تم إضافة المستخدم بنجاح";
                 return RedirectToAction(nameof(Users));
             }
@@ -1057,6 +1061,25 @@ namespace OperationalPlanMS.Controllers
             ViewBag.ApiBaseUrl = _configuration["ExternalApi:BaseUrl"] ?? "غير محدد";
             ViewBag.ApiTenantId = _configuration["ExternalApi:TenantId"] ?? "1";
             return View();
+        }
+
+        private async Task SyncUserAssignments(int userId, string empNumber)
+        {
+            try
+            {
+                await _db.Projects
+                    .Where(p => p.ProjectManagerEmpNumber == empNumber
+                             && p.ProjectManagerId == null
+                             && !p.IsDeleted)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.ProjectManagerId, userId));
+
+                await _db.Steps
+                    .Where(s => s.AssignedToEmpNumber == empNumber
+                             && s.AssignedToId == null
+                             && !s.IsDeleted)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.AssignedToId, userId));
+            }
+            catch { }
         }
     }
 }

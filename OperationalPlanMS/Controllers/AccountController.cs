@@ -74,6 +74,9 @@ namespace OperationalPlanMS.Controllers
             user.LastLoginAt = DateTime.Now;
             await _db.SaveChangesAsync();
 
+            // ربط المشاريع والخطوات التي عُيِّن عليها هذا الموظف قبل إنشاء حسابه
+            await SyncUserAssignments(user.Id, user.ADUsername);
+
             if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
                 return Redirect(model.ReturnUrl);
 
@@ -163,5 +166,33 @@ namespace OperationalPlanMS.Controllers
         {
             return View();
         }
+        /// <summary>
+        /// عند تسجيل الدخول — يربط المشاريع والخطوات التي عُيِّن عليها الموظف
+        /// قبل إنشاء حسابه في النظام (AssignedToId / ProjectManagerId كانت null)
+        /// </summary>
+        private async Task SyncUserAssignments(int userId, string empNumber)
+        {
+            try
+            {
+                // ربط مشاريع لم تُربط بعد
+                await _db.Projects
+                    .Where(p => p.ProjectManagerEmpNumber == empNumber
+                             && p.ProjectManagerId == null
+                             && !p.IsDeleted)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.ProjectManagerId, userId));
+
+                // ربط خطوات لم تُربط بعد
+                await _db.Steps
+                    .Where(s => s.AssignedToEmpNumber == empNumber
+                             && s.AssignedToId == null
+                             && !s.IsDeleted)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.AssignedToId, userId));
+            }
+            catch
+            {
+                // لا نوقف تسجيل الدخول إذا فشل الـ sync
+            }
+        }
+
     }
 }

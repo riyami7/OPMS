@@ -26,8 +26,10 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 
 // Add MVC services
-builder.Services.AddControllersWithViews()
-    .AddRazorRuntimeCompilation();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<OperationalPlanMS.Filters.PendingApprovalsFilter>();
+}).AddRazorRuntimeCompilation();
 
 // External API Service
 builder.Services.AddHttpClient<IExternalApiService, ExternalApiService>();

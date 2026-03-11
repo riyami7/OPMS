@@ -7,11 +7,12 @@
     var isExecutive = userRole == UserRole.Executive;
     var isSupervisor = userRole == UserRole.Supervisor;
     var isUser = userRole == UserRole.User;
+    var isStepUser = userRole == UserRole.StepUser;
 
     // صلاحيات العرض
     var canViewDashboard = isAdmin || isExecutive;
     var canViewInitiatives = isAdmin || isExecutive || isSupervisor;
-    var canViewProjects = true; // الكل يرى المشاريع
+    var canViewProjects = !isStepUser; // StepUser لا يرى قائمة المشاريع
     var canViewSteps = true; // الكل يرى الخطوات
     var canViewReports = isAdmin || isExecutive || isSupervisor;
     var canViewAdmin = isAdmin;
@@ -82,33 +83,25 @@
             <nav class="sidebar-nav">
                 <ul class="nav flex-column">
 
-                    <!-- الخطة الاستراتيجية - للجميع -->
-
-                    <li class="nav-item">
-                        <a class="nav-link @(isStrategicActive ? "active" : "")" href="/Home/StrategicOverview">
-                            <i class="bi bi-bullseye"></i>
-                            <span>الخطة الاستراتيجية</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" href="/">
-                            <i class="bi bi-house"></i>
-                            <span>الرئيسية</span>
-                        </a>
-                    </li>
-                    <!-- لوحة المعلومات - Admin & Executive فقط -->
-                    @*   @if (canViewDashboard)
+                    <!-- الخطة الاستراتيجية - ليس للـ StepUser -->
+                    @if (!isStepUser)
                     {
                         <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" href="/Dashboard">
-                                <i class="bi bi-speedometer2"></i>
-                                <span>لوحة المعلومات</span>
+                            <a class="nav-link @(isStrategicActive ? "active" : "")" href="/Home/StrategicOverview">
+                                <i class="bi bi-bullseye"></i>
+                                <span>الخطة الاستراتيجية</span>
                             </a>
                         </li>
-                    } *@
 
-                    <li class="nav-section">الإدارة</li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" href="/">
+                                <i class="bi bi-house"></i>
+                                <span>الرئيسية</span>
+                            </a>
+                        </li>
+                    }
+
+                    <li class="nav-section">@(isStepUser ? "مهامي" : "الإدارة")</li>
 
                     <!-- المبادرات - Admin, Executive, Supervisor -->
                     @if (canViewInitiatives)
@@ -138,7 +131,7 @@
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Steps" && ViewContext.RouteData.Values["action"]?.ToString() != "PendingApprovals" ? "active" : "")" href="/Steps">
                                 <i class="bi bi-list-check"></i>
-                                <span>@(isUser ? "مهامي" : "الخطوات")</span>
+                                <span>@(isStepUser ? "خطواتي" : isUser ? "مهامي" : "الخطوات")</span>
                             </a>
                         </li>
                     }
@@ -154,6 +147,10 @@
                             <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "PendingApprovals" ? "active" : "")" href="/Steps/PendingApprovals">
                                 <i class="bi bi-clipboard-check"></i>
                                 <span>تأكيد الخطوات</span>
+                                @if (ViewBag.PendingApprovalsCount != null && (int)ViewBag.PendingApprovalsCount > 0)
+                                {
+                                    <span class="badge bg-danger ms-auto">@ViewBag.PendingApprovalsCount</span>
+                                }
                             </a>
                         </li>
                     }

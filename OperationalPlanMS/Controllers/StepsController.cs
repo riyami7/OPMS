@@ -265,8 +265,10 @@ namespace OperationalPlanMS.Controllers
                 };
 
                 model.UpdateEntity(step);
-                // ربط المعيّن إليه بـ User في DB عبر ADUsername
                 step.AssignedToId = await ResolveUserIdByEmpNumber(model.AssignedToEmpNumber);
+                // تحذير إذا المعيّن إليه غير مسجّل في النظام
+                if (!string.IsNullOrWhiteSpace(model.AssignedToEmpNumber) && step.AssignedToId == null)
+                    TempData["WarningMessage"] = $"تنبيه: مسؤول الخطوة ({model.AssignedToName}) غير مسجّل في النظام. يرجى إضافته من إدارة المستخدمين حتى يتمكن من رؤية الخطوة.";
 
                 _db.Steps.Add(step);
                 await _db.SaveChangesAsync();
@@ -356,8 +358,10 @@ namespace OperationalPlanMS.Controllers
             if (ModelState.IsValid)
             {
                 model.UpdateEntity(step);
-                // ربط المعيّن إليه بـ User في DB عبر ADUsername
                 step.AssignedToId = await ResolveUserIdByEmpNumber(model.AssignedToEmpNumber);
+                // تحذير إذا المعيّن إليه غير مسجّل في النظام
+                if (!string.IsNullOrWhiteSpace(model.AssignedToEmpNumber) && step.AssignedToId == null)
+                    TempData["WarningMessage"] = $"تنبيه: مسؤول الخطوة ({model.AssignedToName}) غير مسجّل في النظام. يرجى إضافته من إدارة المستخدمين حتى يتمكن من رؤية الخطوة.";
                 step.LastModifiedById = GetCurrentUserId();
                 step.LastModifiedAt = DateTime.Now;
 
@@ -903,14 +907,20 @@ namespace OperationalPlanMS.Controllers
 
             if (userRole == UserRole.Supervisor)
             {
+                // مشرف مبادرته
                 var initiative = project.Initiative ?? _db.Initiatives.FirstOrDefault(i => i.Id == project.InitiativeId);
-                return initiative?.SupervisorId == userId;
+                if (initiative?.SupervisorId == userId) return true;
+
+                // أو مدير المشروع مباشرة
+                if (project.ProjectManagerId == userId) return true;
+
+                return false;
             }
 
             if (userRole == UserRole.User && project.ProjectManagerId == userId)
                 return true;
 
-            // StepUser لا يستطيع إضافة/حذف خطوات، فقط تحديث نسبة الإنجاز
+            // StepUser لا يستطيع إضافة/حذف خطوات
             return false;
         }
 

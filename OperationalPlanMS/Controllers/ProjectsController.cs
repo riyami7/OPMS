@@ -274,8 +274,10 @@ namespace OperationalPlanMS.Controllers
 
                 var project = new Project { CreatedById = GetCurrentUserId(), CreatedAt = DateTime.Now, ProgressPercentage = 0 };
                 model.UpdateEntity(project);
-                // ربط مدير المشروع بـ User في DB عبر ADUsername
                 project.ProjectManagerId = await ResolveProjectManagerId(model.ProjectManagerEmpNumber);
+                // تحذير إذا مدير المشروع غير مسجّل في النظام
+                if (!string.IsNullOrWhiteSpace(model.ProjectManagerEmpNumber) && project.ProjectManagerId == null)
+                    TempData["WarningMessage"] = $"تنبيه: مدير المشروع ({model.ProjectManagerName}) غير مسجّل في النظام. يرجى إضافته من إدارة المستخدمين حتى يتمكن من رؤية المشروع.";
                 _db.Projects.Add(project);
                 await _db.SaveChangesAsync();
                 await SaveRequirements(project.Id, model.Requirements);
@@ -351,8 +353,10 @@ namespace OperationalPlanMS.Controllers
                 }
 
                 model.UpdateEntity(project);
-                // ربط مدير المشروع بـ User في DB عبر ADUsername
                 project.ProjectManagerId = await ResolveProjectManagerId(model.ProjectManagerEmpNumber);
+                // تحذير إذا مدير المشروع غير مسجّل في النظام
+                if (!string.IsNullOrWhiteSpace(model.ProjectManagerEmpNumber) && project.ProjectManagerId == null)
+                    TempData["WarningMessage"] = $"تنبيه: مدير المشروع ({model.ProjectManagerName}) غير مسجّل في النظام. يرجى إضافته من إدارة المستخدمين حتى يتمكن من رؤية المشروع.";
                 project.LastModifiedById = GetCurrentUserId();
                 project.LastModifiedAt = DateTime.Now;
                 await _db.SaveChangesAsync();
@@ -473,6 +477,12 @@ namespace OperationalPlanMS.Controllers
             if (string.IsNullOrWhiteSpace(empNumber)) return null;
             var user = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == empNumber && u.IsActive);
             return user?.Id;
+        }
+
+        private async Task<bool> IsEmployeeRegistered(string? empNumber)
+        {
+            if (string.IsNullOrWhiteSpace(empNumber)) return true;
+            return await _db.Users.AnyAsync(u => u.ADUsername == empNumber && u.IsActive);
         }
 
         private decimal CalculateProjectProgress(Project project)
