@@ -134,6 +134,12 @@ namespace OperationalPlanMS.Models.Entities
         /// </summary>
         public DateTime? SubmittedForApprovalAt { get; set; }
 
+        /// <summary>
+        /// ملاحظة مؤكد الخطوة عند التأكيد أو الرفض
+        /// </summary>
+        [StringLength(1000)]
+        public string? ApproverNotes { get; set; }
+
         // Navigation properties
         [ForeignKey("ProjectId")]
         public virtual Project Project { get; set; } = null!;

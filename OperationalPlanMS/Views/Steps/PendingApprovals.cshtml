@@ -124,12 +124,10 @@
                         <div class="card-footer bg-transparent">
                             <div class="d-flex gap-2">
                                 <!-- زر التأكيد -->
-                                <form asp-action="ApproveStep" asp-route-id="@step.Id" method="post" class="d-inline flex-fill">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-success w-100" onclick="return confirm('هل أنت متأكد من تأكيد هذه الخطوة؟')">
-                                        <i class="bi bi-check-lg me-1"></i>تأكيد
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-success flex-fill"
+                                        data-bs-toggle="modal" data-bs-target="#approveModal_@step.Id">
+                                    <i class="bi bi-check-lg me-1"></i>تأكيد
+                                </button>
 
                                 <!-- زر الرفض -->
                                 <button type="button" class="btn btn-danger flex-fill" data-bs-toggle="modal" data-bs-target="#rejectModal_@step.Id">
@@ -164,7 +162,7 @@
                                     <div class="mb-3">
                                         <label class="form-label">سبب الرفض <span class="text-danger">*</span></label>
                                         <textarea name="rejectionReason" class="form-control" rows="4" required
-                                                  placeholder="اكتب سبب رفض الخطوة بالتفصيل..."></textarea>
+                                          placeholder="اكتب سبب رفض الخطوة بالتفصيل..."></textarea>
                                         <small class="text-muted">سيتم إرسال هذا السبب لمسؤول الخطوة</small>
                                     </div>
                                 </div>
@@ -182,6 +180,46 @@
                 <!-- Modals للمرفقات -->
                 @if (step.Attachments != null)
                 {
+
+                    <!-- Modal التأكيد -->
+                    <div class="modal fade" id="approveModal_@step.Id" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form asp-action="ApproveStep" asp-route-id="@step.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <div class="modal-header bg-success text-white">
+                                        <h5 class="modal-title">
+                                            <i class="bi bi-check-circle me-2"></i>تأكيد الخطوة
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="mb-3">
+                                            <strong>الخطوة:</strong> @step.NameAr
+                                        </p>
+                                        @if (!string.IsNullOrEmpty(step.CompletionDetails))
+                                        {
+                                            <div class="alert alert-info mb-3">
+                                                <small class="text-muted d-block mb-1"><i class="bi bi-chat-left-text me-1"></i>ملاحظة المنفذ:</small>
+                                                @step.CompletionDetails
+                                            </div>
+                                        }
+                                        <div class="mb-3">
+                                            <label class="form-label">ملاحظة المؤكد <span class="text-muted">(اختياري)</span></label>
+                                            <textarea name="approverNotes" class="form-control" rows="3"
+                                          placeholder="أضف ملاحظة للمنفذ عند التأكيد..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="bi bi-check-lg me-1"></i>تأكيد الخطوة
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                     @foreach (var attachment in step.Attachments)
                     {
                         var isPdf = attachment.ContentType.Contains("pdf");

@@ -116,12 +116,10 @@
         </div>
         <div class="card-body">
             <div class="d-flex gap-3">
-                <form asp-action="ApproveStep" asp-route-id="@Model.Step.Id" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('هل أنت متأكد من تأكيد هذه الخطوة؟ سيتم احتساب الوزن في المشروع.')">
-                        <i class="bi bi-check-lg me-2"></i>تأكيد الخطوة
-                    </button>
-                </form>
+                <button type="button" class="btn btn-success btn-lg"
+                        data-bs-toggle="modal" data-bs-target="#approveStepModal">
+                    <i class="bi bi-check-lg me-2"></i>تأكيد الخطوة
+                </button>
                 <button type="button" class="btn btn-danger btn-lg" data-bs-toggle="modal" data-bs-target="#rejectStepModal">
                     <i class="bi bi-x-lg me-2"></i>رفض الخطوة
                 </button>
@@ -233,6 +231,15 @@
                         <div class="mb-3">
                             <strong class="text-muted d-block">تفاصيل الإتمام:</strong>
                             <p class="mb-0">@Model.Step.CompletionDetails</p>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Step.ApproverNotes))
+                    {
+                        <div class="mb-3">
+                            <strong class="text-muted d-block"><i class="bi bi-person-check me-1"></i>ملاحظة المؤكد:</strong>
+                            <div class="border rounded p-2 bg-success bg-opacity-10">
+                                @Model.Step.ApproverNotes
+                            </div>
                         </div>
                     }
                     @if (Model.Step.Attachments != null && Model.Step.Attachments.Any())
@@ -499,9 +506,9 @@
 
                         <div class="mb-3">
                             <label class="form-label">
-                                ملف التوثيق <span class="text-danger">*</span>
+                                ملف التوثيق <span class="text-muted">(اختياري)</span>
                             </label>
-                            <input type="file" name="attachmentFile" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required />
+                            <input type="file" name="attachmentFile" class="form-control" accept=".pdf,.jpg,.jpeg,.png" />
                             <small class="text-muted">PDF أو صورة (JPG, PNG) - حد أقصى 10 MB</small>
                         </div>
 
@@ -572,6 +579,46 @@
         </div>
     </div>
 </div>
+
+<!-- Approve Step Modal (for approvers) -->
+@if (isStepApprover && isPendingApproval)
+{
+    <div class="modal fade" id="approveStepModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="ApproveStep" asp-route-id="@Model.Step.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-check-circle me-2"></i>تأكيد الخطوة
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if (!string.IsNullOrEmpty(Model.Step.CompletionDetails))
+                        {
+                            <div class="alert alert-info mb-3">
+                                <small class="text-muted d-block mb-1"><i class="bi bi-chat-left-text me-1"></i>ملاحظة المنفذ:</small>
+                                @Model.Step.CompletionDetails
+                            </div>
+                        }
+                        <div class="mb-3">
+                            <label class="form-label">ملاحظة المؤكد <span class="text-muted">(اختياري)</span></label>
+                            <textarea name="approverNotes" class="form-control" rows="3"
+                                  placeholder="أضف ملاحظة للمنفذ عند التأكيد..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-1"></i>تأكيد الخطوة
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- Reject Step Modal (for approvers) -->
 @if (isStepApprover && isPendingApproval)

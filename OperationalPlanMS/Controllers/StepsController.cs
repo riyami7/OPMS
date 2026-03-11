@@ -535,56 +535,50 @@ namespace OperationalPlanMS.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            // التحقق من المرفق (إلزامي)
-            if (attachmentFile == null || attachmentFile.Length == 0)
+            // المرفق اختياري — نتحقق منه فقط إذا أُرفق
+            if (attachmentFile != null && attachmentFile.Length > 0)
             {
-                TempData["ErrorMessage"] = "يجب إرفاق ملف التوثيق (PDF أو صورة)";
-                return RedirectToAction(nameof(Details), new { id });
+                var allowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png" };
+                var fileExtension = Path.GetExtension(attachmentFile.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension))
+                {
+                    TempData["ErrorMessage"] = "نوع الملف غير مسموح. الأنواع المسموحة: PDF, JPG, PNG";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                if (attachmentFile.Length > 10 * 1024 * 1024)
+                {
+                    TempData["ErrorMessage"] = "حجم الملف يجب أن يكون أقل من 10 ميجابايت";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                // حفظ الملف
+                var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "steps", id.ToString());
+                Directory.CreateDirectory(uploadsFolder);
+
+                var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                var uniqueFileName = $"S{id}_{timestamp}{fileExtension}";
+                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await attachmentFile.CopyToAsync(stream);
+                }
+
+                var attachment = new StepAttachment
+                {
+                    StepId = id,
+                    FileName = uniqueFileName,
+                    OriginalFileName = attachmentFile.FileName,
+                    ContentType = attachmentFile.ContentType,
+                    FileSize = attachmentFile.Length,
+                    FilePath = $"/uploads/steps/{id}/{uniqueFileName}",
+                    Description = "مرفق توثيق إتمام الخطوة",
+                    UploadedById = GetCurrentUserId(),
+                    UploadedAt = DateTime.Now
+                };
+                _db.StepAttachments.Add(attachment);
             }
-
-            // التحقق من نوع الملف
-            var allowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png" };
-            var fileExtension = Path.GetExtension(attachmentFile.FileName).ToLowerInvariant();
-            if (!allowedExtensions.Contains(fileExtension))
-            {
-                TempData["ErrorMessage"] = "نوع الملف غير مسموح. الأنواع المسموحة: PDF, JPG, PNG";
-                return RedirectToAction(nameof(Details), new { id });
-            }
-
-            // التحقق من حجم الملف (10 MB)
-            if (attachmentFile.Length > 10 * 1024 * 1024)
-            {
-                TempData["ErrorMessage"] = "حجم الملف يجب أن يكون أقل من 10 ميجابايت";
-                return RedirectToAction(nameof(Details), new { id });
-            }
-
-            // حفظ الملف
-            var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "steps", id.ToString());
-            Directory.CreateDirectory(uploadsFolder);
-
-            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-            var uniqueFileName = $"S{id}_{timestamp}{fileExtension}";
-            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await attachmentFile.CopyToAsync(stream);
-            }
-
-            // إنشاء سجل المرفق
-            var attachment = new StepAttachment
-            {
-                StepId = id,
-                FileName = uniqueFileName,
-                OriginalFileName = attachmentFile.FileName,
-                ContentType = attachmentFile.ContentType,
-                FileSize = attachmentFile.Length,
-                FilePath = $"/uploads/steps/{id}/{uniqueFileName}",
-                Description = "مرفق توثيق إتمام الخطوة",
-                UploadedById = GetCurrentUserId(),
-                UploadedAt = DateTime.Now
-            };
-            _db.StepAttachments.Add(attachment);
 
             // تحديث الخطوة
             step.ProgressPercentage = 100;
@@ -616,10 +610,9 @@ namespace OperationalPlanMS.Controllers
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        // POST: /Steps/ApproveStep/5 - تأكيد الخطوة
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ApproveStep(int id)
+        public async Task<IActionResult> ApproveStep(int id, string? approverNotes)
         {
             var userId = GetCurrentUserId();
             var user = await _db.Users.FindAsync(userId);
@@ -633,10 +626,7 @@ namespace OperationalPlanMS.Controllers
                 .Include(s => s.Project)
                 .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
 
-            if (step == null)
-            {
-                return NotFound();
-            }
+            if (step == null) return NotFound();
 
             if (step.ApprovalStatus != ApprovalStatus.Pending)
             {
@@ -644,21 +634,22 @@ namespace OperationalPlanMS.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            // تأكيد الخطوة
             step.ApprovalStatus = ApprovalStatus.Approved;
             step.Status = StepStatus.Completed;
             step.ApprovedById = userId;
             step.ApprovedAt = DateTime.Now;
             step.ActualEndDate = DateTime.Today;
+            step.ApproverNotes = approverNotes;
             step.LastModifiedById = userId;
             step.LastModifiedAt = DateTime.Now;
 
-            // سجل التأكيد
             var progressUpdate = new ProgressUpdate
             {
                 StepId = id,
                 ProgressPercentage = 100,
-                NotesAr = "تم تأكيد إكمال الخطوة",
+                NotesAr = string.IsNullOrWhiteSpace(approverNotes)
+                    ? "تم تأكيد إكمال الخطوة"
+                    : $"تم تأكيد إكمال الخطوة - ملاحظة المؤكد: {approverNotes}",
                 UpdateType = UpdateType.StatusChange,
                 CreatedById = userId,
                 CreatedAt = DateTime.Now
@@ -666,8 +657,6 @@ namespace OperationalPlanMS.Controllers
             _db.ProgressUpdates.Add(progressUpdate);
 
             await _db.SaveChangesAsync();
-
-            // تحديث نسبة المشروع بعد التأكيد
             await UpdateProjectProgressAsync(step.ProjectId);
 
             TempData["SuccessMessage"] = "تم تأكيد الخطوة بنجاح وتم احتساب الوزن في المشروع";
