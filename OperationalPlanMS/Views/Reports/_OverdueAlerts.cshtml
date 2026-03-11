@@ -1,0 +1,55 @@
+@model OperationalPlanMS.Models.ViewModels.ReportsDashboardViewModel
+@if (Model.OverdueProjects.Any() || Model.OverdueSteps.Any())
+{
+    @foreach (var project in Model.OverdueProjects.Take(4))
+    {
+        var d = project.ActualEndDate.HasValue ? Math.Max(0, (DateTime.Today - project.ActualEndDate.Value).Days) : 0;
+        string alertClass = d > 7 ? "alert-critical" : "alert-warning";
+        <div class="alert-item @alertClass mb-2">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="badge badge-approved me-1" style="font-size:.68rem;">مشروع</span>
+                    <a href="/Projects/Details/@project.Id" class="fw-semibold text-dark text-decoration-none" style="font-size:.85rem;">@project.NameAr</a>
+                    <div class="text-muted" style="font-size:.75rem;">@project.Initiative?.NameAr</div>
+                </div>
+                <div class="text-end flex-shrink-0 ms-2">
+                    <span class="badge badge-cancelled" style="font-size:.68rem;">@project.ProgressPercentage%</span>
+                    @if (d > 0) { <div><small class="text-danger fw-bold">@d يوم</small></div> }
+                </div>
+            </div>
+        </div>
+    }
+    @foreach (var step in Model.OverdueSteps.Take(3))
+    {
+        var d = step.ActualEndDate.HasValue ? Math.Max(0, (DateTime.Today - step.ActualEndDate.Value).Days) : 0;
+        <div class="alert-item alert-warning mb-2">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="badge badge-inprogress me-1" style="font-size:.68rem;">خطوة</span>
+                    <a href="/Steps/Details/@step.Id" class="fw-semibold text-dark text-decoration-none" style="font-size:.85rem;">@step.NameAr</a>
+                    <div class="text-muted" style="font-size:.75rem;">@step.Project?.NameAr</div>
+                </div>
+                <div class="text-end flex-shrink-0 ms-2">
+                    <span class="badge badge-delayed" style="font-size:.68rem;">@step.ProgressPercentage%</span>
+                    @if (d > 0) { <div><small class="text-danger">@d يوم</small></div> }
+                </div>
+            </div>
+        </div>
+    }
+    @if (Model.OverdueProjects.Count + Model.OverdueSteps.Count > 7)
+    {
+        <div class="text-center mt-2">
+            <a href="/Reports/Export?type=overdue&externalUnitId=@Model.ExternalUnitId" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-download me-1"></i>تحميل القائمة الكاملة
+            </a>
+        </div>
+    }
+}
+else
+{
+    <div class="text-center py-4">
+        <i class="bi bi-check-circle text-success" style="font-size:2.5rem;"></i>
+        <p class="mt-2 mb-1 fw-bold text-success">لا توجد عناصر متأخرة</p>
+        <small class="text-muted">جميع المشاريع والخطوات تسير حسب الجدول</small>
+    </div>
+}

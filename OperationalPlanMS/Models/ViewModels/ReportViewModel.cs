@@ -77,6 +77,8 @@ namespace OperationalPlanMS.Models.ViewModels
 
         // Monthly Progress
         public List<MonthlyProgress> MonthlyProgressData { get; set; } = new();
+
+        public int NotStartedProjects => TotalProjects - CompletedProjects - InProgressProjects - DelayedProjects;
     }
 
     public class InitiativeProgressItem

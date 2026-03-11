@@ -194,10 +194,92 @@ namespace OperationalPlanMS.Controllers
                 await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(),
                 "Id", "NameAr", viewModel.FiscalYearId);
 
+            // Chart data served via /Reports/GetChartData API endpoint
+
             ViewBag.UserRole = userRole;
             ViewBag.ExternalUnitId = externalUnitId;
 
             return View(viewModel);
+        }
+
+        // GET: /Reports/GetChartData
+        [HttpGet]
+        public async Task<IActionResult> GetChartData(int? fiscalYearId, int? externalUnitId)
+        {
+            var userRole = GetCurrentUserRole();
+            var userId = GetCurrentUserId();
+
+            if (userRole == UserRole.StepUser)
+                return Forbid();
+
+            if (!fiscalYearId.HasValue)
+            {
+                var currentFY = await _db.FiscalYears.FirstOrDefaultAsync(f => f.IsCurrent);
+                if (currentFY != null) fiscalYearId = currentFY.Id;
+            }
+
+            var initiativesQuery = _db.Initiatives
+                .Where(i => !i.IsDeleted)
+                .Include(i => i.Projects.Where(p => !p.IsDeleted))
+                    .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
+                .AsQueryable();
+
+            if (userRole == UserRole.Supervisor)
+                initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId);
+            else if (userRole == UserRole.User)
+            {
+                var ids = await _db.Projects
+                    .Where(p => p.ProjectManagerId == userId && !p.IsDeleted)
+                    .Select(p => p.InitiativeId).Distinct().ToListAsync();
+                initiativesQuery = initiativesQuery.Where(i => ids.Contains(i.Id));
+            }
+
+            if (fiscalYearId.HasValue)
+                initiativesQuery = initiativesQuery.Where(i => i.FiscalYearId == fiscalYearId.Value);
+
+            if (externalUnitId.HasValue)
+            {
+                var unitIds = await GetUnitAndChildrenIds(externalUnitId.Value);
+                initiativesQuery = initiativesQuery.Where(i =>
+                    i.ExternalUnitId.HasValue && unitIds.Contains(i.ExternalUnitId.Value));
+            }
+
+            var initiatives = await initiativesQuery.ToListAsync();
+            var projects = initiatives.SelectMany(i => i.Projects).ToList();
+
+            // Unit performance
+            var unitSummaries = BuildUnitSummaries(initiatives).Take(7).ToList();
+            var unitData = unitSummaries.Select(u => new {
+                label = u.UnitName ?? "",
+                value = Math.Round(u.AverageProgress, 1),
+                color = u.AverageProgress >= 80 ? "#0e7d5a" :
+                         u.AverageProgress >= 50 ? "#1a3a5c" :
+                         u.AverageProgress >= 30 ? "#b45309" : "#b91c1c",
+                unitId = u.ExternalUnitId ?? u.UnitId ?? 0
+            }).ToList();
+
+            // Donut counts
+            var completed = projects.Count(p => p.ProgressPercentage >= 100);
+            var inProgress = projects.Count(p => p.ProgressPercentage > 0 && p.ProgressPercentage < 100);
+            var delayed = projects.Count(p => IsProjectDelayed(p));
+            var notStarted = projects.Count - completed - inProgress - delayed;
+            var overallProg = projects.Any() ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0m;
+
+            // Monthly progress
+            var monthNames = new[] { "", "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+                                      "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" };
+            var monthlyData = Enumerable.Range(1, 12).Select(m => new {
+                label = monthNames[m],
+                planned = Math.Round((m / 12.0m) * 100, 0),
+                actual = m <= DateTime.Today.Month ? overallProg : 0m
+            }).ToList();
+
+            return Json(new
+            {
+                donut = new { completed, inProgress, delayed, notStarted },
+                units = unitData,
+                monthly = monthlyData
+            });
         }
 
         private async Task<List<int>> GetUnitAndChildrenIds(int unitId)
