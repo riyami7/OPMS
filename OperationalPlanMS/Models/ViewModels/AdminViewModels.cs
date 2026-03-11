@@ -26,6 +26,7 @@ namespace OperationalPlanMS.Models.ViewModels
         [Required(ErrorMessage = "رقم الموظف مطلوب")]
         [StringLength(100)]
         [Display(Name = "رقم الموظف")]
+        [RegularExpression(@"^[A-Za-z]\d+-\d+$", ErrorMessage = "صيغة رقم الموظف غير صحيحة (مثال: C1-1234)")]
         public string ADUsername { get; set; } = string.Empty;
 
         [StringLength(200)]
@@ -38,18 +39,9 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "الاسم الكامل بالعربية")]
         public string FullNameAr { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "الاسم الكامل بالإنجليزية مطلوب")]
         [StringLength(200)]
         [Display(Name = "الاسم الكامل بالإنجليزية")]
-        public string FullNameEn { get; set; } = string.Empty;
-
-        [StringLength(100, MinimumLength = 6, ErrorMessage = "كلمة المرور يجب أن تكون 6 أحرف على الأقل")]
-        [Display(Name = "كلمة المرور")]
-        public string? Password { get; set; }
-
-        [Compare("Password", ErrorMessage = "كلمة المرور غير متطابقة")]
-        [Display(Name = "تأكيد كلمة المرور")]
-        public string? ConfirmPassword { get; set; }
+        public string? FullNameEn { get; set; }
 
         [Required(ErrorMessage = "الدور مطلوب")]
         [Display(Name = "الدور")]
@@ -102,11 +94,10 @@ namespace OperationalPlanMS.Models.ViewModels
         public void UpdateEntity(User entity)
         {
             entity.ADUsername = ADUsername; entity.Email = Email;
-            entity.FullNameAr = FullNameAr; entity.FullNameEn = FullNameEn;
+            entity.FullNameAr = FullNameAr; entity.FullNameEn = FullNameEn ?? FullNameAr;
             entity.RoleId = RoleId; entity.IsActive = IsActive; entity.IsStepApprover = IsStepApprover;
             entity.EmployeeRank = EmployeeRank; entity.EmployeePosition = EmployeePosition;
-            entity.BranchName = BranchName; entity.ExternalUnitId = ExternalUnitId;
-            entity.ExternalUnitName = ExternalUnitName;
+            entity.BranchName = BranchName; entity.ExternalUnitId = ExternalUnitId; entity.ExternalUnitName = ExternalUnitName;
         }
     }
 

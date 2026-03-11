@@ -8,7 +8,8 @@ namespace OperationalPlanMS.Models
         Admin = 1,      // مدير النظام
         Executive = 2,  // التنفيذي
         Supervisor = 3, // المشرف
-        User = 4        // المستخدم
+        User = 4,       // مدير المشروع
+        StepUser = 7    // منفذ الخطوة
     }
 
     /// <summary>

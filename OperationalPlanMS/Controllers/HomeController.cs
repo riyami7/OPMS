@@ -52,6 +52,16 @@ namespace OperationalPlanMS.Controllers
                     case UserRole.User:
                         await LoadUserDashboard(viewModel, userId);
                         break;
+                    case UserRole.StepUser:
+                        // StepUser يُوجَّه مباشرة لأول مشروع معيّن له
+                        var stepUserProject = await _db.Steps
+                            .Where(s => !s.IsDeleted && s.AssignedToId == userId)
+                            .Select(s => s.ProjectId)
+                            .FirstOrDefaultAsync();
+                        if (stepUserProject != 0)
+                            return RedirectToAction("Details", "Projects", new { id = stepUserProject });
+                        await LoadStepUserDashboard(viewModel, userId);
+                        break;
                     default:
                         await LoadBasicDashboard(viewModel);
                         break;
@@ -250,6 +260,25 @@ namespace OperationalPlanMS.Controllers
                 .Include(p => p.Initiative)
                 .OrderBy(p => p.PlannedEndDate)
                 .Take(5)
+                .ToListAsync();
+        }
+
+        private async Task LoadStepUserDashboard(DashboardViewModel model, int userId)
+        {
+            var myStepIds = await _db.Steps
+                .Where(s => !s.IsDeleted && s.AssignedToId == userId)
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            model.TotalSteps = myStepIds.Count;
+            model.CompletedSteps = await _db.Steps.CountAsync(s => myStepIds.Contains(s.Id) && s.Status == StepStatus.Completed);
+            model.InProgressSteps = await _db.Steps.CountAsync(s => myStepIds.Contains(s.Id) && s.Status == StepStatus.InProgress);
+
+            model.MySteps = await _db.Steps
+                .Where(s => !s.IsDeleted && s.AssignedToId == userId)
+                .Include(s => s.Project)
+                .OrderBy(s => s.PlannedEndDate)
+                .Take(10)
                 .ToListAsync();
         }
 

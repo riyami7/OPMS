@@ -47,12 +47,17 @@ namespace OperationalPlanMS.Controllers
         protected bool IsSupervisor() => GetCurrentUserRole() == UserRole.Supervisor;
 
         /// <summary>
-        /// Check if current user is regular User
+        /// Check if current user is regular User (Project Manager)
         /// </summary>
         protected bool IsRegularUser() => GetCurrentUserRole() == UserRole.User;
 
         /// <summary>
-        /// Check if user can edit (Admin only)
+        /// Check if current user is StepUser (step executor)
+        /// </summary>
+        protected bool IsStepUser() => GetCurrentUserRole() == UserRole.StepUser;
+
+        /// <summary>
+        /// Check if user can edit (Admin only) - kept for backward compatibility
         /// </summary>
         protected bool CanEdit() => IsAdmin();
 
@@ -60,6 +65,16 @@ namespace OperationalPlanMS.Controllers
         /// Check if user can view all (Admin or Executive)
         /// </summary>
         protected bool CanViewAll() => IsAdmin() || IsExecutive();
+
+        /// <summary>
+        /// Check if user can create/edit/delete initiatives (Admin or Supervisor)
+        /// </summary>
+        protected bool CanEditInitiatives() => IsAdmin() || IsSupervisor();
+
+        /// <summary>
+        /// Check if user can create/edit/delete projects (Admin or Supervisor)
+        /// </summary>
+        protected bool CanEditProjects() => IsAdmin() || IsSupervisor();
 
         /// <summary>
         /// Get Arabic name for Status

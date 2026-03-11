@@ -9,7 +9,10 @@
     var isAdmin = userRole == UserRole.Admin;
 
     var isProjectManager = Model.Project.ProjectManagerId == currentUserId;
-    var canManageSteps = isAdmin || (userRole == UserRole.User && isProjectManager);
+    var isSupervisor = userRole == UserRole.Supervisor;
+    var isStepUser = userRole == UserRole.StepUser;
+    // StepUser يرى المشروع لكن لا يضيف/يحذف خطوات
+    var canManageSteps = isAdmin || isSupervisor || (userRole == UserRole.User && isProjectManager);
 
     var progressClass = Model.CalculatedProgress < 40 ? "bg-danger" :
                        Model.CalculatedProgress < 70 ? "bg-warning" : "bg-success";

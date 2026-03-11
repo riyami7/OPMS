@@ -20,10 +20,15 @@ namespace OperationalPlanMS.Controllers
         {
             var query = _db.Initiatives.Where(i => !i.IsDeleted)
                 .Include(i => i.FiscalYear).Include(i => i.Supervisor)
-                .Include(i => i.Projects.Where(p => !p.IsDeleted)).AsQueryable();
+                .Include(i => i.Projects.Where(p => !p.IsDeleted))
+                .AsQueryable();
 
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
+
+            // StepUser لا يرى المبادرات
+            if (userRole == UserRole.StepUser)
+                return RedirectToAction("Index", "Home");
 
             if (userRole == UserRole.Supervisor)
                 query = query.Where(i => i.SupervisorId == userId);
@@ -40,8 +45,7 @@ namespace OperationalPlanMS.Controllers
             if (externalUnitId.HasValue)
             {
                 var unitIds = await GetUnitAndChildrenIds(externalUnitId.Value);
-                query = query.Where(i => i.ExternalUnitId.HasValue &&
-                    unitIds.Contains(i.ExternalUnitId.Value));
+                query = query.Where(i => i.ExternalUnitId.HasValue && unitIds.Contains(i.ExternalUnitId.Value));
             }
 
             model.TotalCount = await query.CountAsync();
@@ -49,15 +53,13 @@ namespace OperationalPlanMS.Controllers
                 .Skip((model.CurrentPage - 1) * model.PageSize).Take(model.PageSize).ToListAsync();
 
             await PopulateFilterDropdowns(model);
-            ViewBag.CanEdit = CanEdit();
+            ViewBag.CanEdit = CanEditInitiatives();
             ViewBag.UserRole = userRole;
-            ViewBag.ExternalUnitId = externalUnitId;
 
             if (externalUnitId.HasValue)
             {
-                var u = await _db.ExternalOrganizationalUnits
-                    .FirstOrDefaultAsync(u => u.Id == externalUnitId.Value);
-                ViewBag.SelectedUnitName = u?.ArabicName ?? u?.ArabicUnitName;
+                var selectedUnit = await _db.ExternalOrganizationalUnits.FirstOrDefaultAsync(u => u.Id == externalUnitId.Value);
+                ViewBag.SelectedUnitName = selectedUnit?.ArabicName ?? selectedUnit?.ArabicUnitName;
             }
 
             return View(model);
@@ -71,17 +73,17 @@ namespace OperationalPlanMS.Controllers
             foreach (var childId in children)
             {
                 result.Add(childId);
-                var grand = await _db.ExternalOrganizationalUnits
+                var grandChildren = await _db.ExternalOrganizationalUnits
                     .Where(u => u.ParentId == childId && u.IsActive).Select(u => u.Id).ToListAsync();
-                result.AddRange(grand);
+                result.AddRange(grandChildren);
             }
             return result;
         }
 
         public async Task<IActionResult> Details(int id)
         {
-            var initiative = await _db.Initiatives
-                .Include(i => i.FiscalYear).Include(i => i.Supervisor).Include(i => i.CreatedBy)
+            var initiative = await _db.Initiatives.Include(i => i.FiscalYear)
+                .Include(i => i.Supervisor).Include(i => i.CreatedBy)
                 .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
             if (initiative == null) return NotFound();
             if (!CanAccessInitiative(initiative)) return Forbid();
@@ -90,24 +92,22 @@ namespace OperationalPlanMS.Controllers
             {
                 Initiative = initiative,
                 Projects = await _db.Projects.Where(p => p.InitiativeId == id && !p.IsDeleted)
-                    .Include(p => p.ProjectManager)
-                    .Include(p => p.Steps.Where(s => !s.IsDeleted)).ToListAsync(),
+                    .Include(p => p.ProjectManager).Include(p => p.Steps.Where(s => !s.IsDeleted)).ToListAsync(),
                 Notes = await _db.ProgressUpdates.Where(p => p.InitiativeId == id)
                     .Include(p => p.CreatedBy).OrderByDescending(p => p.CreatedAt).Take(20).ToListAsync()
             };
 
-            ViewBag.CanEdit = CanEdit();
+            ViewBag.CanEdit = CanEditInitiatives() && CanAccessInitiative(initiative);
             ViewBag.UserRole = GetCurrentUserRole();
             return View(viewModel);
         }
 
         public async Task<IActionResult> Create()
         {
-            if (!CanEdit()) return Forbid();
+            if (!CanEditInitiatives()) return Forbid();
             var viewModel = new InitiativeFormViewModel();
             var currentYear = DateTime.Now.Year;
-            var lastCode = await _db.Initiatives
-                .Where(i => i.Code.StartsWith($"INI-{currentYear}"))
+            var lastCode = await _db.Initiatives.Where(i => i.Code.StartsWith($"INI-{currentYear}"))
                 .OrderByDescending(i => i.Code).Select(i => i.Code).FirstOrDefaultAsync();
             int nextNumber = 1;
             if (!string.IsNullOrEmpty(lastCode))
@@ -123,20 +123,15 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(InitiativeFormViewModel model)
         {
-            if (!CanEdit()) return Forbid();
+            if (!CanEditInitiatives()) return Forbid();
             if (ModelState.IsValid)
             {
                 if (await _db.Initiatives.AnyAsync(i => i.Code == model.Code))
                 {
                     ModelState.AddModelError("Code", "هذا الكود مستخدم بالفعل");
-                    await PopulateFormDropdowns(model);
-                    return View(model);
+                    await PopulateFormDropdowns(model); return View(model);
                 }
-                var initiative = new Initiative
-                {
-                    CreatedById = GetCurrentUserId(),
-                    CreatedAt = DateTime.Now
-                };
+                var initiative = new Initiative { CreatedById = GetCurrentUserId(), CreatedAt = DateTime.Now };
                 model.UpdateEntity(initiative);
                 _db.Initiatives.Add(initiative);
                 await _db.SaveChangesAsync();
@@ -149,10 +144,11 @@ namespace OperationalPlanMS.Controllers
 
         public async Task<IActionResult> Edit(int id)
         {
-            if (!CanEdit()) return Forbid();
-            var initiative = await _db.Initiatives
-                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+            if (!CanEditInitiatives()) return Forbid();
+            var initiative = await _db.Initiatives.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
             if (initiative == null) return NotFound();
+            // Supervisor يعدل مبادراته فقط
+            if (IsSupervisor() && initiative.SupervisorId != GetCurrentUserId()) return Forbid();
             var viewModel = InitiativeFormViewModel.FromEntity(initiative);
             await PopulateFormDropdowns(viewModel);
             return View(viewModel);
@@ -161,18 +157,18 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, InitiativeFormViewModel model)
         {
-            if (!CanEdit()) return Forbid();
+            if (!CanEditInitiatives()) return Forbid();
             if (id != model.Id) return NotFound();
             if (ModelState.IsValid)
             {
-                var initiative = await _db.Initiatives
-                    .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+                var initiative = await _db.Initiatives.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
                 if (initiative == null) return NotFound();
+                // Supervisor يعدل مبادراته فقط
+                if (IsSupervisor() && initiative.SupervisorId != GetCurrentUserId()) return Forbid();
                 if (await _db.Initiatives.AnyAsync(i => i.Code == model.Code && i.Id != id))
                 {
                     ModelState.AddModelError("Code", "هذا الكود مستخدم بالفعل");
-                    await PopulateFormDropdowns(model);
-                    return View(model);
+                    await PopulateFormDropdowns(model); return View(model);
                 }
                 model.UpdateEntity(initiative);
                 initiative.LastModifiedById = GetCurrentUserId();
@@ -187,20 +183,23 @@ namespace OperationalPlanMS.Controllers
 
         public async Task<IActionResult> Delete(int id)
         {
-            if (!CanEdit()) return Forbid();
+            if (!CanEditInitiatives()) return Forbid();
             var initiative = await _db.Initiatives.Include(i => i.FiscalYear)
                 .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
             if (initiative == null) return NotFound();
+            // Supervisor يحذف مبادراته فقط
+            if (IsSupervisor() && initiative.SupervisorId != GetCurrentUserId()) return Forbid();
             return View(initiative);
         }
 
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            if (!CanEdit()) return Forbid();
-            var initiative = await _db.Initiatives
-                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+            if (!CanEditInitiatives()) return Forbid();
+            var initiative = await _db.Initiatives.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
             if (initiative == null) return NotFound();
+            // Supervisor يحذف مبادراته فقط
+            if (IsSupervisor() && initiative.SupervisorId != GetCurrentUserId()) return Forbid();
             initiative.IsDeleted = true;
             initiative.LastModifiedById = GetCurrentUserId();
             initiative.LastModifiedAt = DateTime.Now;
@@ -212,24 +211,11 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> AddNote(int id, string notes)
         {
-            var initiative = await _db.Initiatives
-                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+            var initiative = await _db.Initiatives.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
             if (initiative == null) return NotFound();
-            if (string.IsNullOrWhiteSpace(notes))
-            {
-                TempData["ErrorMessage"] = "الملاحظة مطلوبة";
-                return RedirectToAction(nameof(Details), new { id });
-            }
-            _db.ProgressUpdates.Add(new ProgressUpdate
-            {
-                InitiativeId = id,
-                NotesAr = notes,
-                UpdateType = UpdateType.Note,
-                CreatedById = GetCurrentUserId(),
-                CreatedAt = DateTime.Now
-            });
-            initiative.LastModifiedById = GetCurrentUserId();
-            initiative.LastModifiedAt = DateTime.Now;
+            if (string.IsNullOrWhiteSpace(notes)) { TempData["ErrorMessage"] = "الملاحظة مطلوبة"; return RedirectToAction(nameof(Details), new { id }); }
+            _db.ProgressUpdates.Add(new ProgressUpdate { InitiativeId = id, NotesAr = notes, UpdateType = UpdateType.Note, CreatedById = GetCurrentUserId(), CreatedAt = DateTime.Now });
+            initiative.LastModifiedById = GetCurrentUserId(); initiative.LastModifiedAt = DateTime.Now;
             await _db.SaveChangesAsync();
             TempData["SuccessMessage"] = "تم إضافة الملاحظة بنجاح";
             return RedirectToAction(nameof(Details), new { id });
@@ -241,11 +227,7 @@ namespace OperationalPlanMS.Controllers
             if (GetCurrentUserRole() != UserRole.Admin) return Forbid();
             var note = await _db.ProgressUpdates.FindAsync(noteId);
             if (note == null || note.InitiativeId != initiativeId) return NotFound();
-            if (string.IsNullOrWhiteSpace(notes))
-            {
-                TempData["ErrorMessage"] = "الملاحظة مطلوبة";
-                return RedirectToAction(nameof(Details), new { id = initiativeId });
-            }
+            if (string.IsNullOrWhiteSpace(notes)) { TempData["ErrorMessage"] = "الملاحظة مطلوبة"; return RedirectToAction(nameof(Details), new { id = initiativeId }); }
             note.NotesAr = notes;
             await _db.SaveChangesAsync();
             TempData["SuccessMessage"] = "تم تعديل الملاحظة بنجاح";
@@ -281,19 +263,13 @@ namespace OperationalPlanMS.Controllers
 
         private async Task PopulateFilterDropdowns(InitiativeListViewModel model)
         {
-            model.FiscalYears = new SelectList(
-                await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(),
-                "Id", "NameAr", model.FiscalYearId);
+            model.FiscalYears = new SelectList(await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(), "Id", "NameAr", model.FiscalYearId);
         }
 
         private async Task PopulateFormDropdowns(InitiativeFormViewModel model)
         {
-            model.FiscalYears = new SelectList(
-                await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(),
-                "Id", "NameAr", model.FiscalYearId);
-            model.Supervisors = new SelectList(
-                await _db.Users.Where(u => u.IsActive).ToListAsync(),
-                "Id", "FullNameAr", model.SupervisorId);
+            model.FiscalYears = new SelectList(await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(), "Id", "NameAr", model.FiscalYearId);
+            model.Supervisors = new SelectList(await _db.Users.Where(u => u.IsActive).ToListAsync(), "Id", "FullNameAr", model.SupervisorId);
         }
 
         #endregion

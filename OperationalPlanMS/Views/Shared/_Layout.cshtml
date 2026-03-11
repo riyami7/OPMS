@@ -67,7 +67,7 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>   
+<body>
     <div class="wrapper">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
@@ -83,7 +83,7 @@
                 <ul class="nav flex-column">
 
                     <!-- الخطة الاستراتيجية - للجميع -->
-                 
+
                     <li class="nav-item">
                         <a class="nav-link @(isStrategicActive ? "active" : "")" href="/Home/StrategicOverview">
                             <i class="bi bi-bullseye"></i>
@@ -289,6 +289,9 @@
             </footer>
         </div>
     </div>
+
+    <!-- jQuery (Local) -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
 
     <!-- Bootstrap 5 JS (Local) -->
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

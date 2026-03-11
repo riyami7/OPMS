@@ -82,17 +82,12 @@ namespace OperationalPlanMS.Controllers
             if (!IsAdminUser()) return Forbid();
 
             if (await _db.Users.AnyAsync(u => u.ADUsername == model.ADUsername))
-                ModelState.AddModelError("ADUsername", "اسم المستخدم موجود بالفعل");
-
-            if (string.IsNullOrEmpty(model.Password))
-                ModelState.AddModelError("Password", "كلمة المرور مطلوبة للمستخدم الجديد");
+                ModelState.AddModelError("ADUsername", "رقم الموظف موجود بالفعل");
 
             if (ModelState.IsValid)
             {
                 var entity = new User { CreatedAt = DateTime.Now, CreatedBy = GetCurrentUserId() };
                 model.UpdateEntity(entity);
-                if (!string.IsNullOrEmpty(model.Password))
-                    entity.PasswordHash = model.Password;
                 _db.Users.Add(entity);
                 await _db.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم إضافة المستخدم بنجاح";
@@ -120,18 +115,13 @@ namespace OperationalPlanMS.Controllers
             if (id != model.Id) return NotFound();
 
             if (await _db.Users.AnyAsync(u => u.ADUsername == model.ADUsername && u.Id != id))
-                ModelState.AddModelError("ADUsername", "اسم المستخدم موجود بالفعل");
-
-            if (!string.IsNullOrEmpty(model.Password) && model.Password.Length < 6)
-                ModelState.AddModelError("Password", "كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+                ModelState.AddModelError("ADUsername", "رقم الموظف موجود بالفعل");
 
             if (ModelState.IsValid)
             {
                 var entity = await _db.Users.FindAsync(id);
                 if (entity == null) return NotFound();
                 model.UpdateEntity(entity);
-                if (!string.IsNullOrEmpty(model.Password))
-                    entity.PasswordHash = model.Password;
                 await _db.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم تحديث المستخدم بنجاح";
                 return RedirectToAction(nameof(Users));

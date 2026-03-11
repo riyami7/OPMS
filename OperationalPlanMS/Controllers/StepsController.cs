@@ -55,6 +55,11 @@ namespace OperationalPlanMS.Controllers
                     .ToListAsync();
                 query = query.Where(s => userProjectIds.Contains(s.ProjectId));
             }
+            else if (userRole == UserRole.StepUser)
+            {
+                // StepUser يرى فقط الخطوات المعيّنة له
+                query = query.Where(s => s.AssignedToId == userId);
+            }
 
             // Apply filters
             if (!string.IsNullOrWhiteSpace(model.SearchTerm))
@@ -260,6 +265,8 @@ namespace OperationalPlanMS.Controllers
                 };
 
                 model.UpdateEntity(step);
+                // ربط المعيّن إليه بـ User في DB عبر ADUsername
+                step.AssignedToId = await ResolveUserIdByEmpNumber(model.AssignedToEmpNumber);
 
                 _db.Steps.Add(step);
                 await _db.SaveChangesAsync();
@@ -349,6 +356,8 @@ namespace OperationalPlanMS.Controllers
             if (ModelState.IsValid)
             {
                 model.UpdateEntity(step);
+                // ربط المعيّن إليه بـ User في DB عبر ADUsername
+                step.AssignedToId = await ResolveUserIdByEmpNumber(model.AssignedToEmpNumber);
                 step.LastModifiedById = GetCurrentUserId();
                 step.LastModifiedAt = DateTime.Now;
 
@@ -832,6 +841,16 @@ namespace OperationalPlanMS.Controllers
 
         #region Helper Methods
 
+        /// <summary>
+        /// يبحث عن User.Id بناءً على EmpNumber (ADUsername)
+        /// </summary>
+        private async Task<int?> ResolveUserIdByEmpNumber(string? empNumber)
+        {
+            if (string.IsNullOrWhiteSpace(empNumber)) return null;
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == empNumber && u.IsActive);
+            return user?.Id;
+        }
+
         private void UpdateStepDelayedStatus(Step step)
         {
             if (step.Status == StepStatus.Completed || step.Status == StepStatus.Cancelled)
@@ -880,6 +899,7 @@ namespace OperationalPlanMS.Controllers
             {
                 UserRole.Supervisor => project.Initiative?.SupervisorId == userId,
                 UserRole.User => project.ProjectManagerId == userId,
+                UserRole.StepUser => step.AssignedToId == userId,
                 _ => false
             };
         }
@@ -892,9 +912,16 @@ namespace OperationalPlanMS.Controllers
             if (userRole == UserRole.Admin)
                 return true;
 
+            if (userRole == UserRole.Supervisor)
+            {
+                var initiative = project.Initiative ?? _db.Initiatives.FirstOrDefault(i => i.Id == project.InitiativeId);
+                return initiative?.SupervisorId == userId;
+            }
+
             if (userRole == UserRole.User && project.ProjectManagerId == userId)
                 return true;
 
+            // StepUser لا يستطيع إضافة/حذف خطوات، فقط تحديث نسبة الإنجاز
             return false;
         }
 

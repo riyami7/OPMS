@@ -12,10 +12,12 @@ namespace OperationalPlanMS.Controllers
     public class AccountController : Controller
     {
         private readonly AppDbContext _db;
+        private readonly IConfiguration _config;
 
-        public AccountController(AppDbContext db)
+        public AccountController(AppDbContext db, IConfiguration config)
         {
             _db = db;
+            _config = config;
         }
 
         [HttpGet]
@@ -43,32 +45,76 @@ namespace OperationalPlanMS.Controllers
 
             if (user == null)
             {
-                ModelState.AddModelError(string.Empty, "اسم المستخدم أو كلمة المرور غير صحيحة");
+                ModelState.AddModelError(string.Empty, "رقم الموظف غير موجود أو الحساب غير نشط");
                 return View(model);
             }
 
-            bool isValidPassword = false;
-            if (model.Username.ToLower() == "admin" && model.Password == "admin123")
-                isValidPassword = true;
-            else if (!string.IsNullOrEmpty(user.PasswordHash) && user.PasswordHash == model.Password)
-                isValidPassword = true;
+            bool isAuthenticated = false;
+            var adEnabled = _config.GetValue<bool>("ActiveDirectory:Enabled");
 
-            if (!isValidPassword)
+            if (adEnabled)
             {
-                ModelState.AddModelError(string.Empty, "اسم المستخدم أو كلمة المرور غير صحيحة");
+                // AD Authentication الحقيقي
+                isAuthenticated = ValidateWithActiveDirectory(model.Username, model.Password);
+            }
+            else
+            {
+                // Fallback للتطوير - أي كلمة مرور غير فارغة
+                isAuthenticated = !string.IsNullOrEmpty(model.Password);
+            }
+
+            if (!isAuthenticated)
+            {
+                ModelState.AddModelError(string.Empty, "كلمة المرور غير صحيحة");
                 return View(model);
             }
 
+            await SignInUser(user, model.RememberMe);
+
+            user.LastLoginAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+                return Redirect(model.ReturnUrl);
+
+            return RedirectToAction("Index", "Home");
+        }
+
+        private bool ValidateWithActiveDirectory(string username, string password)
+        {
+            try
+            {
+                var domain = _config["ActiveDirectory:Domain"] ?? "";
+                var ldapPath = _config["ActiveDirectory:LdapPath"] ?? "";
+                var domainUsername = $"{domain}\\{username}";
+
+                using var entry = new System.DirectoryServices.DirectoryEntry(ldapPath, domainUsername, password);
+                using var searcher = new System.DirectoryServices.DirectorySearcher(entry);
+                searcher.Filter = $"(sAMAccountName={username})";
+                searcher.PropertiesToLoad.Add("displayName");
+
+                var result = searcher.FindOne();
+                return result != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private async Task SignInUser(Models.Entities.User user, bool rememberMe)
+        {
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.FullNameAr),
                 new Claim("FullNameAr", user.FullNameAr),
-                new Claim("FullNameEn", user.FullNameEn),
+                new Claim("FullNameEn", user.FullNameEn ?? user.FullNameAr),
                 new Claim(ClaimTypes.Role, ((Models.UserRole)user.RoleId).ToString()),
                 new Claim("RoleId", user.RoleId.ToString()),
                 new Claim("RoleNameAr", user.Role?.NameAr ?? ""),
                 new Claim("RoleNameEn", user.Role?.NameEn ?? ""),
+                new Claim("IsStepApprover", user.IsStepApprover.ToString()),
             };
 
             if (user.ExternalUnitId.HasValue)
@@ -80,15 +126,13 @@ namespace OperationalPlanMS.Controllers
             if (!string.IsNullOrEmpty(user.ProfileImage))
                 claims.Add(new Claim("ProfileImage", user.ProfileImage));
 
-            claims.Add(new Claim("IsStepApprover", user.IsStepApprover.ToString()));
-
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
             var authProperties = new AuthenticationProperties
             {
-                IsPersistent = model.RememberMe,
-                ExpiresUtc = model.RememberMe
+                IsPersistent = rememberMe,
+                ExpiresUtc = rememberMe
                     ? DateTimeOffset.UtcNow.AddDays(30)
                     : DateTimeOffset.UtcNow.AddHours(8)
             };
@@ -97,14 +141,6 @@ namespace OperationalPlanMS.Controllers
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 claimsPrincipal,
                 authProperties);
-
-            user.LastLoginAt = DateTime.Now;
-            await _db.SaveChangesAsync();
-
-            if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
-                return Redirect(model.ReturnUrl);
-
-            return RedirectToAction("Index", "Home");
         }
 
         [HttpPost]

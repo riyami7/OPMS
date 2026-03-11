@@ -60,6 +60,10 @@ namespace OperationalPlanMS.Controllers
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
 
+            // StepUser لا يملك صلاحية التقارير
+            if (userRole == UserRole.StepUser)
+                return RedirectToAction("Index", "Home");
+
             if (userRole == UserRole.Supervisor)
             {
                 initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId);
