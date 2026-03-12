@@ -1,0 +1,441 @@
+@model OperationalPlanMS.Models.ViewModels.VisionMissionViewModel
+@{
+    ViewData["Title"] = "الرؤية والمهمة";
+}
+
+<style>
+    .cascade-select {
+        transition: all 0.3s;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1">الرؤية والمهمة</h4>
+        <p class="text-muted mb-0">إعدادات الرؤية والمهمة للنظام والوحدات التنظيمية</p>
+    </div>
+    <a href="/Admin" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-right me-2"></i>رجوع
+    </a>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="visionTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" type="button">
+            <i class="bi bi-gear me-2"></i>إعدادات النظام العامة
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="units-tab" data-bs-toggle="tab" data-bs-target="#units" type="button">
+            <i class="bi bi-diagram-3 me-2"></i>الوحدات التنظيمية
+            <span class="badge bg-primary ms-1">@Model.UnitSettings.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="visionTabsContent">
+    <!-- إعدادات النظام العامة -->
+    <div class="tab-pane fade show active" id="system" role="tabpanel">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-gear-wide-connected me-2"></i>الرؤية والمهمة العامة للنظام
+            </div>
+            <div class="card-body">
+                <form asp-action="SaveSystemSettings" method="post">
+                    <input type="hidden" asp-for="SystemSettings.Id" />
+
+                    <div class="row">
+                        <!-- الرؤية -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <i class="bi bi-eye me-2"></i>الرؤية
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">الرؤية بالعربية</label>
+                                        <textarea asp-for="SystemSettings.VisionAr" class="form-control" rows="4"
+                                                  placeholder="أدخل رؤية النظام بالعربية..."></textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">الرؤية بالإنجليزية</label>
+                                        <textarea asp-for="SystemSettings.VisionEn" class="form-control" rows="4" dir="ltr"
+                                                  placeholder="Enter system vision in English..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- المهمة -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-success">
+                                <div class="card-header bg-success text-white">
+                                    <i class="bi bi-bullseye me-2"></i>المهمة
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">المهمة بالعربية</label>
+                                        <textarea asp-for="SystemSettings.MissionAr" class="form-control" rows="4"
+                                                  placeholder="أدخل مهمة النظام بالعربية..."></textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">المهمة بالإنجليزية</label>
+                                        <textarea asp-for="SystemSettings.MissionEn" class="form-control" rows="4" dir="ltr"
+                                                  placeholder="Enter system mission in English..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- الوصف الإضافي -->
+                        <div class="col-12 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="bi bi-file-text me-2"></i>وصف إضافي (اختياري)
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3 mb-md-0">
+                                            <label class="form-label">الوصف بالعربية</label>
+                                            <textarea asp-for="SystemSettings.DescriptionAr" class="form-control" rows="3"
+                                                      placeholder="وصف إضافي..."></textarea>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">الوصف بالإنجليزية</label>
+                                            <textarea asp-for="SystemSettings.DescriptionEn" class="form-control" rows="3" dir="ltr"
+                                                      placeholder="Additional description..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        @if (Model.SystemSettings.LastModifiedAt.HasValue)
+                        {
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>
+                                آخر تعديل: @Model.SystemSettings.LastModifiedAt?.ToString("yyyy/MM/dd hh:mm tt")
+                                @if (Model.SystemSettings.LastModifiedBy != null)
+                                {
+                                    <span>بواسطة @Model.SystemSettings.LastModifiedBy.FullNameAr</span>
+                                }
+                            </small>
+                        }
+                        else
+                        {
+                            <span></span>
+                        }
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-lg me-2"></i>حفظ الإعدادات
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- إعدادات الوحدات التنظيمية -->
+    <div class="tab-pane fade" id="units" role="tabpanel">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-diagram-3 me-2"></i>الرؤية والمهمة للوحدات التنظيمية</span>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUnitSettingsModal">
+                    <i class="bi bi-plus me-1"></i>إضافة إعدادات وحدة
+                </button>
+            </div>
+            <div class="card-body">
+                @if (Model.UnitSettings.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>الوحدة التنظيمية</th>
+                                    <th>الرؤية</th>
+                                    <th>المهمة</th>
+                                    <th>آخر تعديل</th>
+                                    <th width="120">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var unit in Model.UnitSettings)
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>@unit.UnitDisplayName</strong>
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(unit.VisionAr))
+                                            {
+                                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="@unit.VisionAr">
+                                                    @unit.VisionAr
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(unit.MissionAr))
+                                            {
+                                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="@unit.MissionAr">
+                                                    @unit.MissionAr
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (unit.LastModifiedAt.HasValue)
+                                            {
+                                                <small>@unit.LastModifiedAt?.ToString("yyyy/MM/dd")</small>
+                                            }
+                                            else
+                                            {
+                                                <small>@unit.CreatedAt.ToString("yyyy/MM/dd")</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            <a href="/StrategicPlanning/EditUnitSettings/@unit.Id" class="btn btn-sm btn-outline-primary" title="تعديل">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    onclick="deleteUnitSettings(@unit.Id, '@unit.UnitDisplayName')" title="حذف">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                        <h5 class="mt-3">لا توجد إعدادات للوحدات</h5>
+                        <p class="text-muted">اضغط على "إضافة إعدادات وحدة" لإضافة رؤية ومهمة لوحدة تنظيمية</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal إضافة إعدادات وحدة - مع المستويات الهرمية -->
+<div class="modal fade" id="addUnitSettingsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form asp-action="AddUnitSettings" method="post">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-plus-circle me-2"></i>إضافة رؤية ومهمة لوحدة تنظيمية
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- الهيكل التنظيمي من API -->
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-diagram-3 me-1"></i>الوحدة التنظيمية <span class="text-danger">*</span></label>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <select id="addLevel1" class="form-select cascade-select">
+                                    <option value="">-- المستوى الأول --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select id="addLevel2" class="form-select cascade-select" disabled>
+                                    <option value="">-- المستوى الثاني --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select id="addLevel3" class="form-select cascade-select" disabled>
+                                    <option value="">-- المستوى الثالث --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" name="ExternalUnitId" id="addExternalUnitId" />
+                        <input type="hidden" name="ExternalUnitName" id="addExternalUnitName" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">الرؤية بالعربية</label>
+                            <textarea name="VisionAr" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">الرؤية بالإنجليزية</label>
+                            <textarea name="VisionEn" class="form-control" rows="3" dir="ltr"></textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">المهمة بالعربية</label>
+                            <textarea name="MissionAr" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">المهمة بالإنجليزية</label>
+                            <textarea name="MissionEn" class="form-control" rows="3" dir="ltr"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>حفظ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal تأكيد الحذف -->
+<div class="modal fade" id="deleteUnitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="DeleteUnitSettings" method="post">
+                <input type="hidden" name="id" id="deleteUnitId" />
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-trash me-2"></i>حذف إعدادات الوحدة
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>هل أنت متأكد من حذف إعدادات الرؤية والمهمة للوحدة:</p>
+                    <p class="fw-bold" id="deleteUnitName"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>حذف
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allUnits = [];
+
+        // تحميل الوحدات عند فتح الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrganizationalUnits();
+        });
+
+        // تحميل كل الوحدات من API
+        async function loadOrganizationalUnits() {
+            try {
+                const response = await fetch('/api/OrganizationApi/units/all');
+                if (response.ok) {
+                    const data = await response.json();
+                    allUnits = data.items || data;
+                    populateAddLevel1();
+                }
+            } catch (error) {
+                console.error('Error loading units:', error);
+            }
+        }
+
+        // ملء المستوى الأول للـ Modal
+        function populateAddLevel1() {
+            const select = document.getElementById('addLevel1');
+            const roots = allUnits.filter(u => !u.parentId || u.parentId === 0);
+            select.innerHTML = '<option value="">-- المستوى الأول --</option>';
+            roots.forEach(unit => {
+                select.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+            });
+        }
+
+        // عند اختيار المستوى الأول
+        document.getElementById('addLevel1').addEventListener('change', function() {
+            const parentId = parseInt(this.value);
+            const level2 = document.getElementById('addLevel2');
+            const level3 = document.getElementById('addLevel3');
+
+            level2.innerHTML = '<option value="">-- المستوى الثاني --</option>';
+            level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
+            level2.disabled = true;
+            level3.disabled = true;
+
+            if (parentId) {
+                const children = allUnits.filter(u => u.parentId === parentId);
+                if (children.length > 0) {
+                    children.forEach(unit => {
+                        level2.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+                    });
+                    level2.disabled = false;
+                }
+                updateAddSelectedUnit();
+            } else {
+                clearAddSelectedUnit();
+            }
+        });
+
+        // عند اختيار المستوى الثاني
+        document.getElementById('addLevel2').addEventListener('change', function() {
+            const parentId = parseInt(this.value);
+            const level3 = document.getElementById('addLevel3');
+
+            level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
+            level3.disabled = true;
+
+            if (parentId) {
+                const children = allUnits.filter(u => u.parentId === parentId);
+                if (children.length > 0) {
+                    children.forEach(unit => {
+                        level3.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+                    });
+                    level3.disabled = false;
+                }
+                updateAddSelectedUnit();
+            }
+        });
+
+        // عند اختيار المستوى الثالث
+        document.getElementById('addLevel3').addEventListener('change', function() {
+            updateAddSelectedUnit();
+        });
+
+        // تحديث الوحدة المختارة
+        function updateAddSelectedUnit() {
+            const level3 = document.getElementById('addLevel3');
+            const level2 = document.getElementById('addLevel2');
+            const level1 = document.getElementById('addLevel1');
+
+            let selectedId = level3.value || level2.value || level1.value;
+            let selectedText = '';
+
+            if (level3.value) {
+                selectedText = level3.options[level3.selectedIndex].text;
+            } else if (level2.value) {
+                selectedText = level2.options[level2.selectedIndex].text;
+            } else if (level1.value) {
+                selectedText = level1.options[level1.selectedIndex].text;
+            }
+
+            document.getElementById('addExternalUnitId').value = selectedId;
+            document.getElementById('addExternalUnitName').value = selectedText;
+        }
+
+        function clearAddSelectedUnit() {
+            document.getElementById('addExternalUnitId').value = '';
+            document.getElementById('addExternalUnitName').value = '';
+        }
+
+        // تأكيد الحذف
+        function deleteUnitSettings(id, name) {
+            document.getElementById('deleteUnitId').value = id;
+            document.getElementById('deleteUnitName').textContent = name;
+            new bootstrap.Modal(document.getElementById('deleteUnitModal')).show();
+        }
+    </script>
+}

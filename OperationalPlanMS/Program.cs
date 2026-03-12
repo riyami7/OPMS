@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
@@ -64,6 +64,9 @@ if (builder.Environment.IsDevelopment())
 // External API Service
 builder.Services.AddHttpClient<IExternalApiService, ExternalApiService>();
 builder.Services.AddMemoryCache();
+
+// User Management Service
+builder.Services.AddScoped<IUserService, UserService>();
 
 var app = builder.Build();
 

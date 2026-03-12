@@ -1,0 +1,153 @@
+﻿@model OperationalPlanMS.Models.ViewModels.UserListViewModel
+@{
+    ViewData["Title"] = "إدارة المستخدمين";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1">إدارة المستخدمين</h4>
+        <p class="text-muted mb-0">عرض وإدارة حسابات المستخدمين (@Model.TotalCount مستخدم)</p>
+    </div>
+    <div>
+        <a href="/Users/Create" class="btn btn-info text-white">
+            <i class="bi bi-plus-circle me-2"></i>إضافة مستخدم
+        </a>
+        <a href="/Admin" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-arrow-right me-2"></i>رجوع
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" name="searchTerm" value="@Model.SearchTerm" placeholder="البحث بالاسم أو البريد..." />
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="roleId" asp-items="Model.Roles">
+                        <option value="">-- كل الأدوار --</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <select class="form-select" name="isActive">
+                        <option value="">-- الكل --</option>
+                        <option value="true" selected="@(Model.IsActive == true)">نشط</option>
+                        <option value="false" selected="@(Model.IsActive == false)">غير نشط</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>اسم المستخدم</th>
+                        <th>الاسم الكامل</th>
+                        <th>البريد الإلكتروني</th>
+                        <th>الدور</th>
+                        <th>الوحدة التنظيمية</th>
+                        <th>الحالة</th>
+                        <th style="width: 180px;">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Users.Any())
+                    {
+                        @foreach (var item in Model.Users)
+                        {
+                            var roleClass = item.RoleId switch
+                            {
+                                1 => "bg-danger",
+                                2 => "bg-primary",
+                                3 => "bg-success",
+                                4 => "bg-secondary",
+                                _ => "bg-secondary"
+                            };
+                            <tr>
+                                <td><code>@item.ADUsername</code></td>
+                                <td>@item.FullNameAr</td>
+                                <td><small>@(item.Email ?? "-")</small></td>
+                                <td><span class="badge @roleClass">@item.Role?.NameAr</span></td>
+                                <td><small class="text-muted">@(item.ExternalUnitName ?? "-")</small></td>
+                                <td>
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge bg-success">نشط</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">غير نشط</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/Users/Edit/@item.Id" class="btn btn-outline-warning" title="تعديل">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form asp-controller="Users" asp-action="ToggleActive" asp-route-id="@item.Id" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-outline-@(item.IsActive ? "secondary" : "success")" title="@(item.IsActive ? "تعطيل" : "تفعيل")">
+                                                <i class="bi bi-@(item.IsActive ? "pause" : "play")"></i>
+                                            </button>
+                                        </form>
+                                        <form asp-controller="Users" asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('هل أنت متأكد من الحذف؟');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-outline-danger" title="حذف">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="bi bi-people" style="font-size: 2rem;"></i>
+                                <p class="mt-2 mb-0">لا يوجد مستخدمين</p>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="?page=@(Model.CurrentPage - 1)&searchTerm=@Model.SearchTerm&roleId=@Model.RoleId&isActive=@Model.IsActive">السابق</a>
+            </li>
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                    <a class="page-link" href="?page=@i&searchTerm=@Model.SearchTerm&roleId=@Model.RoleId&isActive=@Model.IsActive">@i</a>
+                </li>
+            }
+            <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="?page=@(Model.CurrentPage + 1)&searchTerm=@Model.SearchTerm&roleId=@Model.RoleId&isActive=@Model.IsActive">التالي</a>
+            </li>
+        </ul>
+    </nav>
+}
