@@ -1,0 +1,318 @@
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using OperationalPlanMS.Data;
+using OperationalPlanMS.Models;
+using OperationalPlanMS.Models.Entities;
+using OperationalPlanMS.Models.ViewModels;
+
+namespace OperationalPlanMS.Services
+{
+    public interface IInitiativeService
+    {
+        // القراءة
+        Task<InitiativeListViewModel> GetListAsync(string? searchTerm, int? fiscalYearId, int? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
+        Task<InitiativeDetailsViewModel?> GetDetailsAsync(int id);
+        Task<Initiative?> GetByIdAsync(int id);
+
+        // الإنشاء والتعديل
+        Task<InitiativeFormViewModel> PrepareCreateViewModelAsync();
+        Task<InitiativeFormViewModel?> PrepareEditViewModelAsync(int id);
+        Task<(bool Success, int? Id, string? Error)> CreateAsync(InitiativeFormViewModel model, int createdById);
+        Task<(bool Success, string? Error)> UpdateAsync(int id, InitiativeFormViewModel model, int modifiedById, UserRole userRole, int userId);
+        Task<(bool Success, string? Error)> SoftDeleteAsync(int id, int modifiedById, UserRole userRole, int userId);
+
+        // الملاحظات
+        Task<(bool Success, string? Error)> AddNoteAsync(int initiativeId, string notes, int createdById);
+        Task<(bool Success, string? Error)> EditNoteAsync(int noteId, int initiativeId, string notes);
+        Task<(bool Success, string? Error)> DeleteNoteAsync(int noteId, int initiativeId);
+
+        // المساعدة
+        Task PopulateFormDropdownsAsync(InitiativeFormViewModel model);
+        Task PopulateFilterDropdownsAsync(InitiativeListViewModel model);
+        bool CanAccess(Initiative initiative, UserRole userRole, int userId);
+
+        // معلومات الوحدة التنظيمية
+        Task<string?> GetUnitNameAsync(int externalUnitId);
+    }
+
+    public class InitiativeService : IInitiativeService
+    {
+        private readonly AppDbContext _db;
+        private readonly ILogger<InitiativeService> _logger;
+
+        public InitiativeService(AppDbContext db, ILogger<InitiativeService> logger)
+        {
+            _db = db;
+            _logger = logger;
+        }
+
+        #region القراءة
+
+        public async Task<InitiativeListViewModel> GetListAsync(
+            string? searchTerm, int? fiscalYearId, int? externalUnitId,
+            int page, int pageSize, UserRole userRole, int userId)
+        {
+            var query = _db.Initiatives.Where(i => !i.IsDeleted)
+                .Include(i => i.FiscalYear).Include(i => i.Supervisor)
+                .Include(i => i.Projects.Where(p => !p.IsDeleted))
+                .AsQueryable();
+
+            // تصفية حسب الدور
+            if (userRole == UserRole.Supervisor)
+                query = query.Where(i => i.SupervisorId == userId);
+
+            // البحث
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+                query = query.Where(i => i.NameAr.Contains(searchTerm) ||
+                    i.NameEn.Contains(searchTerm) || i.Code.Contains(searchTerm));
+
+            // السنة المالية
+            if (fiscalYearId.HasValue)
+                query = query.Where(i => i.FiscalYearId == fiscalYearId.Value);
+
+            // الوحدة التنظيمية (مع الوحدات الفرعية)
+            if (externalUnitId.HasValue)
+            {
+                var unitIds = await GetUnitAndChildrenIdsAsync(externalUnitId.Value);
+                query = query.Where(i => i.ExternalUnitId.HasValue && unitIds.Contains(i.ExternalUnitId.Value));
+            }
+
+            var totalCount = await query.CountAsync();
+            var initiatives = await query.OrderByDescending(i => i.CreatedAt)
+                .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            var model = new InitiativeListViewModel
+            {
+                Initiatives = initiatives,
+                SearchTerm = searchTerm,
+                FiscalYearId = fiscalYearId,
+                TotalCount = totalCount,
+                CurrentPage = page,
+                PageSize = pageSize
+            };
+
+            await PopulateFilterDropdownsAsync(model);
+            return model;
+        }
+
+        public async Task<InitiativeDetailsViewModel?> GetDetailsAsync(int id)
+        {
+            var initiative = await _db.Initiatives
+                .Include(i => i.FiscalYear).Include(i => i.Supervisor).Include(i => i.CreatedBy)
+                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+
+            if (initiative == null) return null;
+
+            return new InitiativeDetailsViewModel
+            {
+                Initiative = initiative,
+                Projects = await _db.Projects.Where(p => p.InitiativeId == id && !p.IsDeleted)
+                    .Include(p => p.ProjectManager).Include(p => p.Steps.Where(s => !s.IsDeleted)).ToListAsync(),
+                Notes = await _db.ProgressUpdates.Where(p => p.InitiativeId == id)
+                    .Include(p => p.CreatedBy).OrderByDescending(p => p.CreatedAt).Take(20).ToListAsync()
+            };
+        }
+
+        public async Task<Initiative?> GetByIdAsync(int id)
+        {
+            return await _db.Initiatives.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+        }
+
+        #endregion
+
+        #region الإنشاء والتعديل
+
+        public async Task<InitiativeFormViewModel> PrepareCreateViewModelAsync()
+        {
+            var viewModel = new InitiativeFormViewModel();
+
+            // توليد الكود التلقائي
+            var currentYear = DateTime.Now.Year;
+            var lastCode = await _db.Initiatives
+                .Where(i => i.Code.StartsWith($"INI-{currentYear}"))
+                .OrderByDescending(i => i.Code).Select(i => i.Code).FirstOrDefaultAsync();
+
+            int nextNumber = 1;
+            if (!string.IsNullOrEmpty(lastCode))
+            {
+                var parts = lastCode.Split('-');
+                if (parts.Length == 3 && int.TryParse(parts[2], out int last)) nextNumber = last + 1;
+            }
+            viewModel.Code = $"INI-{currentYear}-{nextNumber:D3}";
+
+            await PopulateFormDropdownsAsync(viewModel);
+            return viewModel;
+        }
+
+        public async Task<InitiativeFormViewModel?> PrepareEditViewModelAsync(int id)
+        {
+            var initiative = await _db.Initiatives.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+            if (initiative == null) return null;
+
+            var viewModel = InitiativeFormViewModel.FromEntity(initiative);
+            await PopulateFormDropdownsAsync(viewModel);
+            return viewModel;
+        }
+
+        public async Task<(bool Success, int? Id, string? Error)> CreateAsync(InitiativeFormViewModel model, int createdById)
+        {
+            if (await _db.Initiatives.AnyAsync(i => i.Code == model.Code))
+                return (false, null, "هذا الكود مستخدم بالفعل");
+
+            var initiative = new Initiative
+            {
+                CreatedById = createdById,
+                CreatedAt = DateTime.Now
+            };
+            model.UpdateEntity(initiative);
+
+            _db.Initiatives.Add(initiative);
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("تم إنشاء مبادرة: {Code} بواسطة UserId: {UserId}", initiative.Code, createdById);
+
+            return (true, initiative.Id, null);
+        }
+
+        public async Task<(bool Success, string? Error)> UpdateAsync(int id, InitiativeFormViewModel model, int modifiedById, UserRole userRole, int userId)
+        {
+            var initiative = await _db.Initiatives.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+            if (initiative == null) return (false, "المبادرة غير موجودة");
+
+            // Supervisor يعدل مبادراته فقط
+            if (userRole == UserRole.Supervisor && initiative.SupervisorId != userId)
+                return (false, "لا يمكنك تعديل هذه المبادرة");
+
+            if (await _db.Initiatives.AnyAsync(i => i.Code == model.Code && i.Id != id))
+                return (false, "هذا الكود مستخدم بالفعل");
+
+            model.UpdateEntity(initiative);
+            initiative.LastModifiedById = modifiedById;
+            initiative.LastModifiedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("تم تحديث مبادرة: {Code}", initiative.Code);
+
+            return (true, null);
+        }
+
+        public async Task<(bool Success, string? Error)> SoftDeleteAsync(int id, int modifiedById, UserRole userRole, int userId)
+        {
+            var initiative = await _db.Initiatives.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+            if (initiative == null) return (false, "المبادرة غير موجودة");
+
+            // Supervisor يحذف مبادراته فقط
+            if (userRole == UserRole.Supervisor && initiative.SupervisorId != userId)
+                return (false, "لا يمكنك حذف هذه المبادرة");
+
+            initiative.IsDeleted = true;
+            initiative.LastModifiedById = modifiedById;
+            initiative.LastModifiedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("تم حذف مبادرة: {Code} بواسطة UserId: {UserId}", initiative.Code, modifiedById);
+
+            return (true, null);
+        }
+
+        #endregion
+
+        #region الملاحظات
+
+        public async Task<(bool Success, string? Error)> AddNoteAsync(int initiativeId, string notes, int createdById)
+        {
+            var initiative = await _db.Initiatives.FirstOrDefaultAsync(i => i.Id == initiativeId && !i.IsDeleted);
+            if (initiative == null) return (false, "المبادرة غير موجودة");
+            if (string.IsNullOrWhiteSpace(notes)) return (false, "الملاحظة مطلوبة");
+
+            _db.ProgressUpdates.Add(new ProgressUpdate
+            {
+                InitiativeId = initiativeId,
+                NotesAr = notes,
+                UpdateType = UpdateType.Note,
+                CreatedById = createdById,
+                CreatedAt = DateTime.Now
+            });
+
+            initiative.LastModifiedById = createdById;
+            initiative.LastModifiedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+
+            return (true, null);
+        }
+
+        public async Task<(bool Success, string? Error)> EditNoteAsync(int noteId, int initiativeId, string notes)
+        {
+            var note = await _db.ProgressUpdates.FindAsync(noteId);
+            if (note == null || note.InitiativeId != initiativeId) return (false, "الملاحظة غير موجودة");
+            if (string.IsNullOrWhiteSpace(notes)) return (false, "الملاحظة مطلوبة");
+
+            note.NotesAr = notes;
+            await _db.SaveChangesAsync();
+            return (true, null);
+        }
+
+        public async Task<(bool Success, string? Error)> DeleteNoteAsync(int noteId, int initiativeId)
+        {
+            var note = await _db.ProgressUpdates.FindAsync(noteId);
+            if (note == null || note.InitiativeId != initiativeId) return (false, "الملاحظة غير موجودة");
+
+            _db.ProgressUpdates.Remove(note);
+            await _db.SaveChangesAsync();
+            return (true, null);
+        }
+
+        #endregion
+
+        #region المساعدة
+
+        public bool CanAccess(Initiative initiative, UserRole userRole, int userId)
+        {
+            return userRole switch
+            {
+                UserRole.Admin => true,
+                UserRole.Executive => true,
+                UserRole.Supervisor => initiative.SupervisorId == userId,
+                _ => false
+            };
+        }
+
+        public async Task PopulateFormDropdownsAsync(InitiativeFormViewModel model)
+        {
+            model.FiscalYears = new SelectList(
+                await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(), "Id", "NameAr", model.FiscalYearId);
+            model.Supervisors = new SelectList(
+                await _db.Users.Where(u => u.IsActive).ToListAsync(), "Id", "FullNameAr", model.SupervisorId);
+        }
+
+        public async Task PopulateFilterDropdownsAsync(InitiativeListViewModel model)
+        {
+            model.FiscalYears = new SelectList(
+                await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(), "Id", "NameAr", model.FiscalYearId);
+        }
+
+        public async Task<string?> GetUnitNameAsync(int externalUnitId)
+        {
+            var unit = await _db.ExternalOrganizationalUnits.FirstOrDefaultAsync(u => u.Id == externalUnitId);
+            return unit?.ArabicName ?? unit?.ArabicUnitName;
+        }
+
+        private async Task<List<int>> GetUnitAndChildrenIdsAsync(int unitId)
+        {
+            var result = new List<int> { unitId };
+            var children = await _db.ExternalOrganizationalUnits
+                .Where(u => u.ParentId == unitId && u.IsActive).Select(u => u.Id).ToListAsync();
+
+            foreach (var childId in children)
+            {
+                result.Add(childId);
+                var grandChildren = await _db.ExternalOrganizationalUnits
+                    .Where(u => u.ParentId == childId && u.IsActive).Select(u => u.Id).ToListAsync();
+                result.AddRange(grandChildren);
+            }
+            return result;
+        }
+
+        #endregion
+    }
+}

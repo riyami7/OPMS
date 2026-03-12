@@ -68,6 +68,15 @@ builder.Services.AddMemoryCache();
 // User Management Service
 builder.Services.AddScoped<IUserService, UserService>();
 
+// Initiative Management Service
+builder.Services.AddScoped<IInitiativeService, InitiativeService>();
+
+// Project Management Service
+builder.Services.AddScoped<IProjectService, ProjectService>();
+
+// Step Management Service
+builder.Services.AddScoped<IStepService, StepService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
