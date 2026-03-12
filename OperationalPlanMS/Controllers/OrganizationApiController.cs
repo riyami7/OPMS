@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Services;
@@ -12,6 +13,7 @@ namespace OperationalPlanMS.Controllers.Api
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [EnableRateLimiting("api")]
     public class OrganizationApiController : ControllerBase
     {
         private readonly IExternalApiService _externalApiService;
@@ -150,7 +152,7 @@ namespace OperationalPlanMS.Controllers.Api
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error syncing organizational units");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "حدث خطأ أثناء المزامنة. يرجى المحاولة لاحقاً." });
             }
         }
 

@@ -1058,6 +1058,8 @@ namespace OperationalPlanMS.Controllers
         [HttpGet]
         public IActionResult ExternalSync()
         {
+            if (!IsAdminUser()) return Forbid();
+
             ViewBag.ApiBaseUrl = _configuration["ExternalApi:BaseUrl"] ?? "غير محدد";
             ViewBag.ApiTenantId = _configuration["ExternalApi:TenantId"] ?? "1";
             return View();

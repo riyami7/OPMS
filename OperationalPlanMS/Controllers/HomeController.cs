@@ -13,10 +13,12 @@ namespace OperationalPlanMS.Controllers
     public class HomeController : Controller
     {
         private readonly AppDbContext _db;
+        private readonly ILogger<HomeController> _logger;
 
-        public HomeController(AppDbContext db)
+        public HomeController(AppDbContext db, ILogger<HomeController> logger)
         {
             _db = db;
+            _logger = logger;
         }
 
         public async Task<IActionResult> Index()
@@ -71,7 +73,8 @@ namespace OperationalPlanMS.Controllers
             }
             catch (Exception ex)
             {
-                ViewBag.DatabaseError = ex.Message;
+                _logger.LogError(ex, "خطأ في تحميل لوحة التحكم");
+                ViewBag.DatabaseError = "حدث خطأ في الاتصال بقاعدة البيانات. يرجى المحاولة لاحقاً.";
                 return View(new DashboardViewModel());
             }
         }

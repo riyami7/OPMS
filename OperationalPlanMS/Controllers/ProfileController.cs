@@ -15,6 +15,9 @@ namespace OperationalPlanMS.Controllers
         private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
 
+        // تشفير كلمات المرور
+        private static readonly Microsoft.AspNetCore.Identity.PasswordHasher<Models.Entities.User> _passwordHasher = new();
+
         public ProfileController(AppDbContext db, IWebHostEnvironment env)
         {
             _db = db;
@@ -138,7 +141,35 @@ namespace OperationalPlanMS.Controllers
                 }
 
                 // التحقق من كلمة المرور الحالية
-                if (user.PasswordHash != model.CurrentPassword)
+                bool currentPasswordValid = false;
+
+                if (!string.IsNullOrEmpty(user.PasswordHash))
+                {
+                    try
+                    {
+                        // محاولة التحقق كـ hash
+                        var verifyResult = _passwordHasher.VerifyHashedPassword(
+                            user, user.PasswordHash, model.CurrentPassword);
+
+                        if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Success
+                            || verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.SuccessRehashNeeded)
+                        {
+                            currentPasswordValid = true;
+                        }
+                    }
+                    catch (FormatException)
+                    {
+                        // PasswordHash ليس hash صالح — مخزن كنص عادي
+                    }
+
+                    // Fallback: مقارنة كنص عادي
+                    if (!currentPasswordValid && user.PasswordHash == model.CurrentPassword)
+                    {
+                        currentPasswordValid = true;
+                    }
+                }
+
+                if (!currentPasswordValid)
                 {
                     ModelState.AddModelError("CurrentPassword", "كلمة المرور الحالية غير صحيحة");
                     return View(model);
@@ -151,8 +182,8 @@ namespace OperationalPlanMS.Controllers
                     return View(model);
                 }
 
-                // تحديث كلمة المرور
-                user.PasswordHash = model.NewPassword;
+                // تحديث كلمة المرور — مشفرة
+                user.PasswordHash = _passwordHasher.HashPassword(user, model.NewPassword);
                 await _db.SaveChangesAsync();
 
                 TempData["SuccessMessage"] = "تم تغيير كلمة المرور بنجاح";
@@ -190,6 +221,13 @@ namespace OperationalPlanMS.Controllers
             if (!allowedExtensions.Contains(extension))
             {
                 TempData["ErrorMessage"] = "نوع الملف غير مدعوم. الأنواع المسموحة: JPG, PNG, GIF";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // التحقق من محتوى الملف (magic bytes)
+            if (!await IsValidImageAsync(profileImage))
+            {
+                TempData["ErrorMessage"] = "محتوى الملف لا يطابق نوع الصورة المتوقع";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -321,6 +359,32 @@ namespace OperationalPlanMS.Controllers
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 claimsPrincipal);
+        }
+
+        /// <summary>
+        /// التحقق من محتوى الملف عبر magic bytes
+        /// </summary>
+        private static async Task<bool> IsValidImageAsync(IFormFile file)
+        {
+            if (file.Length < 4) return false;
+
+            var buffer = new byte[8];
+            using var stream = file.OpenReadStream();
+            await stream.ReadAsync(buffer, 0, buffer.Length);
+
+            // JPEG: FF D8 FF
+            if (buffer[0] == 0xFF && buffer[1] == 0xD8 && buffer[2] == 0xFF)
+                return true;
+
+            // PNG: 89 50 4E 47
+            if (buffer[0] == 0x89 && buffer[1] == 0x50 && buffer[2] == 0x4E && buffer[3] == 0x47)
+                return true;
+
+            // GIF: 47 49 46 38
+            if (buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46 && buffer[3] == 0x38)
+                return true;
+
+            return false;
         }
     }
 }

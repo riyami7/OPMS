@@ -361,3 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# ===== OPMS Security =====
+# Secrets & Configuration
+appsettings.Production.json
+appsettings.Staging.json
+**/secrets.json
+
+# User uploads (sensitive data)
+**/wwwroot/uploads/profiles/
+**/wwwroot/uploads/steps/

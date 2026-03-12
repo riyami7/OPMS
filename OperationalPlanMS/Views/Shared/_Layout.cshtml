@@ -300,6 +300,9 @@
         });
     </script>
 
+    <!-- Safe DOM Helpers — XSS Prevention -->
+    <script src="~/js/safe-dom.js"></script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

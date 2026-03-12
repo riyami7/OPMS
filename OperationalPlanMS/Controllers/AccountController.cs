@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Models.ViewModels;
@@ -13,11 +14,16 @@ namespace OperationalPlanMS.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
+        private readonly ILogger<AccountController> _logger;
 
-        public AccountController(AppDbContext db, IConfiguration config)
+        // تشفير كلمات المرور
+        private static readonly Microsoft.AspNetCore.Identity.PasswordHasher<Models.Entities.User> _passwordHasher = new();
+
+        public AccountController(AppDbContext db, IConfiguration config, ILogger<AccountController> logger)
         {
             _db = db;
             _config = config;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -34,6 +40,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("login")]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
             if (!ModelState.IsValid)
@@ -59,8 +66,43 @@ namespace OperationalPlanMS.Controllers
             }
             else
             {
-                // Fallback للتطوير - أي كلمة مرور غير فارغة
-                isAuthenticated = !string.IsNullOrEmpty(model.Password);
+                // Fallback للتطوير - التحقق من كلمة المرور المخزنة
+                if (!string.IsNullOrEmpty(user.PasswordHash))
+                {
+                    try
+                    {
+                        // أولاً: محاولة التحقق كـ hash مشفر
+                        var verifyResult = _passwordHasher.VerifyHashedPassword(
+                            user, user.PasswordHash, model.Password);
+
+                        if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Success
+                            || verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.SuccessRehashNeeded)
+                        {
+                            isAuthenticated = true;
+
+                            // إعادة تشفير إذا الخوارزمية قديمة
+                            if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.SuccessRehashNeeded)
+                            {
+                                user.PasswordHash = _passwordHasher.HashPassword(user, model.Password);
+                                await _db.SaveChangesAsync();
+                            }
+                        }
+                    }
+                    catch (FormatException)
+                    {
+                        // PasswordHash ليس hash صالح — يعني مخزن كنص عادي
+                    }
+
+                    // Fallback: إذا ما تم التحقق بعد — مقارنة كنص عادي
+                    if (!isAuthenticated && user.PasswordHash == model.Password)
+                    {
+                        // كلمة مرور قديمة (نص عادي) — تحويلها تلقائياً لـ hash
+                        isAuthenticated = true;
+                        user.PasswordHash = _passwordHasher.HashPassword(user, model.Password);
+                        await _db.SaveChangesAsync();
+                        _logger.LogInformation("تم تحويل كلمة مرور المستخدم {Username} من نص عادي إلى hash", user.ADUsername);
+                    }
+                }
             }
 
             if (!isAuthenticated)
@@ -149,13 +191,6 @@ namespace OperationalPlanMS.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
-        {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Login");
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> LogoutGet()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("Login");

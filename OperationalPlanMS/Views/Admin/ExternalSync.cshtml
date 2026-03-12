@@ -120,9 +120,9 @@
                 const response = await fetch('/api/OrganizationApi/units/sync-status');
                 if (response.ok) {
                     const data = await response.json();
-                    
+
                     document.getElementById('unitsCount').textContent = data.totalCount || 0;
-                    
+
                     if (data.lastSyncAt) {
                         const date = new Date(data.lastSyncAt);
                         document.getElementById('unitsLastSync').textContent = date.toLocaleString('ar-OM');
@@ -149,7 +149,7 @@
         async function syncUnits() {
             const btn = document.getElementById('syncUnitsBtn');
             const resultDiv = document.getElementById('unitsSyncResult');
-            
+
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جاري المزامنة...';
             resultDiv.className = 'alert d-none';
@@ -166,27 +166,31 @@
 
                 if (data.success) {
                     resultDiv.className = 'alert alert-success mb-3';
-                    resultDiv.innerHTML = `
-                        <i class="bi bi-check-circle me-1"></i>
-                        <strong>تمت المزامنة بنجاح!</strong><br>
-                        <small>إضافة: ${data.addedCount} | تحديث: ${data.updatedCount} | المجموع: ${data.totalCount}</small>
-                    `;
+                    resultDiv.textContent = '';
+                    const icon = safeCreateElement('i', { className: 'bi bi-check-circle me-1' });
+                    const strong = safeCreateElement('strong', {}, 'تمت المزامنة بنجاح!');
+                    const br = document.createElement('br');
+                    const small = safeCreateElement('small', {},
+                        `إضافة: ${Number(data.addedCount)} | تحديث: ${Number(data.updatedCount)} | المجموع: ${Number(data.totalCount)}`);
+                    resultDiv.append(icon, strong, br, small);
                     checkUnitsStatus();
                 } else {
                     resultDiv.className = 'alert alert-danger mb-3';
-                    resultDiv.innerHTML = `
-                        <i class="bi bi-x-circle me-1"></i>
-                        <strong>فشلت المزامنة</strong><br>
-                        <small>${data.message || 'حدث خطأ غير معروف'}</small>
-                    `;
+                    resultDiv.textContent = '';
+                    const icon = safeCreateElement('i', { className: 'bi bi-x-circle me-1' });
+                    const strong = safeCreateElement('strong', {}, 'فشلت المزامنة');
+                    const br = document.createElement('br');
+                    const small = safeCreateElement('small', {}, data.message || 'حدث خطأ غير معروف');
+                    resultDiv.append(icon, strong, br, small);
                 }
             } catch (error) {
                 resultDiv.className = 'alert alert-danger mb-3';
-                resultDiv.innerHTML = `
-                    <i class="bi bi-x-circle me-1"></i>
-                    <strong>خطأ في الاتصال</strong><br>
-                    <small>${error.message}</small>
-                `;
+                resultDiv.textContent = '';
+                const icon = safeCreateElement('i', { className: 'bi bi-x-circle me-1' });
+                const strong = safeCreateElement('strong', {}, 'خطأ في الاتصال');
+                const br = document.createElement('br');
+                const small = safeCreateElement('small', {}, error.message);
+                resultDiv.append(icon, strong, br, small);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-cloud-download me-2"></i>مزامنة الآن';
