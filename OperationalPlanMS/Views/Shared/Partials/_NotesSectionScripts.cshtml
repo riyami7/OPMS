@@ -1,0 +1,12 @@
+﻿<script>
+    function editNote(noteId, noteText) {
+        document.getElementById('editNoteId').value = noteId;
+        document.getElementById('editNoteText').value = noteText;
+        new bootstrap.Modal(document.getElementById('editNoteModal')).show();
+    }
+
+    function deleteNote(noteId) {
+        document.getElementById('deleteNoteId').value = noteId;
+        new bootstrap.Modal(document.getElementById('deleteNoteModal')).show();
+    }
+</script>
