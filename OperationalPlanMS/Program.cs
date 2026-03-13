@@ -1,15 +1,36 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Services;
+using System.IO.Compression;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add DbContext
-builder.Services.AddDbContext<AppDbContext>(options =>
+// DbContext with connection pooling
+builder.Services.AddDbContextPool<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Response Compression (gzip/brotli)
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    {
+        "application/javascript",
+        "text/css",
+        "application/json",
+        "image/svg+xml"
+    });
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+    options.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+    options.Level = CompressionLevel.SmallestSize);
 
 // Add Cookie Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -55,6 +76,7 @@ builder.Services.AddRateLimiter(options =>
 var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add<OperationalPlanMS.Filters.PendingApprovalsFilter>();
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
 });
 if (builder.Environment.IsDevelopment())
 {
@@ -88,6 +110,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Response Compression (before static files)
+app.UseResponseCompression();
+
 // Security Headers
 app.Use(async (context, next) =>
 {
@@ -107,7 +132,14 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseStaticFiles();
+// Static Files with cache headers (CSS, JS, images cached 7 days)
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers["Cache-Control"] = "public,max-age=604800";
+    }
+});
 app.UseRouting();
 
 // Rate Limiting
