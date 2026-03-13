@@ -284,24 +284,21 @@ namespace OperationalPlanMS.Controllers
 
         private async Task<List<int>> GetUnitAndChildrenIds(int unitId)
         {
-            var result = new List<int> { unitId };
-
-            var children = await _db.ExternalOrganizationalUnits
-                .Where(u => u.ParentId == unitId && u.IsActive)
-                .Select(u => u.Id)
+            // تحميل كل الوحدات النشطة مرة واحدة ثم تصفية في الذاكرة
+            var allUnits = await _db.ExternalOrganizationalUnits
+                .Where(u => u.IsActive)
+                .Select(u => new { u.Id, u.ParentId })
                 .ToListAsync();
 
-            foreach (var childId in children)
-            {
-                result.Add(childId);
+            var result = new List<int> { unitId };
 
-                var grandChildren = await _db.ExternalOrganizationalUnits
-                    .Where(u => u.ParentId == childId && u.IsActive)
-                    .Select(u => u.Id)
-                    .ToListAsync();
+            // المستوى الثاني (أبناء مباشرون)
+            var children = allUnits.Where(u => u.ParentId == unitId).Select(u => u.Id).ToList();
+            result.AddRange(children);
 
-                result.AddRange(grandChildren);
-            }
+            // المستوى الثالث (أحفاد)
+            var grandChildren = allUnits.Where(u => u.ParentId.HasValue && children.Contains(u.ParentId.Value)).Select(u => u.Id).ToList();
+            result.AddRange(grandChildren);
 
             return result;
         }
