@@ -90,180 +90,188 @@ namespace OperationalPlanMS.Controllers
 
         private async Task LoadAdminDashboard(DashboardViewModel model)
         {
-            // إحصائيات شاملة
-            model.TotalInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted);
-            model.TotalProjects = await _db.Projects.CountAsync(p => !p.IsDeleted);
-            model.TotalSteps = await _db.Steps.CountAsync(s => !s.IsDeleted);
-            model.TotalUsers = await _db.Users.CountAsync(u => u.IsActive);
-
-            // إحصائيات الحالة
-            model.CompletedInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.Status == Status.Completed);
-            model.InProgressInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.Status == Status.InProgress);
-            model.DelayedInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed);
-
-            model.CompletedProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && p.Status == Status.Completed);
-            model.InProgressProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && p.Status == Status.InProgress);
-
-            // متوسط الإنجاز
-            var initiatives = await _db.Initiatives.Where(i => !i.IsDeleted).ToListAsync();
-            model.AverageInitiativeProgress = initiatives.Any() ? Math.Round(initiatives.Average(i => i.ProgressPercentage), 1) : 0;
-
-            var projects = await _db.Projects.Where(p => !p.IsDeleted).ToListAsync();
-            model.AverageProjectProgress = projects.Any() ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0;
-
-            // آخر المبادرات
-            model.RecentInitiatives = await _db.Initiatives
+            // تحميل البيانات في أقل عدد من الاستعلامات (5 بدل 14)
+            var initiatives = await _db.Initiatives
                 .Where(i => !i.IsDeleted)
-                .OrderByDescending(i => i.CreatedAt)
-                .Take(5)
+                .Include(i => i.Supervisor)
                 .ToListAsync();
 
-            // آخر المشاريع
-            model.RecentProjects = await _db.Projects
+            var projects = await _db.Projects
                 .Where(p => !p.IsDeleted)
                 .Include(p => p.Initiative)
-                .OrderByDescending(p => p.CreatedAt)
-                .Take(5)
                 .ToListAsync();
 
-            // المبادرات المتأخرة
-            model.OverdueInitiatives = await _db.Initiatives
-                .Where(i => !i.IsDeleted && i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed)
-                .Include(i => i.Supervisor)
+            var totalSteps = await _db.Steps.CountAsync(s => !s.IsDeleted);
+            var totalUsers = await _db.Users.CountAsync(u => u.IsActive);
+
+            // الإحصائيات — محسوبة في الذاكرة
+            model.TotalInitiatives = initiatives.Count;
+            model.TotalProjects = projects.Count;
+            model.TotalSteps = totalSteps;
+            model.TotalUsers = totalUsers;
+
+            model.CompletedInitiatives = initiatives.Count(i => i.Status == Status.Completed);
+            model.InProgressInitiatives = initiatives.Count(i => i.Status == Status.InProgress);
+            model.DelayedInitiatives = initiatives.Count(i => i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed);
+
+            model.CompletedProjects = projects.Count(i => i.Status == Status.Completed);
+            model.InProgressProjects = projects.Count(i => i.Status == Status.InProgress);
+
+            model.AverageInitiativeProgress = initiatives.Any()
+                ? Math.Round(initiatives.Average(i => i.ProgressPercentage), 1) : 0;
+            model.AverageProjectProgress = projects.Any()
+                ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0;
+
+            // القوائم — مرتبة من البيانات المحمّلة
+            model.RecentInitiatives = initiatives
+                .OrderByDescending(i => i.CreatedAt)
+                .Take(5)
+                .ToList();
+
+            model.RecentProjects = projects
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(5)
+                .ToList();
+
+            model.OverdueInitiatives = initiatives
+                .Where(i => i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed)
                 .OrderBy(i => i.PlannedEndDate)
                 .Take(5)
-                .ToListAsync();
+                .ToList();
         }
 
         private async Task LoadExecutiveDashboard(DashboardViewModel model)
         {
-            model.TotalInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted);
-            model.TotalProjects = await _db.Projects.CountAsync(p => !p.IsDeleted);
-            model.TotalSteps = await _db.Steps.CountAsync(s => !s.IsDeleted);
-
-            model.CompletedInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.Status == Status.Completed);
-            model.InProgressInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.Status == Status.InProgress);
-            model.DelayedInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed);
-
-            model.CompletedProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && p.Status == Status.Completed);
-            model.InProgressProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && p.Status == Status.InProgress);
-
-            var initiatives = await _db.Initiatives.Where(i => !i.IsDeleted).ToListAsync();
-            model.AverageInitiativeProgress = initiatives.Any() ? Math.Round(initiatives.Average(i => i.ProgressPercentage), 1) : 0;
-
-            var projects = await _db.Projects.Where(p => !p.IsDeleted).ToListAsync();
-            model.AverageProjectProgress = projects.Any() ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0;
-
-            model.RecentInitiatives = await _db.Initiatives
+            var initiatives = await _db.Initiatives
                 .Where(i => !i.IsDeleted)
                 .Include(i => i.Supervisor)
-                .OrderByDescending(i => i.CreatedAt)
-                .Take(5)
                 .ToListAsync();
 
-            model.OverdueInitiatives = await _db.Initiatives
-                .Where(i => !i.IsDeleted && i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed)
-                .Include(i => i.Supervisor)
+            var projects = await _db.Projects
+                .Where(p => !p.IsDeleted)
+                .ToListAsync();
+
+            model.TotalInitiatives = initiatives.Count;
+            model.TotalProjects = projects.Count;
+            model.TotalSteps = await _db.Steps.CountAsync(s => !s.IsDeleted);
+
+            model.CompletedInitiatives = initiatives.Count(i => i.Status == Status.Completed);
+            model.InProgressInitiatives = initiatives.Count(i => i.Status == Status.InProgress);
+            model.DelayedInitiatives = initiatives.Count(i => i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed);
+
+            model.CompletedProjects = projects.Count(p => p.Status == Status.Completed);
+            model.InProgressProjects = projects.Count(p => p.Status == Status.InProgress);
+
+            model.AverageInitiativeProgress = initiatives.Any()
+                ? Math.Round(initiatives.Average(i => i.ProgressPercentage), 1) : 0;
+            model.AverageProjectProgress = projects.Any()
+                ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0;
+
+            model.RecentInitiatives = initiatives
+                .OrderByDescending(i => i.CreatedAt)
+                .Take(5)
+                .ToList();
+
+            model.OverdueInitiatives = initiatives
+                .Where(i => i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed)
                 .OrderBy(i => i.PlannedEndDate)
                 .Take(5)
-                .ToListAsync();
+                .ToList();
         }
 
         private async Task LoadSupervisorDashboard(DashboardViewModel model, int userId)
         {
-            // المبادرات المعين عليها
-            var myInitiativeIds = await _db.Initiatives
+            // تحميل مبادراتي مع المشرف
+            var myInitiatives = await _db.Initiatives
                 .Where(i => !i.IsDeleted && i.SupervisorId == userId)
-                .Select(i => i.Id)
                 .ToListAsync();
 
-            model.TotalInitiatives = myInitiativeIds.Count;
-            model.TotalProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && myInitiativeIds.Contains(p.InitiativeId));
+            var myInitiativeIds = myInitiatives.Select(i => i.Id).ToList();
 
-            var myProjectIds = await _db.Projects
-                .Where(p => !p.IsDeleted && myInitiativeIds.Contains(p.InitiativeId))
-                .Select(p => p.Id)
-                .ToListAsync();
-            model.TotalSteps = await _db.Steps.CountAsync(s => !s.IsDeleted && myProjectIds.Contains(s.ProjectId));
-
-            model.CompletedInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.SupervisorId == userId && i.Status == Status.Completed);
-            model.InProgressInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.SupervisorId == userId && i.Status == Status.InProgress);
-            model.DelayedInitiatives = await _db.Initiatives.CountAsync(i => !i.IsDeleted && i.SupervisorId == userId && i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed);
-
-            model.CompletedProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && myInitiativeIds.Contains(p.InitiativeId) && p.Status == Status.Completed);
-            model.InProgressProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && myInitiativeIds.Contains(p.InitiativeId) && p.Status == Status.InProgress);
-
-            if (myInitiativeIds.Any())
-            {
-                var myInitiatives = await _db.Initiatives.Where(i => myInitiativeIds.Contains(i.Id)).ToListAsync();
-                model.AverageInitiativeProgress = Math.Round(myInitiatives.Average(i => i.ProgressPercentage), 1);
-            }
-
-            model.RecentInitiatives = await _db.Initiatives
-                .Where(i => !i.IsDeleted && i.SupervisorId == userId)
-                .OrderByDescending(i => i.CreatedAt)
-                .Take(5)
-                .ToListAsync();
-
-            model.RecentProjects = await _db.Projects
+            // تحميل مشاريع مبادراتي
+            var myProjects = await _db.Projects
                 .Where(p => !p.IsDeleted && myInitiativeIds.Contains(p.InitiativeId))
                 .Include(p => p.Initiative)
                 .Include(p => p.ProjectManager)
-                .OrderByDescending(p => p.CreatedAt)
-                .Take(5)
                 .ToListAsync();
 
-            model.OverdueInitiatives = await _db.Initiatives
-                .Where(i => !i.IsDeleted && i.SupervisorId == userId && i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed)
+            var myProjectIds = myProjects.Select(p => p.Id).ToList();
+
+            model.TotalInitiatives = myInitiatives.Count;
+            model.TotalProjects = myProjects.Count;
+            model.TotalSteps = await _db.Steps.CountAsync(s => !s.IsDeleted && myProjectIds.Contains(s.ProjectId));
+
+            model.CompletedInitiatives = myInitiatives.Count(i => i.Status == Status.Completed);
+            model.InProgressInitiatives = myInitiatives.Count(i => i.Status == Status.InProgress);
+            model.DelayedInitiatives = myInitiatives.Count(i => i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed);
+
+            model.CompletedProjects = myProjects.Count(p => p.Status == Status.Completed);
+            model.InProgressProjects = myProjects.Count(p => p.Status == Status.InProgress);
+
+            model.AverageInitiativeProgress = myInitiatives.Any()
+                ? Math.Round(myInitiatives.Average(i => i.ProgressPercentage), 1) : 0;
+
+            model.RecentInitiatives = myInitiatives
+                .OrderByDescending(i => i.CreatedAt)
+                .Take(5)
+                .ToList();
+
+            model.RecentProjects = myProjects
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(5)
+                .ToList();
+
+            model.OverdueInitiatives = myInitiatives
+                .Where(i => i.PlannedEndDate < DateTime.Today && i.Status != Status.Completed)
                 .OrderBy(i => i.PlannedEndDate)
                 .Take(5)
-                .ToListAsync();
+                .ToList();
         }
 
         private async Task LoadUserDashboard(DashboardViewModel model, int userId)
         {
-            // المشاريع المعين عليها
-            var myProjectIds = await _db.Projects
-                .Where(p => !p.IsDeleted && p.ProjectManagerId == userId)
-                .Select(p => p.Id)
-                .ToListAsync();
-
-            model.TotalProjects = myProjectIds.Count;
-            model.TotalSteps = await _db.Steps.CountAsync(s => !s.IsDeleted && myProjectIds.Contains(s.ProjectId));
-
-            model.CompletedProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && p.ProjectManagerId == userId && p.Status == Status.Completed);
-            model.InProgressProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && p.ProjectManagerId == userId && p.Status == Status.InProgress);
-            model.DelayedProjects = await _db.Projects.CountAsync(p => !p.IsDeleted && p.ProjectManagerId == userId && p.PlannedEndDate < DateTime.Today && p.Status != Status.Completed);
-
-            model.CompletedSteps = await _db.Steps.CountAsync(s => !s.IsDeleted && myProjectIds.Contains(s.ProjectId) && s.Status == StepStatus.Completed);
-            model.InProgressSteps = await _db.Steps.CountAsync(s => !s.IsDeleted && myProjectIds.Contains(s.ProjectId) && s.Status == StepStatus.InProgress);
-
-            if (myProjectIds.Any())
-            {
-                var myProjects = await _db.Projects.Where(p => myProjectIds.Contains(p.Id)).ToListAsync();
-                model.AverageProjectProgress = Math.Round(myProjects.Average(p => p.ProgressPercentage), 1);
-            }
-
-            model.RecentProjects = await _db.Projects
+            // تحميل مشاريعي
+            var myProjects = await _db.Projects
                 .Where(p => !p.IsDeleted && p.ProjectManagerId == userId)
                 .Include(p => p.Initiative)
-                .OrderByDescending(p => p.CreatedAt)
-                .Take(5)
                 .ToListAsync();
 
-            model.MySteps = await _db.Steps
+            var myProjectIds = myProjects.Select(p => p.Id).ToList();
+
+            // تحميل خطواتي
+            var mySteps = await _db.Steps
                 .Where(s => !s.IsDeleted && (s.AssignedToId == userId || myProjectIds.Contains(s.ProjectId)))
                 .Include(s => s.Project)
-                .OrderBy(s => s.PlannedEndDate)
-                .Take(10)
                 .ToListAsync();
 
-            model.OverdueProjects = await _db.Projects
-                .Where(p => !p.IsDeleted && p.ProjectManagerId == userId && p.PlannedEndDate < DateTime.Today && p.Status != Status.Completed)
-                .Include(p => p.Initiative)
+            model.TotalProjects = myProjects.Count;
+            model.TotalSteps = mySteps.Count(s => myProjectIds.Contains(s.ProjectId));
+
+            model.CompletedProjects = myProjects.Count(p => p.Status == Status.Completed);
+            model.InProgressProjects = myProjects.Count(p => p.Status == Status.InProgress);
+            model.DelayedProjects = myProjects.Count(p => p.PlannedEndDate < DateTime.Today && p.Status != Status.Completed);
+
+            model.CompletedSteps = mySteps.Count(s => myProjectIds.Contains(s.ProjectId) && s.Status == StepStatus.Completed);
+            model.InProgressSteps = mySteps.Count(s => myProjectIds.Contains(s.ProjectId) && s.Status == StepStatus.InProgress);
+
+            model.AverageProjectProgress = myProjects.Any()
+                ? Math.Round(myProjects.Average(p => p.ProgressPercentage), 1) : 0;
+
+            model.RecentProjects = myProjects
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(5)
+                .ToList();
+
+            model.MySteps = mySteps
+                .OrderBy(s => s.PlannedEndDate)
+                .Take(10)
+                .ToList();
+
+            model.OverdueProjects = myProjects
+                .Where(p => p.PlannedEndDate < DateTime.Today && p.Status != Status.Completed)
                 .OrderBy(p => p.PlannedEndDate)
                 .Take(5)
-                .ToListAsync();
+                .ToList();
         }
 
         private async Task LoadStepUserDashboard(DashboardViewModel model, int userId)
