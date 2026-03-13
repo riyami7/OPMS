@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Services;
 using System.IO.Compression;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -77,11 +78,47 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add<OperationalPlanMS.Filters.PendingApprovalsFilter>();
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
+})
+.AddJsonOptions(options =>
+{
+    // Enums as strings in JSON (e.g. "InProgress" not 3)
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 if (builder.Environment.IsDevelopment())
 {
     mvcBuilder.AddRazorRuntimeCompilation();
 }
+
+// CORS — allow external systems (chatbot, BI tools) to call /api/data/*
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ExternalApi", policy =>
+    {
+        var allowedOrigins = builder.Configuration.GetSection("ApiSettings:AllowedOrigins").Get<string[]>()
+            ?? new[] { "http://localhost:8000", "http://localhost:3000" };
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Swagger — API documentation
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "OPMS Data API", Version = "v1",
+        Description = "Read-only API for AI chatbot and external system integration" });
+    c.AddSecurityDefinition("ApiKey", new()
+    {
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Name = "X-API-Key"
+    });
+    c.AddSecurityRequirement(new()
+    {
+        { new() { Reference = new() { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "ApiKey" } }, Array.Empty<string>() }
+    });
+});
 
 // External API Service
 builder.Services.AddHttpClient<IExternalApiService, ExternalApiService>();
@@ -109,6 +146,13 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Swagger UI (available at /swagger)
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "OPMS Data API v1"));
+
+// CORS (before response compression)
+app.UseCors("ExternalApi");
 
 // Response Compression (before static files)
 app.UseResponseCompression();
