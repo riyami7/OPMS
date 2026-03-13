@@ -1,0 +1,72 @@
+@model OperationalPlanMS.Models.ViewModels.ProjectFormViewModel
+
+<!-- متطلبات التنفيذ -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-check me-2"></i>متطلبات التنفيذ</span>
+        <button type="button" class="btn btn-sm btn-primary" onclick="addRequirement()">
+            <i class="bi bi-plus"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        <div id="requirementsContainer">
+            @if (Model.Requirements != null)
+            {
+                var idx = 0;
+                foreach (var req in Model.Requirements)
+                {
+                    <div class="input-group mb-2 requirement-item">
+                        <span class="input-group-text">@(idx + 1)</span>
+                        <input type="text" name="Requirements[@idx]" value="@req" class="form-control" />
+                        <button type="button" class="btn btn-outline-danger" onclick="removeRequirement(this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    idx++;
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<!-- مؤشرات الأداء -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-graph-up me-2"></i>مؤشرات الأداء</span>
+        <button type="button" class="btn btn-sm btn-primary" onclick="addKPI()">
+            <i class="bi bi-plus"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        <div id="kpisContainer">
+            @if (Model.KPIItems != null)
+            {
+                var kIdx = 0;
+                foreach (var kpi in Model.KPIItems)
+                {
+                    <div class="card mb-2 kpi-item">
+                        <div class="card-body py-2">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-6">
+                                    <input type="text" name="KPIItems[@kIdx].KPIText" value="@kpi.KPIText" class="form-control form-control-sm" placeholder="نص المؤشر" />
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="text" name="KPIItems[@kIdx].TargetValue" value="@kpi.TargetValue" class="form-control form-control-sm" placeholder="المستهدف" />
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="text" name="KPIItems[@kIdx].ActualValue" value="@kpi.ActualValue" class="form-control form-control-sm" placeholder="الفعلي" />
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeKPI(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    kIdx++;
+                }
+            }
+        </div>
+    </div>
+</div>

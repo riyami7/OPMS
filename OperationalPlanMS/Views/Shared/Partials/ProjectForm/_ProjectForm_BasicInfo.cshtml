@@ -1,0 +1,55 @@
+@model OperationalPlanMS.Models.ViewModels.ProjectFormViewModel
+
+<!-- المعلومات الأساسية -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle me-2"></i>المعلومات الأساسية
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label asp-for="Code" class="form-label">الكود <span class="text-danger">*</span></label>
+                <input asp-for="Code" class="form-control" readonly />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label asp-for="ProjectNumber" class="form-label">رقم المشروع</label>
+                <input asp-for="ProjectNumber" class="form-control" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label asp-for="FinancialCostId" class="form-label">التكلفة المالية</label>
+                <select asp-for="FinancialCostId" asp-items="Model.FinancialCosts" class="form-select">
+                    <option value="">-- اختر --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="NameAr" class="form-label">الاسم بالعربية <span class="text-danger">*</span></label>
+                <input asp-for="NameAr" class="form-control" />
+                <span asp-validation-for="NameAr" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="NameEn" class="form-label">الاسم بالإنجليزية <span class="text-danger">*</span></label>
+                <input asp-for="NameEn" class="form-control" dir="ltr" />
+                <span asp-validation-for="NameEn" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="DescriptionAr" class="form-label">الوصف بالعربية</label>
+                <textarea asp-for="DescriptionAr" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="DescriptionEn" class="form-label">الوصف بالإنجليزية</label>
+                <textarea asp-for="DescriptionEn" class="form-control" rows="3" dir="ltr"></textarea>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="OperationalGoal" class="form-label">الهدف التشغيلي</label>
+            <textarea asp-for="OperationalGoal" class="form-control" rows="2"></textarea>
+        </div>
+    </div>
+</div>

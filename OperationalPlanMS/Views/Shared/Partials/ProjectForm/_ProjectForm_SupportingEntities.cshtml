@@ -1,0 +1,48 @@
+@model OperationalPlanMS.Models.ViewModels.ProjectFormViewModel
+
+<!-- الجهات المساندة -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-building me-2"></i>الجهات المساندة</span>
+        <button type="button" class="btn btn-sm btn-primary" onclick="showAddSupportingEntity()">
+            <i class="bi bi-plus"></i> إضافة جهة
+        </button>
+    </div>
+    <div class="card-body">
+        <div id="addSupportingEntitySection" style="display: none;" class="mb-3 p-3 border rounded bg-light">
+            <h6 class="mb-3"><i class="bi bi-plus-circle me-1"></i>إضافة جهة مساندة</h6>
+            <div class="row">
+                <div class="col-md-4 mb-2">
+                    <label class="form-label small">المستوى الأول</label>
+                    <select id="supportingLevel1" class="form-select form-select-sm" onchange="loadSupportingLevel2()">
+                        <option value="">-- اختر --</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-2">
+                    <label class="form-label small">المستوى الثاني</label>
+                    <select id="supportingLevel2" class="form-select form-select-sm" onchange="loadSupportingLevel3()" disabled>
+                        <option value="">-- اختر --</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-2">
+                    <label class="form-label small">المستوى الثالث</label>
+                    <select id="supportingLevel3" class="form-select form-select-sm" disabled>
+                        <option value="">-- اختر --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-success" onclick="addSupportingEntity()">
+                    <i class="bi bi-check me-1"></i>إضافة
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="cancelAddSupportingEntity()">إلغاء</button>
+            </div>
+        </div>
+
+        <div id="supportingEntitiesContainer"></div>
+        <div id="noSupportingEntities" class="text-muted text-center py-3">
+            <i class="bi bi-building me-1"></i>لم يتم اختيار أي جهة مساندة
+        </div>
+        <div id="supportingEntitiesInputs"></div>
+    </div>
+</div>

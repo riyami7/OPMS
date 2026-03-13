@@ -1,4 +1,4 @@
-﻿using OperationalPlanMS.Models.Entities;
+using OperationalPlanMS.Models.Entities;
 
 namespace OperationalPlanMS.Views.Shared.Partials
 {
@@ -6,8 +6,30 @@ namespace OperationalPlanMS.Views.Shared.Partials
     {
         public string Controller { get; set; } = string.Empty;
         public int EntityId { get; set; }
+
+        /// <summary>
+        /// Hidden field name for the entity ID in Add/Edit/Delete forms
+        /// e.g. "id" for Initiatives, "id" for Projects
+        /// </summary>
         public string EntityIdFieldName { get; set; } = "id";
-        public string NoteFieldName { get; set; } = "notes";
+
+        /// <summary>
+        /// Hidden field name for the entity ID in Edit/Delete modal forms
+        /// e.g. "initiativeId", "projectId"
+        /// </summary>
+        public string ModalEntityIdFieldName { get; set; } = "id";
+
+        /// <summary>
+        /// Textarea name in AddNote form
+        /// e.g. "notes" for Initiatives, "note" for Projects
+        /// </summary>
+        public string AddNoteFieldName { get; set; } = "notes";
+
+        /// <summary>
+        /// Textarea name in EditNote form (always "notes")
+        /// </summary>
+        public string EditNoteFieldName { get; set; } = "notes";
+
         public string AddAction { get; set; } = "AddNote";
         public string EditAction { get; set; } = "EditNote";
         public string DeleteAction { get; set; } = "DeleteNote";

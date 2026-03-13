@@ -1,4 +1,4 @@
-﻿@model OperationalPlanMS.Views.Shared.Partials.NotesSectionModel
+@model OperationalPlanMS.Views.Shared.Partials.NotesSectionModel
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -11,7 +11,7 @@
                 <input type="hidden" name="@Model.EntityIdFieldName" value="@Model.EntityId" />
                 <div class="row g-2">
                     <div class="col">
-                        <textarea name="@Model.NoteFieldName" class="form-control" rows="2" placeholder="أضف ملاحظة أو تحديث..." required></textarea>
+                        <textarea name="@Model.AddNoteFieldName" class="form-control" rows="2" placeholder="أضف ملاحظة أو تحديث..." required></textarea>
                     </div>
                     <div class="col-auto d-flex align-items-end">
                         <button type="submit" class="btn btn-primary">
@@ -77,13 +77,13 @@
             <div class="modal-content">
                 <form asp-action="@Model.EditAction" asp-controller="@Model.Controller" method="post">
                     <input type="hidden" name="noteId" id="editNoteId" />
-                    <input type="hidden" name="@Model.EntityIdFieldName" value="@Model.EntityId" />
+                    <input type="hidden" name="@Model.ModalEntityIdFieldName" value="@Model.EntityId" />
                     <div class="modal-header">
                         <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>تعديل الملاحظة</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <textarea name="notes" id="editNoteText" class="form-control" rows="4" required></textarea>
+                        <textarea name="@Model.EditNoteFieldName" id="editNoteText" class="form-control" rows="4" required></textarea>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
@@ -99,7 +99,7 @@
             <div class="modal-content">
                 <form asp-action="@Model.DeleteAction" asp-controller="@Model.Controller" method="post">
                     <input type="hidden" name="noteId" id="deleteNoteId" />
-                    <input type="hidden" name="@Model.EntityIdFieldName" value="@Model.EntityId" />
+                    <input type="hidden" name="@Model.ModalEntityIdFieldName" value="@Model.EntityId" />
                     <div class="modal-header bg-danger text-white">
                         <h5 class="modal-title"><i class="bi bi-trash me-2"></i>حذف الملاحظة</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>

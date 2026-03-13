@@ -200,125 +200,18 @@
             </div>
         </div>
 
-        <!-- Notes Section -->
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-journal-text me-2"></i>الملاحظات (@Model.Notes.Count)</span>
-            </div>
-            <div class="card-body">
-                @if (canEdit)
-                {
-                    <form asp-action="AddNote" asp-controller="Initiatives" method="post" class="mb-4">
-                        <input type="hidden" name="id" value="@Model.Initiative.Id" />
-                        <div class="row g-2">
-                            <div class="col">
-                                <textarea name="notes" class="form-control" rows="2" placeholder="أضف ملاحظة جديدة..." required></textarea>
-                            </div>
-                            <div class="col-auto d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-plus-circle me-1"></i>إضافة
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                }
-
-                @if (Model.Notes.Any())
-                {
-                    <div class="notes-timeline">
-                        @foreach (var note in Model.Notes)
-                        {
-                            <div class="d-flex mb-3 pb-3 border-bottom note-item" id="note-@note.Id">
-                                <div class="flex-shrink-0">
-                                    <div class="avatar bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                        <i class="bi bi-person text-secondary"></i>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <strong class="small">@note.CreatedBy?.FullNameAr</strong>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <small class="text-muted">@note.CreatedAt.ToString("yyyy-MM-dd HH:mm")</small>
-                                            @if (isAdmin)
-                                            {
-                                                <div class="btn-group btn-group-sm">
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
-                                                            onclick="editNote(@note.Id, '@Html.Raw(note.NotesAr?.Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))')"
-                                                            title="تعديل">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
-                                                            onclick="deleteNote(@note.Id)"
-                                                            title="حذف">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                    <p class="mb-0 mt-1 note-text">@note.NotesAr</p>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="text-center text-muted py-3">
-                        <i class="bi bi-chat-square-text" style="font-size: 2rem;"></i>
-                        <p class="mt-2 mb-0">لا توجد ملاحظات</p>
-                    </div>
-                }
-            </div>
-        </div>
-
-        @if (isAdmin)
+        @await Html.PartialAsync("Partials/_NotesSection", new OperationalPlanMS.Views.Shared.Partials.NotesSectionModel
         {
-            <div class="modal fade" id="editNoteModal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <form asp-action="EditNote" asp-controller="Initiatives" method="post">
-                            <input type="hidden" name="noteId" id="editNoteId" />
-                            <input type="hidden" name="initiativeId" value="@Model.Initiative.Id" />
-                            <div class="modal-header">
-                                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>تعديل الملاحظة</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                <textarea name="notes" id="editNoteText" class="form-control" rows="4" required></textarea>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal fade" id="deleteNoteModal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <form asp-action="DeleteNote" asp-controller="Initiatives" method="post">
-                            <input type="hidden" name="noteId" id="deleteNoteId" />
-                            <input type="hidden" name="initiativeId" value="@Model.Initiative.Id" />
-                            <div class="modal-header bg-danger text-white">
-                                <h5 class="modal-title"><i class="bi bi-trash me-2"></i>حذف الملاحظة</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                <p>هل أنت متأكد من حذف هذه الملاحظة؟</p>
-                                <p class="text-danger"><small>هذا الإجراء لا يمكن التراجع عنه.</small></p>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                <button type="submit" class="btn btn-danger">حذف</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        }
+            Controller = "Initiatives",
+            EntityId = Model.Initiative.Id,
+            EntityIdFieldName = "id",
+            ModalEntityIdFieldName = "initiativeId",
+            AddNoteFieldName = "notes",
+            EditNoteFieldName = "notes",
+            Notes = Model.Notes,
+            IsAdmin = isAdmin,
+            CanEdit = canEdit
+        })
     </div>
 
     <!-- Side Panel -->
@@ -497,19 +390,8 @@
 </div>
 
 @section Scripts {
+    <partial name="Partials/_NotesSectionScripts" />
     <script>
-        function editNote(noteId, noteText) {
-            document.getElementById('editNoteId').value = noteId;
-            document.getElementById('editNoteText').value = noteText;
-            new bootstrap.Modal(document.getElementById('editNoteModal')).show();
-        }
-
-        function deleteNote(noteId) {
-            document.getElementById('deleteNoteId').value = noteId;
-            new bootstrap.Modal(document.getElementById('deleteNoteModal')).show();
-        }
-
-        // تحميل الهيكل التنظيمي للوحدة
         document.addEventListener('DOMContentLoaded', function() {
             var externalUnitIdEl = document.getElementById('externalUnitId');
             if (externalUnitIdEl && externalUnitIdEl.value) {
