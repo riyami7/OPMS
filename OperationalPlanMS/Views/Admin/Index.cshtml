@@ -2,6 +2,168 @@
     ViewData["Title"] = "لوحة الإدارة";
 }
 
+<style>
+    /* ---- بطاقة المساعد الذكي ---- */
+    .ai-settings-card {
+        border: 2px solid #0f2544 !important;
+        transition: all .3s ease;
+    }
+
+        .ai-settings-card:hover {
+            box-shadow: 0 8px 32px rgba(15,37,68,.15);
+            transform: translateY(-2px);
+        }
+
+        .ai-settings-card.ai-settings-card--off {
+            border-color: #d1d5db !important;
+            opacity: .7;
+        }
+
+            .ai-settings-card.ai-settings-card--off .ai-settings-icon {
+                background: #e5e7eb;
+                color: #9ca3af;
+            }
+
+            .ai-settings-card.ai-settings-card--off .ai-settings-glow {
+                opacity: 0;
+            }
+
+    .ai-settings-glow {
+        position: absolute;
+        top: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 100px;
+        background: radial-gradient(circle, rgba(201,168,76,.12) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+        transition: opacity .4s;
+    }
+
+    .ai-settings-icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #0f2544, #1a3a5c);
+        color: #c9a84c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all .4s ease;
+        position: relative;
+        z-index: 1;
+    }
+
+        .ai-settings-icon svg {
+            width: 32px;
+            height: 32px;
+        }
+
+    /* ---- Toggle Switch ---- */
+    .ai-toggle-wrap {
+        margin: 16px 0 4px;
+    }
+
+    .ai-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+    }
+
+    .ai-toggle__track {
+        position: relative;
+        width: 52px;
+        height: 28px;
+        border-radius: 14px;
+        background: #0f2544;
+        transition: background .3s ease;
+        display: flex;
+        align-items: center;
+        padding: 0 3px;
+    }
+
+    .ai-toggle[aria-checked="false"] .ai-toggle__track {
+        background: #d1d5db;
+    }
+
+    .ai-toggle__thumb {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #c9a84c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform .3s cubic-bezier(.4,0,.2,1), background .3s;
+        transform: translateX(0);
+        box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+
+    .ai-toggle[aria-checked="true"] .ai-toggle__thumb {
+        transform: translateX(0);
+    }
+
+    .ai-toggle[aria-checked="false"] .ai-toggle__thumb {
+        transform: translateX(24px);
+        background: #fff;
+    }
+
+    .ai-toggle__ico {
+        width: 12px;
+        height: 12px;
+    }
+
+    .ai-toggle__ico--on {
+        color: #0f2544;
+    }
+
+    .ai-toggle__ico--off {
+        color: #9ca3af;
+    }
+
+    .ai-toggle__label {
+        font-size: .85rem;
+        font-weight: 600;
+        color: #1e293b;
+        min-width: 48px;
+    }
+
+    /* ---- حالة ---- */
+    .ai-settings-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+        .ai-settings-status small {
+            font-size: .76rem;
+            color: #64748b;
+        }
+
+    .ai-settings-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        transition: background .3s;
+    }
+
+    .ai-settings-dot--on {
+        background: #22c55e;
+    }
+
+    .ai-settings-dot--off {
+        background: #d1d5db;
+    }
+</style>
+
 <div class="mb-4">
     <h4 class="mb-1">لوحة إدارة النظام</h4>
     <p class="text-muted">إدارة البيانات الأساسية والمستخدمين</p>
@@ -133,4 +295,90 @@
             </div>
         </div>
     </div>
+
+    <!-- المساعد الذكي (Chatbot) -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 ai-settings-card" id="chatbotCard">
+            <div class="card-body text-center position-relative overflow-hidden">
+                <div class="ai-settings-glow"></div>
+                <div class="ai-settings-icon" id="chatbotIcon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+                        <path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z" />
+                        <rect x="5" y="12" width="14" height="8" rx="3" />
+                        <circle cx="9.5" cy="16" r="1" fill="currentColor" stroke="none" />
+                        <circle cx="14.5" cy="16" r="1" fill="currentColor" stroke="none" />
+                    </svg>
+                </div>
+                <h5 class="card-title mt-3">المساعد الذكي</h5>
+                <p class="card-text text-muted">تفعيل أو إيقاف المحادثة الذكية</p>
+                <div class="ai-toggle-wrap">
+                    <button class="ai-toggle" id="chatbotToggle" type="button" role="switch" aria-checked="true">
+                        <span class="ai-toggle__track">
+                            <span class="ai-toggle__thumb">
+                                <svg class="ai-toggle__ico ai-toggle__ico--on" viewBox="0 0 16 16" fill="currentColor"><path d="M13.485 1.515a.5.5 0 0 1 0 .707L6.293 9.414l-3.5-3.5a.5.5 0 1 1 .707-.707L6.293 8l6.485-6.485a.5.5 0 0 1 .707 0z" /></svg>
+                                <svg class="ai-toggle__ico ai-toggle__ico--off" viewBox="0 0 16 16" fill="currentColor" style="display:none"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" /></svg>
+                            </span>
+                        </span>
+                        <span class="ai-toggle__label" id="chatbotLabel">مفعّل</span>
+                    </button>
+                </div>
+                <div class="ai-settings-status mt-2" id="chatbotStatus">
+                    <span class="ai-settings-dot ai-settings-dot--on"></span>
+                    <small>يعمل الآن</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
+
+@section Scripts {
+    <script>
+        (function() {
+            var card     = document.getElementById('chatbotCard');
+            var toggle   = document.getElementById('chatbotToggle');
+            var label    = document.getElementById('chatbotLabel');
+            var statusEl = document.getElementById('chatbotStatus');
+            var icoOn    = toggle.querySelector('.ai-toggle__ico--on');
+            var icoOff   = toggle.querySelector('.ai-toggle__ico--off');
+
+            // تحميل الحالة الحالية
+            fetch('/Admin/ChatbotStatus')
+                .then(function(r) { return r.json(); })
+                .then(function(d) { setUI(d.enabled); })
+                .catch(function() { setUI(true); });
+
+            // Toggle click
+            toggle.addEventListener('click', function() {
+                toggle.disabled = true;
+
+                var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                         || document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+                fetch('/Admin/ToggleChatbot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': token
+                    },
+                    body: '__RequestVerificationToken=' + encodeURIComponent(token)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(d) { setUI(d.enabled); })
+                .catch(function() { })
+                .finally(function() { toggle.disabled = false; });
+            });
+
+            function setUI(enabled) {
+                toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
+                label.textContent = enabled ? 'مفعّل' : 'معطّل';
+                icoOn.style.display  = enabled ? '' : 'none';
+                icoOff.style.display = enabled ? 'none' : '';
+                card.classList.toggle('ai-settings-card--off', !enabled);
+                statusEl.innerHTML = enabled
+                    ? '<span class="ai-settings-dot ai-settings-dot--on"></span><small>يعمل الآن</small>'
+                    : '<span class="ai-settings-dot ai-settings-dot--off"></span><small>معطّل</small>';
+            }
+        })();
+    </script>
+}

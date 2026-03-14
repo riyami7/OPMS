@@ -12,7 +12,7 @@ using OperationalPlanMS.Data;
 namespace OperationalPlanMS.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260304061934_InitialCreate")]
+    [Migration("20260313235523_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -272,9 +272,6 @@ namespace OperationalPlanMS.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("OrganizationId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
 
@@ -282,8 +279,6 @@ namespace OperationalPlanMS.Data.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId");
 
                     b.ToTable("FiscalYears");
                 });
@@ -325,6 +320,13 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Property<string>("DescriptionEn")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ExternalUnitId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExternalUnitName")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<int>("FiscalYearId")
                         .HasColumnType("int");
 
@@ -347,9 +349,6 @@ namespace OperationalPlanMS.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int>("OrganizationalUnitId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("PlannedEndDate")
                         .HasColumnType("date");
 
@@ -369,8 +368,20 @@ namespace OperationalPlanMS.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("SupervisorEmpNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<int?>("SupervisorId")
                         .HasColumnType("int");
+
+                    b.Property<string>("SupervisorName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SupervisorRank")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<decimal>("Weight")
                         .HasColumnType("decimal(5,2)");
@@ -382,11 +393,11 @@ namespace OperationalPlanMS.Data.Migrations
 
                     b.HasIndex("CreatedById");
 
+                    b.HasIndex("ExternalUnitId");
+
                     b.HasIndex("FiscalYearId");
 
                     b.HasIndex("LastModifiedById");
-
-                    b.HasIndex("OrganizationalUnitId");
 
                     b.HasIndex("SupervisorId");
 
@@ -511,99 +522,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.ToTable("Milestones");
                 });
 
-            modelBuilder.Entity("OperationalPlanMS.Models.Entities.Organization", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("NameAr")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("Organizations");
-                });
-
-            modelBuilder.Entity("OperationalPlanMS.Models.Entities.OrganizationalUnit", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("NameAr")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("OrganizationId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ParentUnitId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UnitLevel")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.HasIndex("ParentUnitId");
-
-                    b.ToTable("OrganizationalUnits");
-                });
-
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.OrganizationalUnitSettings", b =>
                 {
                     b.Property<int>("Id")
@@ -624,6 +542,13 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Property<string>("DescriptionEn")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ExternalUnitId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExternalUnitName")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("datetime2");
 
@@ -638,9 +563,6 @@ namespace OperationalPlanMS.Data.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<int>("OrganizationalUnitId")
-                        .HasColumnType("int");
-
                     b.Property<string>("VisionAr")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -653,9 +575,9 @@ namespace OperationalPlanMS.Data.Migrations
 
                     b.HasIndex("CreatedById");
 
-                    b.HasIndex("LastModifiedById");
+                    b.HasIndex("ExternalUnitId");
 
-                    b.HasIndex("OrganizationalUnitId");
+                    b.HasIndex("LastModifiedById");
 
                     b.ToTable("OrganizationalUnitSettings");
                 });
@@ -807,9 +729,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Property<string>("OperationalGoal")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("OrganizationalUnitId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("PlannedEndDate")
                         .HasColumnType("date");
 
@@ -867,8 +786,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.HasIndex("InitiativeId");
 
                     b.HasIndex("LastModifiedById");
-
-                    b.HasIndex("OrganizationalUnitId");
 
                     b.HasIndex("ProjectManagerId");
 
@@ -1078,6 +995,10 @@ namespace OperationalPlanMS.Data.Migrations
 
                     b.Property<int?>("ApprovedById")
                         .HasColumnType("int");
+
+                    b.Property<string>("ApproverNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("AssignedToEmpNumber")
                         .HasMaxLength(50)
@@ -1382,6 +1303,13 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Property<string>("DescriptionEn")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ExternalUnitId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExternalUnitName")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1406,9 +1334,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Property<int>("OrderIndex")
                         .HasColumnType("int");
 
-                    b.Property<int>("OrganizationalUnitId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
@@ -1416,11 +1341,11 @@ namespace OperationalPlanMS.Data.Migrations
 
                     b.HasIndex("CreatedById");
 
+                    b.HasIndex("ExternalUnitId");
+
                     b.HasIndex("LastModifiedById");
 
                     b.HasIndex("MainObjectiveId");
-
-                    b.HasIndex("OrganizationalUnitId");
 
                     b.ToTable("SubObjectives");
                 });
@@ -1465,9 +1390,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Property<int>("OrderIndex")
                         .HasColumnType("int");
 
-                    b.Property<int>("OrganizationId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
@@ -1478,8 +1400,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.HasIndex("IsActive");
 
                     b.HasIndex("LastModifiedById");
-
-                    b.HasIndex("OrganizationId");
 
                     b.ToTable("SupportingEntities");
                 });
@@ -1540,6 +1460,10 @@ namespace OperationalPlanMS.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("BranchName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1549,6 +1473,21 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Property<string>("Email")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmployeePosition")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmployeeRank")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("ExternalUnitId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExternalUnitName")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("FullNameAr")
                         .IsRequired()
@@ -1569,12 +1508,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("OrganizationId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("OrganizationalUnitId")
-                        .HasColumnType("int");
-
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -1591,9 +1524,7 @@ namespace OperationalPlanMS.Data.Migrations
                     b.HasIndex("ADUsername")
                         .IsUnique();
 
-                    b.HasIndex("OrganizationId");
-
-                    b.HasIndex("OrganizationalUnitId");
+                    b.HasIndex("ExternalUnitId");
 
                     b.HasIndex("RoleId");
 
@@ -1678,17 +1609,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Navigation("LastModifiedBy");
                 });
 
-            modelBuilder.Entity("OperationalPlanMS.Models.Entities.FiscalYear", b =>
-                {
-                    b.HasOne("OperationalPlanMS.Models.Entities.Organization", "Organization")
-                        .WithMany("FiscalYears")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Organization");
-                });
-
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.Initiative", b =>
                 {
                     b.HasOne("OperationalPlanMS.Models.Entities.User", "CreatedBy")
@@ -1696,6 +1616,11 @@ namespace OperationalPlanMS.Data.Migrations
                         .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("OperationalPlanMS.Models.Entities.ExternalOrganizationalUnit", "ExternalUnit")
+                        .WithMany("Initiatives")
+                        .HasForeignKey("ExternalUnitId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("OperationalPlanMS.Models.Entities.FiscalYear", "FiscalYear")
                         .WithMany("Initiatives")
@@ -1708,12 +1633,6 @@ namespace OperationalPlanMS.Data.Migrations
                         .HasForeignKey("LastModifiedById")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("OperationalPlanMS.Models.Entities.OrganizationalUnit", "OrganizationalUnit")
-                        .WithMany("Initiatives")
-                        .HasForeignKey("OrganizationalUnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("OperationalPlanMS.Models.Entities.User", "Supervisor")
                         .WithMany("SupervisedInitiatives")
                         .HasForeignKey("SupervisorId")
@@ -1721,11 +1640,11 @@ namespace OperationalPlanMS.Data.Migrations
 
                     b.Navigation("CreatedBy");
 
+                    b.Navigation("ExternalUnit");
+
                     b.Navigation("FiscalYear");
 
                     b.Navigation("LastModifiedBy");
-
-                    b.Navigation("OrganizationalUnit");
 
                     b.Navigation("Supervisor");
                 });
@@ -1775,24 +1694,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("OperationalPlanMS.Models.Entities.OrganizationalUnit", b =>
-                {
-                    b.HasOne("OperationalPlanMS.Models.Entities.Organization", "Organization")
-                        .WithMany("OrganizationalUnits")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OperationalPlanMS.Models.Entities.OrganizationalUnit", "ParentUnit")
-                        .WithMany("ChildUnits")
-                        .HasForeignKey("ParentUnitId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Organization");
-
-                    b.Navigation("ParentUnit");
-                });
-
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.OrganizationalUnitSettings", b =>
                 {
                     b.HasOne("OperationalPlanMS.Models.Entities.User", "CreatedBy")
@@ -1801,21 +1702,19 @@ namespace OperationalPlanMS.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("OperationalPlanMS.Models.Entities.ExternalOrganizationalUnit", "ExternalUnit")
+                        .WithMany()
+                        .HasForeignKey("ExternalUnitId");
+
                     b.HasOne("OperationalPlanMS.Models.Entities.User", "LastModifiedBy")
                         .WithMany()
                         .HasForeignKey("LastModifiedById");
 
-                    b.HasOne("OperationalPlanMS.Models.Entities.OrganizationalUnit", "OrganizationalUnit")
-                        .WithMany()
-                        .HasForeignKey("OrganizationalUnitId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("CreatedBy");
 
-                    b.Navigation("LastModifiedBy");
+                    b.Navigation("ExternalUnit");
 
-                    b.Navigation("OrganizationalUnit");
+                    b.Navigation("LastModifiedBy");
                 });
 
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.ProgressUpdate", b =>
@@ -1879,11 +1778,6 @@ namespace OperationalPlanMS.Data.Migrations
                         .HasForeignKey("LastModifiedById")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("OperationalPlanMS.Models.Entities.OrganizationalUnit", "OrganizationalUnit")
-                        .WithMany()
-                        .HasForeignKey("OrganizationalUnitId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("OperationalPlanMS.Models.Entities.User", "ProjectManager")
                         .WithMany("ManagedProjects")
                         .HasForeignKey("ProjectManagerId")
@@ -1903,8 +1797,6 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Navigation("Initiative");
 
                     b.Navigation("LastModifiedBy");
-
-                    b.Navigation("OrganizationalUnit");
 
                     b.Navigation("ProjectManager");
 
@@ -2086,6 +1978,11 @@ namespace OperationalPlanMS.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("OperationalPlanMS.Models.Entities.ExternalOrganizationalUnit", "ExternalUnit")
+                        .WithMany()
+                        .HasForeignKey("ExternalUnitId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("OperationalPlanMS.Models.Entities.User", "LastModifiedBy")
                         .WithMany()
                         .HasForeignKey("LastModifiedById")
@@ -2097,19 +1994,13 @@ namespace OperationalPlanMS.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("OperationalPlanMS.Models.Entities.OrganizationalUnit", "OrganizationalUnit")
-                        .WithMany()
-                        .HasForeignKey("OrganizationalUnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.Navigation("CreatedBy");
+
+                    b.Navigation("ExternalUnit");
 
                     b.Navigation("LastModifiedBy");
 
                     b.Navigation("MainObjective");
-
-                    b.Navigation("OrganizationalUnit");
                 });
 
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.SupportingEntity", b =>
@@ -2124,17 +2015,9 @@ namespace OperationalPlanMS.Data.Migrations
                         .WithMany()
                         .HasForeignKey("LastModifiedById");
 
-                    b.HasOne("OperationalPlanMS.Models.Entities.Organization", "Organization")
-                        .WithMany()
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("CreatedBy");
 
                     b.Navigation("LastModifiedBy");
-
-                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.SystemSettings", b =>
@@ -2148,15 +2031,9 @@ namespace OperationalPlanMS.Data.Migrations
 
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.User", b =>
                 {
-                    b.HasOne("OperationalPlanMS.Models.Entities.Organization", "Organization")
-                        .WithMany("Users")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OperationalPlanMS.Models.Entities.OrganizationalUnit", "OrganizationalUnit")
-                        .WithMany("Users")
-                        .HasForeignKey("OrganizationalUnitId")
+                    b.HasOne("OperationalPlanMS.Models.Entities.ExternalOrganizationalUnit", "ExternalUnit")
+                        .WithMany()
+                        .HasForeignKey("ExternalUnitId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("OperationalPlanMS.Models.Entities.Role", "Role")
@@ -2165,9 +2042,7 @@ namespace OperationalPlanMS.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Organization");
-
-                    b.Navigation("OrganizationalUnit");
+                    b.Navigation("ExternalUnit");
 
                     b.Navigation("Role");
                 });
@@ -2180,6 +2055,8 @@ namespace OperationalPlanMS.Data.Migrations
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.ExternalOrganizationalUnit", b =>
                 {
                     b.Navigation("Children");
+
+                    b.Navigation("Initiatives");
 
                     b.Navigation("Projects");
                 });
@@ -2201,24 +2078,6 @@ namespace OperationalPlanMS.Data.Migrations
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.MainObjective", b =>
                 {
                     b.Navigation("SubObjectives");
-                });
-
-            modelBuilder.Entity("OperationalPlanMS.Models.Entities.Organization", b =>
-                {
-                    b.Navigation("FiscalYears");
-
-                    b.Navigation("OrganizationalUnits");
-
-                    b.Navigation("Users");
-                });
-
-            modelBuilder.Entity("OperationalPlanMS.Models.Entities.OrganizationalUnit", b =>
-                {
-                    b.Navigation("ChildUnits");
-
-                    b.Navigation("Initiatives");
-
-                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("OperationalPlanMS.Models.Entities.Project", b =>

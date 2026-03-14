@@ -5,25 +5,25 @@
 namespace OperationalPlanMS.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class AddApproverNotesToStep : Migration
+    public partial class AddChatbotEnabled : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "ApproverNotes",
-                table: "Steps",
-                type: "nvarchar(1000)",
-                maxLength: 1000,
-                nullable: true);
+            migrationBuilder.AddColumn<bool>(
+                name: "IsChatbotEnabled",
+                table: "SystemSettings",
+                type: "bit",
+                nullable: false,
+                defaultValue: false);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "ApproverNotes",
-                table: "Steps");
+                name: "IsChatbotEnabled",
+                table: "SystemSettings");
         }
     }
 }

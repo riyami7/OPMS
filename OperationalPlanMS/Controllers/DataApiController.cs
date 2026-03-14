@@ -426,6 +426,118 @@ namespace OperationalPlanMS.Controllers
             });
         }
 
+
+        // ================================================================
+        //  Chat Context — Role-Filtered Data for AI Chatbot
+        // ================================================================
+
+        /// <summary>
+        /// GET /api/data/chat-context?userId=1&role=Admin
+        /// يرجع بيانات مصفّاة حسب صلاحيات المستخدم لاستخدامها كسياق للمحادثة مع الذكاء الاصطناعي.
+        /// 
+        /// قواعد التصفية:
+        ///   Admin / Executive → جميع البيانات
+        ///   Supervisor        → فقط المبادرات التي يشرف عليها (SupervisorId == userId) ومشاريعها وخطواتها
+        ///   غير ذلك           → 403 Forbidden
+        /// </summary>
+        [HttpGet("chat-context")]
+        public async Task<IActionResult> GetChatContext(int userId, string role)
+        {
+            if (!Enum.TryParse<UserRole>(role, true, out var userRole))
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Invalid role" });
+
+            // فقط Admin / Executive / Supervisor يمكنهم استخدام المساعد الذكي
+            if (userRole != UserRole.Admin && userRole != UserRole.Executive && userRole != UserRole.Supervisor)
+                return StatusCode(403, new ApiResponse<object> { Success = false, Message = "Access denied — insufficient role" });
+
+            // ===== جلب المبادرات مع التصفية حسب الدور =====
+            var query = _db.Initiatives
+                .Where(i => !i.IsDeleted)
+                .Include(i => i.Projects.Where(p => !p.IsDeleted))
+                    .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
+                .Include(i => i.Projects.Where(p => !p.IsDeleted))
+                    .ThenInclude(p => p.ProjectKPIs)
+                .AsQueryable();
+
+            // المشرف يرى فقط مبادراته
+            if (userRole == UserRole.Supervisor)
+                query = query.Where(i => i.SupervisorId == userId);
+
+            var initiatives = await query.ToListAsync();
+            var projects = initiatives.SelectMany(i => i.Projects).ToList();
+            var steps = projects.SelectMany(p => p.Steps).ToList();
+
+            // ===== بناء السياق =====
+            var context = new ChatContextDto
+            {
+                UserName = (await _db.Users.FindAsync(userId))?.FullNameAr ?? "مستخدم",
+                UserRole = role,
+                GeneratedAt = DateTime.Now,
+
+                Summary = new ChatSummaryDto
+                {
+                    TotalInitiatives = initiatives.Count,
+                    TotalProjects = projects.Count,
+                    TotalSteps = steps.Count,
+                    CompletedProjects = projects.Count(p => p.ProgressPercentage >= 100),
+                    DelayedProjects = projects.Count(p => IsDelayed(p)),
+                    DelayedSteps = steps.Count(s => IsStepDelayed(s)),
+                    AverageProgress = projects.Any() ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0
+                },
+
+                Initiatives = initiatives.Select(i => new ChatInitiativeDto
+                {
+                    Id = i.Id,
+                    Code = i.Code,
+                    Name = i.NameAr,
+                    Unit = i.ExternalUnitName,
+                    Supervisor = i.SupervisorName,
+                    Status = GetInitiativeStatus(i),
+                    Progress = i.Projects.Any()
+                        ? Math.Round(i.Projects.Where(p => !p.IsDeleted).Average(p => p.ProgressPercentage), 1) : 0,
+                    Budget = i.Budget,
+                    PlannedEnd = i.PlannedEndDate,
+
+                    Projects = i.Projects.Select(p => new ChatProjectDto
+                    {
+                        Id = p.Id,
+                        Code = p.Code,
+                        Name = p.NameAr,
+                        Manager = p.ProjectManagerName,
+                        Status = GetProjectStatus(p),
+                        Progress = p.ProgressPercentage,
+                        IsDelayed = IsDelayed(p),
+                        Budget = p.Budget,
+                        PlannedEnd = p.PlannedEndDate,
+
+                        Steps = p.Steps.OrderBy(s => s.StepNumber).Select(s => new ChatStepDto
+                        {
+                            Id = s.Id,
+                            Number = s.StepNumber,
+                            Name = s.NameAr,
+                            AssignedTo = s.AssignedToName,
+                            Status = GetStepStatus(s),
+                            Progress = s.ProgressPercentage,
+                            Weight = s.Weight,
+                            IsDelayed = IsStepDelayed(s),
+                            PlannedEnd = s.PlannedEndDate
+                        }).ToList(),
+
+                        KPIs = p.ProjectKPIs?.Select(k => new ChatKpiDto
+                        {
+                            Name = k.KPIText,
+                            Target = k.TargetValue,
+                            Actual = k.ActualValue
+                        }).ToList() ?? new()
+
+                    }).ToList()
+
+                }).ToList()
+            };
+
+            return Ok(new ApiResponse<ChatContextDto> { Data = context });
+        }
+
         // ================================================================
         //  Mapping Helpers (Entity → DTO)
         // ================================================================

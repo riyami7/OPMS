@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using OperationalPlanMS.Data;
 using OperationalPlanMS.Models;
 
 namespace OperationalPlanMS.Controllers
@@ -16,10 +18,11 @@ namespace OperationalPlanMS.Controllers
     [Authorize]
     public class AdminController : BaseController
     {
+        private readonly AppDbContext _db;
         private readonly IConfiguration _configuration;
-
-        public AdminController(IConfiguration configuration)
+        public AdminController(AppDbContext db, IConfiguration configuration)
         {
+            _db = db;
             _configuration = configuration;
         }
 
@@ -76,5 +79,37 @@ namespace OperationalPlanMS.Controllers
         public IActionResult EditFinancialCost(int id) => RedirectToActionPermanent("EditFinancialCost", "StrategicPlanning", new { id });
 
         #endregion
+
+
+        /// <summary>
+        /// GET /Admin/ChatbotStatus — يرجع حالة المساعد الذكي (JSON)
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> ChatbotStatus()
+        {
+            if (!IsAdminUser()) return Forbid();
+            var settings = await _db.SystemSettings.FirstOrDefaultAsync();
+            return Json(new { enabled = settings?.IsChatbotEnabled ?? true });
+        }
+
+        /// <summary>
+        /// POST /Admin/ToggleChatbot — تفعيل/إيقاف المساعد الذكي
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleChatbot()
+        {
+            if (!IsAdminUser()) return Forbid();
+
+            var settings = await _db.SystemSettings.FirstOrDefaultAsync();
+            if (settings == null) return NotFound();
+
+            settings.IsChatbotEnabled = !settings.IsChatbotEnabled;
+            settings.LastModifiedById = GetCurrentUserId();
+            settings.LastModifiedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+
+            return Json(new { enabled = settings.IsChatbotEnabled });
+        }
     }
 }

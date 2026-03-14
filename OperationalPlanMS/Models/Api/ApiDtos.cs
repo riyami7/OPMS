@@ -183,4 +183,77 @@ namespace OperationalPlanMS.Models.Api
         public DateTime? DueDate { get; set; }
         public int DaysOverdue { get; set; }
     }
+
+    // ================================================================
+    //  Chat Context DTOs — أضفها في نهاية ملف ApiDtos.cs
+    // ================================================================
+
+    public class ChatContextDto
+    {
+        public string UserName { get; set; } = "";
+        public string UserRole { get; set; } = "";
+        public DateTime GeneratedAt { get; set; }
+        public ChatSummaryDto Summary { get; set; } = new();
+        public List<ChatInitiativeDto> Initiatives { get; set; } = new();
+    }
+
+    public class ChatSummaryDto
+    {
+        public int TotalInitiatives { get; set; }
+        public int TotalProjects { get; set; }
+        public int TotalSteps { get; set; }
+        public int CompletedProjects { get; set; }
+        public int DelayedProjects { get; set; }
+        public int DelayedSteps { get; set; }
+        public decimal AverageProgress { get; set; }
+    }
+
+    public class ChatInitiativeDto
+    {
+        public int Id { get; set; }
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string? Unit { get; set; }
+        public string? Supervisor { get; set; }
+        public string Status { get; set; } = "";
+        public decimal Progress { get; set; }
+        public decimal? Budget { get; set; }
+        public DateTime PlannedEnd { get; set; }
+        public List<ChatProjectDto> Projects { get; set; } = new();
+    }
+
+    public class ChatProjectDto
+    {
+        public int Id { get; set; }
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string? Manager { get; set; }
+        public string Status { get; set; } = "";
+        public decimal Progress { get; set; }
+        public bool IsDelayed { get; set; }
+        public decimal? Budget { get; set; }
+        public DateTime? PlannedEnd { get; set; }
+        public List<ChatStepDto> Steps { get; set; } = new();
+        public List<ChatKpiDto> KPIs { get; set; } = new();
+    }
+
+    public class ChatStepDto
+    {
+        public int Id { get; set; }
+        public int Number { get; set; }
+        public string Name { get; set; } = "";
+        public string? AssignedTo { get; set; }
+        public string Status { get; set; } = "";
+        public decimal Progress { get; set; }
+        public decimal Weight { get; set; }
+        public bool IsDelayed { get; set; }
+        public DateTime PlannedEnd { get; set; }
+    }
+
+    public class ChatKpiDto
+    {
+        public string Name { get; set; } = "";
+        public string? Target { get; set; }
+        public string? Actual { get; set; }
+    }
 }

@@ -53,5 +53,7 @@ namespace OperationalPlanMS.Models.Entities
         // Navigation
         [ForeignKey("LastModifiedById")]
         public virtual User? LastModifiedBy { get; set; }
+        public bool IsChatbotEnabled { get; set; } = true;
+
     }
 }

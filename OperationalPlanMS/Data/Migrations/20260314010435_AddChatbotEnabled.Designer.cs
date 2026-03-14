@@ -12,8 +12,8 @@ using OperationalPlanMS.Data;
 namespace OperationalPlanMS.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260310104405_RemoveOrganizationAndOrganizationalUnit")]
-    partial class RemoveOrganizationAndOrganizationalUnit
+    [Migration("20260314010435_AddChatbotEnabled")]
+    partial class AddChatbotEnabled
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -996,6 +996,10 @@ namespace OperationalPlanMS.Data.Migrations
                     b.Property<int?>("ApprovedById")
                         .HasColumnType("int");
 
+                    b.Property<string>("ApproverNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("AssignedToEmpNumber")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -1413,6 +1417,9 @@ namespace OperationalPlanMS.Data.Migrations
 
                     b.Property<string>("DescriptionEn")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsChatbotEnabled")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("datetime2");

@@ -67,6 +67,7 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/chat-bubble.css" />
 </head>
 <body>
     <div class="wrapper">
@@ -201,18 +202,6 @@
                 </div>
 
                 <div class="header-actions">
-                    <!-- Notifications -->
-                    @*       <div class="dropdown me-3">
-                        <button class="btn btn-link position-relative" data-bs-toggle="dropdown">
-                            <i class="bi bi-bell"></i>
-                            <span class="badge-dot"></span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-start">
-                            <li><h6 class="dropdown-header">الإشعارات</h6></li>
-                            <li><a class="dropdown-item" href="#">لا توجد إشعارات جديدة</a></li>
-                        </ul>
-                    </div> *@
-
                     <!-- User Menu -->
                     @if (User.Identity?.IsAuthenticated == true)
                     {
@@ -302,6 +291,9 @@
 
     <!-- Safe DOM Helpers — XSS Prevention -->
     <script src="~/js/safe-dom.js"></script>
+
+    <!-- المساعد الذكي (يتضمن التحقق من الصلاحيات والإعداد) -->
+    @await Html.PartialAsync("Partials/_ChatBubble")
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
