@@ -133,6 +133,7 @@ namespace OperationalPlanMS.Services.AI.Models
     {
         public string Message { get; set; }
         public string Model { get; set; }
+        public int? ConversationId { get; set; }
         public List<ChatHistoryItem> History { get; set; } = new();
     }
 

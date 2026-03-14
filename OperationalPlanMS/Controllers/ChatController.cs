@@ -1,10 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using OperationalPlanMS.Data;
+using OperationalPlanMS.Models.Entities;
 using OperationalPlanMS.Services.AI;
 using OperationalPlanMS.Services.AI.Models;
 
@@ -16,19 +22,32 @@ namespace OperationalPlanMS.Controllers
         private readonly IOllamaService _ollama;
         private readonly ChatContextBuilder _contextBuilder;
         private readonly OllamaSettings _settings;
+        private readonly AppDbContext _db;
 
         public ChatController(
             IOllamaService ollama,
             ChatContextBuilder contextBuilder,
-            IOptions<OllamaSettings> settings)
+            IOptions<OllamaSettings> settings,
+            AppDbContext db)
         {
             _ollama = ollama;
             _contextBuilder = contextBuilder;
             _settings = settings.Value;
+            _db = db;
         }
 
         // ═══════════════════════════════════════════════════════════
-        //  POST /Chat/Stream — SSE streaming endpoint
+        //  GET /Chat — Full chat page with sidebar
+        // ═══════════════════════════════════════════════════════════
+
+        [HttpGet]
+        public IActionResult Index()
+        {
+            return View();
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  POST /Chat/Stream — SSE streaming endpoint + DB save
         // ═══════════════════════════════════════════════════════════
 
         [HttpPost]
@@ -41,37 +60,108 @@ namespace OperationalPlanMS.Controllers
 
             try
             {
-                // Build system prompt with OPMS context
+                // ─── 1. Resolve current user ID ───
+                int? currentUserId = GetCurrentUserId();
+
+                // ─── 2. Get or create conversation ───
+                ChatConversation conversation = null;
+
+                if (dto.ConversationId.HasValue && dto.ConversationId.Value > 0)
+                {
+                    // Load existing conversation (verify ownership)
+                    conversation = await _db.ChatConversations
+                        .FirstOrDefaultAsync(c => c.Id == dto.ConversationId.Value
+                            && c.UserId == currentUserId
+                            && !c.IsDeleted, cancellationToken);
+                }
+
+                if (conversation == null && currentUserId.HasValue)
+                {
+                    // Create new conversation
+                    conversation = new ChatConversation
+                    {
+                        UserId = currentUserId.Value,
+                        Title = dto.Message.Length > 100
+                            ? dto.Message.Substring(0, 100) + "..."
+                            : dto.Message,
+                        CreatedAt = DateTime.Now,
+                        LastMessageAt = DateTime.Now
+                    };
+                    _db.ChatConversations.Add(conversation);
+                    await _db.SaveChangesAsync(cancellationToken);
+                }
+
+                // ─── 3. Send conversationId to client (first SSE event) ───
+                var convId = conversation?.Id ?? 0;
+                await Response.WriteAsync($"data: {{\"conversationId\":{convId}}}\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+
+                // ─── 4. Save user message to DB ───
+                if (conversation != null)
+                {
+                    _db.ChatMessages.Add(new ChatMessage
+                    {
+                        ConversationId = conversation.Id,
+                        Role = "user",
+                        Content = dto.Message,
+                        CreatedAt = DateTime.Now
+                    });
+                    await _db.SaveChangesAsync(cancellationToken);
+                }
+
+                // ─── 5. Build system prompt with OPMS context ───
                 var systemPrompt = await _contextBuilder.BuildSystemPromptAsync(
                     User, _settings.SystemPrompt);
 
-                // Build messages list
                 var messages = new List<OllamaChatMessage>
                 {
                     new() { Role = "system", Content = systemPrompt }
                 };
 
-                // Add conversation history (last 10 messages max)
-                if (dto.History?.Count > 0)
+                // ─── 6. Load history from DB (not from client) ───
+                if (conversation != null)
                 {
-                    var historyStart = Math.Max(0, dto.History.Count - 10);
-                    for (int i = historyStart; i < dto.History.Count; i++)
+                    var dbMessages = await _db.ChatMessages
+                        .Where(m => m.ConversationId == conversation.Id)
+                        .OrderByDescending(m => m.CreatedAt)
+                        .Take(10)
+                        .OrderBy(m => m.CreatedAt)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var msg in dbMessages)
                     {
                         messages.Add(new OllamaChatMessage
                         {
-                            Role = dto.History[i].Role,
-                            Content = dto.History[i].Content
+                            Role = msg.Role,
+                            Content = msg.Content
                         });
                     }
                 }
-
-                // Add current message
-                messages.Add(new OllamaChatMessage
+                else
                 {
-                    Role = "user",
-                    Content = dto.Message
-                });
+                    // Fallback: use client-sent history if no DB conversation
+                    if (dto.History?.Count > 0)
+                    {
+                        var historyStart = Math.Max(0, dto.History.Count - 10);
+                        for (int i = historyStart; i < dto.History.Count; i++)
+                        {
+                            messages.Add(new OllamaChatMessage
+                            {
+                                Role = dto.History[i].Role,
+                                Content = dto.History[i].Content
+                            });
+                        }
+                    }
 
+                    // Add current message
+                    messages.Add(new OllamaChatMessage
+                    {
+                        Role = "user",
+                        Content = dto.Message
+                    });
+                }
+
+                // ─── 7. Stream from Ollama ───
                 var request = new OllamaChatRequest
                 {
                     Model = dto.Model ?? _settings.DefaultModel,
@@ -83,14 +173,33 @@ namespace OperationalPlanMS.Controllers
                     }
                 };
 
-                // Stream tokens via SSE
+                var fullResponse = new StringBuilder();
+
                 await foreach (var token in _ollama.ChatStreamAsync(request, cancellationToken))
                 {
+                    fullResponse.Append(token);
+
                     // SSE format: data: {json}\n\n
                     var escaped = token.Replace("\\", "\\\\").Replace("\"", "\\\"")
                                        .Replace("\n", "\\n").Replace("\r", "\\r");
                     await Response.WriteAsync($"data: {{\"token\":\"{escaped}\"}}\n\n", cancellationToken);
                     await Response.Body.FlushAsync(cancellationToken);
+                }
+
+                // ─── 8. Save assistant response to DB ───
+                if (conversation != null && fullResponse.Length > 0)
+                {
+                    _db.ChatMessages.Add(new ChatMessage
+                    {
+                        ConversationId = conversation.Id,
+                        Role = "assistant",
+                        Content = fullResponse.ToString(),
+                        CreatedAt = DateTime.Now
+                    });
+
+                    // Update conversation timestamp
+                    conversation.LastMessageAt = DateTime.Now;
+                    await _db.SaveChangesAsync(cancellationToken);
                 }
 
                 // Send done signal
@@ -107,6 +216,95 @@ namespace OperationalPlanMS.Controllers
                 await Response.WriteAsync($"data: {{\"error\":\"{errorMsg}\"}}\n\n", cancellationToken);
                 await Response.Body.FlushAsync(cancellationToken);
             }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  GET /Chat/Conversations — List user's conversations
+        // ═══════════════════════════════════════════════════════════
+
+        [HttpGet]
+        public async Task<IActionResult> Conversations(CancellationToken cancellationToken)
+        {
+            int? userId = GetCurrentUserId();
+            if (!userId.HasValue)
+                return Json(new List<object>());
+
+            var conversations = await _db.ChatConversations
+                .Where(c => c.UserId == userId.Value && !c.IsDeleted)
+                .OrderByDescending(c => c.LastMessageAt)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Title,
+                    c.CreatedAt,
+                    c.LastMessageAt,
+                    MessageCount = c.Messages.Count
+                })
+                .Take(50)
+                .ToListAsync(cancellationToken);
+
+            return Json(conversations);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  GET /Chat/Messages?conversationId=X — Load messages
+        // ═══════════════════════════════════════════════════════════
+
+        [HttpGet]
+        public async Task<IActionResult> Messages(int conversationId, CancellationToken cancellationToken)
+        {
+            int? userId = GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized();
+
+            // Verify ownership
+            var conversation = await _db.ChatConversations
+                .FirstOrDefaultAsync(c => c.Id == conversationId
+                    && c.UserId == userId.Value
+                    && !c.IsDeleted, cancellationToken);
+
+            if (conversation == null)
+                return NotFound();
+
+            var messages = await _db.ChatMessages
+                .Where(m => m.ConversationId == conversationId)
+                .OrderBy(m => m.CreatedAt)
+                .Select(m => new
+                {
+                    m.Id,
+                    m.Role,
+                    m.Content,
+                    m.CreatedAt
+                })
+                .ToListAsync(cancellationToken);
+
+            return Json(messages);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  POST /Chat/DeleteConversation — Soft delete
+        // ═══════════════════════════════════════════════════════════
+
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> DeleteConversation([FromBody] DeleteConversationDto dto, CancellationToken cancellationToken)
+        {
+            int? userId = GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized();
+
+            var conversation = await _db.ChatConversations
+                .FirstOrDefaultAsync(c => c.Id == dto.ConversationId
+                    && c.UserId == userId.Value
+                    && !c.IsDeleted, cancellationToken);
+
+            if (conversation == null)
+                return NotFound();
+
+            conversation.IsDeleted = true;
+            await _db.SaveChangesAsync(cancellationToken);
+
+            return Json(new { success = true });
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -136,20 +334,22 @@ namespace OperationalPlanMS.Controllers
             });
         }
 
-        // GET /Chat/DebugContext — Temporary: see what context the AI receives
+        // ═══════════════════════════════════════════════════════════
+        //  Helper: Get current user ID from Claims
+        // ═══════════════════════════════════════════════════════════
 
-        [HttpGet]
-        public async Task<IActionResult> DebugContext(CancellationToken cancellationToken)
+        private int? GetCurrentUserId()
         {
-            var username = User.Identity?.Name;
-            var isAuth = User.Identity?.IsAuthenticated;
-            var claims = User.Claims.Select(c => $"{c.Type} = {c.Value}").ToList();
-
-            var systemPrompt = await _contextBuilder.BuildSystemPromptAsync(
-                User, _settings.SystemPrompt);
-
-            var debug = $"Username: {username}\nIsAuthenticated: {isAuth}\nClaims:\n{string.Join("\n", claims)}\n\n---PROMPT---\n{systemPrompt}";
-            return Content(debug, "text/plain; charset=utf-8");
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(userIdClaim, out int userId))
+                return userId;
+            return null;
         }
+    }
+
+    // DTO for delete endpoint
+    public class DeleteConversationDto
+    {
+        public int ConversationId { get; set; }
     }
 }
