@@ -293,8 +293,7 @@
     <script src="~/js/safe-dom.js"></script>
 
     <!-- المساعد الذكي (يتضمن التحقق من الصلاحيات والإعداد) -->
-    @await Html.PartialAsync("Partials/_ChatBubble")
-
+    @await Html.PartialAsync("_ChatWidget")
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -78,6 +78,7 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add<OperationalPlanMS.Filters.PendingApprovalsFilter>();
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
+    options.Filters.Add<OperationalPlanMS.Filters.ChatbotSettingsFilter>();
 })
 .AddJsonOptions(options =>
 {
@@ -136,6 +137,12 @@ builder.Services.AddScoped<IProjectService, ProjectService>();
 // Step Management Service
 builder.Services.AddScoped<IStepService, StepService>();
 
+// === Ollama AI Services ===
+builder.Services.Configure<OperationalPlanMS.Services.AI.Models.OllamaSettings>(
+    builder.Configuration.GetSection("Ollama"));
+builder.Services.AddHttpClient<OperationalPlanMS.Services.AI.IOllamaService,
+    OperationalPlanMS.Services.AI.OllamaService>();
+builder.Services.AddScoped<OperationalPlanMS.Services.AI.ChatContextBuilder>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline

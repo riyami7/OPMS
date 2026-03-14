@@ -1,0 +1,471 @@
+@*
+    Chat Widget — RiyamiAI + Ollama
+    Integrated into OPMS Layout
+    RTL Navy + Gold theme
+    Session-persistent across page navigation
+*@
+
+@{
+    var isChatEnabled = ViewBag.IsChatbotEnabled as bool? ?? false;
+}
+
+@if (isChatEnabled)
+{
+<!-- Chat Bubble Button -->
+<div id="chat-bubble-btn" onclick="toggleChat()" title="المساعد الذكي">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+</div>
+
+<!-- Chat Window -->
+<div id="chat-window" style="display:none;">
+    <!-- Header -->
+    <div id="chat-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div id="chat-avatar">AI</div>
+            <div>
+                <div style="font-weight:600; font-size:14px;">المساعد الذكي</div>
+                <div id="chat-status" style="font-size:11px; opacity:0.8;">جاري الاتصال...</div>
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <button onclick="clearChat()" class="chat-header-btn" title="محادثة جديدة">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+            <button onclick="toggleChat()" class="chat-header-btn" title="إغلاق">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Messages Area -->
+    <div id="chat-messages"></div>
+
+    <!-- Input Area -->
+    <div id="chat-input-area">
+        <div id="chat-input-row">
+            <textarea id="chat-input" placeholder="اكتب رسالتك..." rows="1"
+                      onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+            <button id="chat-send-btn" onclick="sendMessage()" title="إرسال">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    #chat-bubble-btn {
+        position: fixed;
+        bottom: 24px;
+        left: 24px;
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, #0a1628 0%, #1a2744 100%);
+        color: #c9a85c;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 20px rgba(10, 22, 40, 0.4);
+        z-index: 9999;
+        transition: all 0.3s ease;
+    }
+    #chat-bubble-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 28px rgba(10, 22, 40, 0.5);
+    }
+
+    #chat-window {
+        position: fixed;
+        bottom: 90px;
+        left: 24px;
+        width: 380px;
+        height: 520px;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: 'Tajawal', sans-serif;
+        direction: rtl;
+    }
+
+    #chat-header {
+        background: linear-gradient(135deg, #0a1628 0%, #1a2744 100%);
+        color: #fff;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    #chat-avatar {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #c9a85c, #e8c66a);
+        color: #0a1628;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 13px;
+    }
+    .chat-header-btn {
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.7);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    .chat-header-btn:hover {
+        color: #fff;
+        background: rgba(255,255,255,0.1);
+    }
+
+    #chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: #f8f9fb;
+    }
+    .chat-msg {
+        display: flex;
+        max-width: 85%;
+    }
+    .chat-msg.user { align-self: flex-start; }
+    .chat-msg.assistant { align-self: flex-end; }
+    .chat-msg-content {
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .chat-msg.user .chat-msg-content {
+        background: linear-gradient(135deg, #0a1628 0%, #1a2744 100%);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+    }
+    .chat-msg.assistant .chat-msg-content {
+        background: #fff;
+        color: #333;
+        border: 1px solid #e5e7eb;
+        border-bottom-left-radius: 4px;
+    }
+
+    .typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 10px 14px;
+    }
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: #c9a85c;
+        border-radius: 50%;
+        animation: typingBounce 1.4s infinite ease-in-out;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @@keyframes typingBounce {
+        0%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-8px); }
+    }
+
+    #chat-input-area {
+        padding: 12px 16px;
+        border-top: 1px solid #e5e7eb;
+        background: #fff;
+    }
+    #chat-input-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+    }
+    #chat-input {
+        flex: 1;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+        font-family: 'Tajawal', sans-serif;
+        resize: none;
+        max-height: 100px;
+        direction: rtl;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    #chat-input:focus { border-color: #c9a85c; }
+    #chat-send-btn {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #0a1628 0%, #1a2744 100%);
+        color: #c9a85c;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    #chat-send-btn:hover { transform: scale(1.05); }
+    #chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    #chat-messages::-webkit-scrollbar { width: 4px; }
+    #chat-messages::-webkit-scrollbar-track { background: transparent; }
+    #chat-messages::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+    @@media (max-width: 480px) {
+        #chat-window { left: 8px; right: 8px; bottom: 80px; width: auto; height: 70vh; }
+    }
+</style>
+
+<script>
+(function() {
+    'use strict';
+
+    var STORAGE_KEY = 'opms_chat_history';
+    var STORAGE_STATE = 'opms_chat_open';
+    var WELCOME_MSG = 'مرحباً! أنا المساعد الذكي لنظام OPMS. كيف أقدر أساعدك؟';
+
+    var chatHistory = [];
+    var isStreaming = false;
+    var currentController = null;
+
+    // ═══ Initialize: restore from sessionStorage ═══
+    restoreChat();
+    checkOllamaStatus();
+
+    // Restore chat open/close state
+    if (sessionStorage.getItem(STORAGE_STATE) === 'open') {
+        document.getElementById('chat-window').style.display = 'flex';
+    }
+
+    window.toggleChat = function() {
+        var win = document.getElementById('chat-window');
+        var isVisible = win.style.display !== 'none';
+        win.style.display = isVisible ? 'none' : 'flex';
+        sessionStorage.setItem(STORAGE_STATE, isVisible ? 'closed' : 'open');
+        if (!isVisible) {
+            document.getElementById('chat-input').focus();
+            scrollToBottom();
+        }
+    };
+
+    window.clearChat = function() {
+        chatHistory = [];
+        sessionStorage.removeItem(STORAGE_KEY);
+        renderMessages();
+    };
+
+    window.sendMessage = async function() {
+        var input = document.getElementById('chat-input');
+        var message = input.value.trim();
+        if (!message || isStreaming) return;
+
+        appendMessage('user', message);
+        chatHistory.push({ role: 'user', content: message });
+        saveChat();
+        input.value = '';
+        autoResize(input);
+
+        var typingEl = showTyping();
+        isStreaming = true;
+        updateSendButton(true);
+
+        try {
+            currentController = new AbortController();
+
+            var response = await fetch('/Chat/Stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: message,
+                    history: chatHistory.slice(0, -1)
+                }),
+                signal: currentController.signal
+            });
+
+            typingEl.remove();
+
+            if (!response.ok) {
+                appendMessage('assistant', 'عذراً، حدث خطأ في الاتصال. تأكد أن خدمة Ollama تعمل.');
+                return;
+            }
+
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var assistantMsg = '';
+            var msgEl = null;
+
+            while (true) {
+                var result = await reader.read();
+                if (result.done) break;
+
+                var text = decoder.decode(result.value, { stream: true });
+                var lines = text.split('\n');
+
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i];
+                    if (line.indexOf('data: ') !== 0) continue;
+                    var jsonStr = line.substring(6).trim();
+                    if (!jsonStr) continue;
+
+                    try {
+                        var data = JSON.parse(jsonStr);
+
+                        if (data.error) {
+                            assistantMsg = data.error;
+                            if (msgEl) msgEl.querySelector('.chat-msg-content').textContent = assistantMsg;
+                            else msgEl = appendMessage('assistant', assistantMsg);
+                            break;
+                        }
+                        if (data.done) break;
+
+                        if (data.token) {
+                            assistantMsg += data.token;
+                            if (!msgEl) msgEl = appendMessage('assistant', '');
+                            msgEl.querySelector('.chat-msg-content').textContent = assistantMsg;
+                            scrollToBottom();
+                        }
+                    } catch (e) { }
+                }
+            }
+
+            if (assistantMsg) {
+                chatHistory.push({ role: 'assistant', content: assistantMsg });
+                saveChat();
+            }
+
+        } catch (err) {
+            typingEl.remove();
+            if (err.name !== 'AbortError') {
+                appendMessage('assistant', 'عذراً، حدث خطأ غير متوقع. حاول مرة أخرى.');
+            }
+        } finally {
+            isStreaming = false;
+            currentController = null;
+            updateSendButton(false);
+        }
+    };
+
+    // ═══ Session Persistence ═══
+
+    function saveChat() {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(chatHistory));
+        } catch (e) { }
+    }
+
+    function restoreChat() {
+        try {
+            var saved = sessionStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                chatHistory = JSON.parse(saved);
+            }
+        } catch (e) {
+            chatHistory = [];
+        }
+        renderMessages();
+    }
+
+    function renderMessages() {
+        var container = document.getElementById('chat-messages');
+        container.innerHTML = '';
+
+        // Always show welcome message
+        var welcomeDiv = document.createElement('div');
+        welcomeDiv.className = 'chat-msg assistant';
+        welcomeDiv.innerHTML = '<div class="chat-msg-content">' + escapeHtml(WELCOME_MSG) + '</div>';
+        container.appendChild(welcomeDiv);
+
+        // Render saved messages
+        for (var i = 0; i < chatHistory.length; i++) {
+            var msg = chatHistory[i];
+            var div = document.createElement('div');
+            div.className = 'chat-msg ' + msg.role;
+            div.innerHTML = '<div class="chat-msg-content">' + escapeHtml(msg.content) + '</div>';
+            container.appendChild(div);
+        }
+
+        scrollToBottom();
+    }
+
+    // ═══ Helpers ═══
+
+    function appendMessage(role, content) {
+        var messages = document.getElementById('chat-messages');
+        var div = document.createElement('div');
+        div.className = 'chat-msg ' + role;
+        div.innerHTML = '<div class="chat-msg-content">' + escapeHtml(content) + '</div>';
+        messages.appendChild(div);
+        scrollToBottom();
+        return div;
+    }
+
+    function showTyping() {
+        var messages = document.getElementById('chat-messages');
+        var div = document.createElement('div');
+        div.className = 'chat-msg assistant';
+        div.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+        messages.appendChild(div);
+        scrollToBottom();
+        return div;
+    }
+
+    function scrollToBottom() {
+        var messages = document.getElementById('chat-messages');
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function updateSendButton(disabled) {
+        document.getElementById('chat-send-btn').disabled = disabled;
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    var textarea = document.getElementById('chat-input');
+    textarea.addEventListener('input', function() { autoResize(this); });
+
+    function autoResize(el) {
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+    }
+
+    async function checkOllamaStatus() {
+        try {
+            var res = await fetch('/Chat/Status');
+            var data = await res.json();
+            var statusEl = document.getElementById('chat-status');
+            if (data.available) {
+                statusEl.textContent = 'متصل — ' + data.model;
+                statusEl.style.color = '#6ee7b7';
+            } else {
+                statusEl.textContent = 'غير متصل بـ Ollama';
+                statusEl.style.color = '#fca5a5';
+            }
+        } catch (e) {
+            var s = document.getElementById('chat-status');
+            s.textContent = 'خطأ في الاتصال';
+            s.style.color = '#fca5a5';
+        }
+    }
+})();
+</script>
+}

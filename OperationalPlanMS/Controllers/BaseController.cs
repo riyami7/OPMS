@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using OperationalPlanMS.Models;
+using Microsoft.EntityFrameworkCore;
+using OperationalPlanMS.Data;
 
 namespace OperationalPlanMS.Controllers
 {
@@ -117,5 +119,21 @@ namespace OperationalPlanMS.Controllers
             StepStatus.Cancelled => "ملغي",
             _ => "غير محدد"
         };
+
+        /// <summary>
+        /// Set shared ViewBag data for all pages (chatbot toggle, etc.)
+        /// </summary>
+        public override void OnActionExecuting(Microsoft.AspNetCore.Mvc.Filters.ActionExecutingContext context)
+        {
+            base.OnActionExecuting(context);
+
+            // Load chatbot setting for _ChatWidget
+            var db = HttpContext.RequestServices.GetService<AppDbContext>();
+            if (db != null)
+            {
+                var settings = db.SystemSettings.AsNoTracking().FirstOrDefault();
+                ViewBag.IsChatbotEnabled = settings?.IsChatbotEnabled ?? false;
+            }
+        }
     }
 }

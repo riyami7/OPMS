@@ -34,6 +34,9 @@ namespace OperationalPlanMS.Data
         public DbSet<CoreValue> CoreValues { get; set; }
         public DbSet<FinancialCost> FinancialCosts { get; set; }
         public DbSet<ExternalOrganizationalUnit> ExternalOrganizationalUnits { get; set; }
+        public DbSet<ChatConversation> ChatConversations { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
