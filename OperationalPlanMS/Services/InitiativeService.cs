@@ -30,6 +30,7 @@ namespace OperationalPlanMS.Services
         Task PopulateFormDropdownsAsync(InitiativeFormViewModel model);
         Task PopulateFilterDropdownsAsync(InitiativeListViewModel model);
         bool CanAccess(Initiative initiative, UserRole userRole, int userId);
+        AccessLevel? GetAccessLevel(int initiativeId, UserRole userRole, int userId);
 
         // معلومات الوحدة التنظيمية
         Task<string?> GetUnitNameAsync(int externalUnitId);
@@ -59,7 +60,25 @@ namespace OperationalPlanMS.Services
 
             // تصفية حسب الدور
             if (userRole == UserRole.Supervisor)
-                query = query.Where(i => i.SupervisorId == userId);
+            {
+                // Supervisor sees own initiatives + any via InitiativeAccess
+                var accessibleIds = await _db.InitiativeAccess
+                    .Where(a => a.UserId == userId && a.IsActive)
+                    .Select(a => a.InitiativeId).ToListAsync();
+                query = query.Where(i => i.SupervisorId == userId || accessibleIds.Contains(i.Id));
+            }
+            else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+            {
+                // User, StepUser, or any other role — only see via InitiativeAccess
+                var accessibleIds = await _db.InitiativeAccess
+                    .Where(a => a.UserId == userId && a.IsActive)
+                    .Select(a => a.InitiativeId).ToListAsync();
+
+                if (accessibleIds.Any())
+                    query = query.Where(i => accessibleIds.Contains(i.Id));
+                else
+                    query = query.Where(i => false); // No access
+            }
 
             // البحث
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -268,13 +287,42 @@ namespace OperationalPlanMS.Services
 
         public bool CanAccess(Initiative initiative, UserRole userRole, int userId)
         {
-            return userRole switch
+            // Admin and Executive see everything
+            if (userRole == UserRole.Admin || userRole == UserRole.Executive)
+                return true;
+
+            // Supervisor sees own initiatives
+            if (userRole == UserRole.Supervisor && initiative.SupervisorId == userId)
+                return true;
+
+            // For ALL roles: check InitiativeAccess table as fallback
+            return _db.InitiativeAccess.Any(a =>
+                a.InitiativeId == initiative.Id &&
+                a.UserId == userId &&
+                a.IsActive);
+        }
+
+        /// <summary>
+        /// Get the access level for a user on a specific initiative.
+        /// Returns null if no access.
+        /// </summary>
+        public AccessLevel? GetAccessLevel(int initiativeId, UserRole userRole, int userId)
+        {
+            if (userRole == UserRole.Admin) return AccessLevel.FullAccess;
+            if (userRole == UserRole.Executive) return AccessLevel.ReadOnly;
+
+            // Supervisor of this initiative gets FullAccess
+            if (userRole == UserRole.Supervisor)
             {
-                UserRole.Admin => true,
-                UserRole.Executive => true,
-                UserRole.Supervisor => initiative.SupervisorId == userId,
-                _ => false
-            };
+                var isSupervisor = _db.Initiatives.Any(i => i.Id == initiativeId && i.SupervisorId == userId && !i.IsDeleted);
+                if (isSupervisor) return AccessLevel.FullAccess;
+            }
+
+            // For ALL roles (including Supervisor): check InitiativeAccess table
+            var accessRecord = _db.InitiativeAccess
+                .FirstOrDefault(a => a.InitiativeId == initiativeId && a.UserId == userId && a.IsActive);
+
+            return accessRecord?.AccessLevel;
         }
 
         public async Task PopulateFormDropdownsAsync(InitiativeFormViewModel model)

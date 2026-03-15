@@ -59,25 +59,28 @@ namespace OperationalPlanMS.Controllers
         {
             var viewModel = await _projectService.GetDetailsAsync(id);
             if (viewModel == null) return NotFound();
-            if (!_projectService.CanAccess(viewModel.Project, GetCurrentUserRole(), GetCurrentUserId()))
+
+            var userRole = GetCurrentUserRole();
+            var userId = GetCurrentUserId();
+
+            if (!_projectService.CanAccess(viewModel.Project, userRole, userId))
                 return Forbid();
 
-            ViewBag.CanEdit = CanEditProjects() &&
-                _projectService.CanAccess(viewModel.Project, GetCurrentUserRole(), GetCurrentUserId());
-            ViewBag.UserRole = GetCurrentUserRole();
-            ViewBag.CurrentUserId = GetCurrentUserId();
+            ViewBag.CanEdit = CanEditProjects() || CanEditInitiativeContent(viewModel.Project.InitiativeId);
+            ViewBag.UserRole = userRole;
+            ViewBag.CurrentUserId = userId;
             return View(viewModel);
         }
 
         // GET: /Projects/Create?initiativeId=5
         public async Task<IActionResult> Create(int? initiativeId)
         {
-            if (!CanEditProjects()) return Forbid();
             if (!initiativeId.HasValue)
             {
                 TempData["ErrorMessage"] = "يجب تحديد المبادرة لإضافة مشروع";
                 return RedirectToAction("Index", "Initiatives");
             }
+            if (!CanEditProjects() && !CanEditInitiativeContent(initiativeId.Value)) return Forbid();
 
             var viewModel = await _projectService.PrepareCreateViewModelAsync(initiativeId.Value);
             if (viewModel == null) return NotFound();
@@ -89,7 +92,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ProjectFormViewModel model)
         {
-            if (!CanEditProjects()) return Forbid();
+            if (!CanEditProjects() && !CanEditInitiativeContent(model.InitiativeId)) return Forbid();
 
             if (!ModelState.IsValid)
             {
@@ -114,10 +117,9 @@ namespace OperationalPlanMS.Controllers
         // GET: /Projects/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
-            if (!CanEditProjects()) return Forbid();
-
             var viewModel = await _projectService.PrepareEditViewModelAsync(id);
             if (viewModel == null) return NotFound();
+            if (!CanEditProjects() && !CanEditInitiativeContent(viewModel.InitiativeId)) return Forbid();
 
             ViewBag.CalculatedProgress = await _projectService.GetCalculatedProgressAsync(id);
             return View(viewModel);
@@ -127,7 +129,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, ProjectFormViewModel model)
         {
-            if (!CanEditProjects()) return Forbid();
+            if (!CanEditProjects() && !CanEditInitiativeContent(model.InitiativeId)) return Forbid();
             if (id != model.Id) return NotFound();
 
             if (!ModelState.IsValid)
@@ -155,9 +157,9 @@ namespace OperationalPlanMS.Controllers
         // GET: /Projects/Delete/5
         public async Task<IActionResult> Delete(int id)
         {
-            if (!CanEditProjects()) return Forbid();
             var project = await _projectService.GetWithInitiativeAsync(id);
             if (project == null) return NotFound();
+            if (!CanEditProjects() && !CanEditInitiativeContent(project.InitiativeId)) return Forbid();
             if (IsSupervisor() && project.Initiative?.SupervisorId != GetCurrentUserId()) return Forbid();
             return View(project);
         }
@@ -166,9 +168,9 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            if (!CanEditProjects()) return Forbid();
             var project = await _projectService.GetWithInitiativeAsync(id);
             if (project == null) return NotFound();
+            if (!CanEditProjects() && !CanEditInitiativeContent(project.InitiativeId)) return Forbid();
             if (IsSupervisor() && project.Initiative?.SupervisorId != GetCurrentUserId()) return Forbid();
 
             var (success, error) = await _projectService.SoftDeleteAsync(id, GetCurrentUserId());

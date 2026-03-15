@@ -108,6 +108,7 @@ namespace OperationalPlanMS.Models.Entities
         public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
         public virtual ICollection<ProgressUpdate> ProgressUpdates { get; set; } = new List<ProgressUpdate>();
         public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
+        public virtual ICollection<InitiativeAccess> AccessList { get; set; } = new List<InitiativeAccess>();
 
         [NotMapped]
         public string SupervisorDisplayName => !string.IsNullOrEmpty(SupervisorName)

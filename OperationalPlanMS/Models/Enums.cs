@@ -84,4 +84,14 @@ namespace OperationalPlanMS.Models
         Evidence = 2,
         Attachment = 3
     }
+
+    /// <summary>
+    /// Access level for InitiativeAccess (صلاحيات الوصول للمبادرة)
+    /// </summary>
+    public enum AccessLevel
+    {
+        ReadOnly = 0,       // اطلاع فقط
+        Contributor = 1,    // تعديل + إضافة
+        FullAccess = 2      // كل شيء بما فيه الحذف
+    }
 }

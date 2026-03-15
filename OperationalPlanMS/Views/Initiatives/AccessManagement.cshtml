@@ -1,0 +1,440 @@
+@model List<OperationalPlanMS.Models.Entities.Initiative>
+@{
+    ViewData["Title"] = "صلاحيات الوصول للمبادرات";
+}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-title">
+        <h4 class="mb-1"><i class="bi bi-key me-2 text-primary"></i>صلاحيات الوصول للمبادرات</h4>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">الرئيسية</a></li>
+                <li class="breadcrumb-item"><a href="/Admin">إعدادات النظام</a></li>
+                <li class="breadcrumb-item active">صلاحيات المبادرات</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <!-- اختيار المبادرة -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-lightning-charge me-2"></i>المبادرات
+            </div>
+            <div class="card-body p-0">
+                <div class="p-3">
+                    <input type="text" class="form-control form-control-sm" placeholder="بحث في المبادرات..." id="initiativeSearch" oninput="filterInitiatives(this.value)">
+                </div>
+                <div class="list-group list-group-flush" id="initiativesList" style="max-height: 500px; overflow-y: auto;">
+                    @foreach (var init in Model)
+                    {
+                        <button type="button" class="list-group-item list-group-item-action initiative-item d-flex justify-content-between align-items-center"
+                                data-id="@init.Id" data-name="@init.NameAr" onclick="selectInitiative(@init.Id, '@init.NameAr.Replace("'", "\\'")' )">
+                            <div>
+                                <div class="fw-bold small">@init.NameAr</div>
+                                <small class="text-muted">@init.Code</small>
+                            </div>
+                            <span class="badge bg-primary rounded-pill member-count" id="count-@init.Id"></span>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- أعضاء المبادرة المختارة -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="bi bi-people me-2"></i>
+                    <span id="selectedInitiativeName">اختر مبادرة من القائمة</span>
+                </span>
+                <button class="btn btn-sm btn-primary" id="addMemberBtn" onclick="showAddModal()" style="display:none;">
+                    <i class="bi bi-person-plus me-1"></i>إضافة عضو
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div class="card-body" id="emptyState">
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-arrow-right-circle" style="font-size: 3rem;"></i>
+                    <p class="mt-3">اختر مبادرة من القائمة لعرض وإدارة الأعضاء</p>
+                </div>
+            </div>
+
+            <!-- Members Table -->
+            <div class="card-body p-0" id="membersSection" style="display:none;">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">#</th>
+                                <th>المستخدم</th>
+                                <th>الوحدة التنظيمية</th>
+                                <th style="width:160px;">مستوى الصلاحية</th>
+                                <th style="width:130px;">تاريخ المنح</th>
+                                <th style="width:60px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <!-- No Members -->
+                <div class="text-center text-muted py-4" id="noMembersMsg" style="display:none;">
+                    <i class="bi bi-people" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">لا يوجد أعضاء لهذه المبادرة</p>
+                    <small>اضغط "إضافة عضو" لمنح صلاحية الوصول</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- شرح مستويات الصلاحية -->
+        <div class="card mt-3">
+            <div class="card-body py-3">
+                <div class="row text-center small">
+                    <div class="col-4">
+                        <span class="badge bg-info mb-1">اطلاع فقط</span>
+                        <div class="text-muted">يشوف المبادرة ومشاريعها وخطواتها بدون أي تعديل</div>
+                    </div>
+                    <div class="col-4">
+                        <span class="badge bg-warning text-dark mb-1">مساهم</span>
+                        <div class="text-muted">يقدر يعدّل ويضيف مشاريع وخطوات داخل المبادرة</div>
+                    </div>
+                    <div class="col-4">
+                        <span class="badge bg-danger mb-1">وصول كامل</span>
+                        <div class="text-muted">كل شيء: تعديل + إضافة + حذف مشاريع وخطوات</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Member Modal -->
+<div class="modal fade" id="addMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>إضافة عضو</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">المبادرة</label>
+                    <input type="text" class="form-control" id="modalInitiativeName" readonly>
+                </div>
+
+                <!-- Employee Search -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">رقم الموظف</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="empNumberInput" placeholder="أدخل رقم الموظف..."
+                               onkeydown="if(event.key==='Enter'){event.preventDefault();searchEmployee();}">
+                        <button class="btn btn-outline-primary" type="button" onclick="searchEmployee()">
+                            <i class="bi bi-search"></i> بحث
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Result -->
+                <div id="searchResult" style="display:none;">
+                    <!-- Error Message -->
+                    <div id="searchError" class="alert alert-warning small" style="display:none;"></div>
+
+                    <!-- Employee Card -->
+                    <div id="employeeCard" class="card border-success" style="display:none;">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                     style="width:48px;height:48px;background:var(--primary);color:#fff;font-size:16px;font-weight:600;flex-shrink:0;"
+                                     id="empInitials"></div>
+                                <div>
+                                    <div class="fw-bold" id="empNameAr"></div>
+                                    <div class="text-muted small" id="empNameEn"></div>
+                                </div>
+                            </div>
+                            <table class="table table-sm table-borderless mb-0 small">
+                                <tr>
+                                    <td class="text-muted" style="width:120px;">رقم الموظف</td>
+                                    <td class="fw-bold" id="empNumber"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">الرتبة</td>
+                                    <td id="empRank"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">المنصب</td>
+                                    <td id="empPosition"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">الوحدة التنظيمية</td>
+                                    <td id="empUnit"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">الدور في النظام</td>
+                                    <td id="empRole"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">البريد</td>
+                                    <td id="empEmail"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Access Level (shown after successful search) -->
+                    <div id="accessLevelSection" class="mt-3" style="display:none;">
+                        <label class="form-label fw-bold">مستوى الصلاحية</label>
+                        <select id="modalAccessLevel" class="form-select">
+                            <option value="0">اطلاع فقط — يشوف بدون تعديل</option>
+                            <option value="1" selected>مساهم — تعديل + إضافة</option>
+                            <option value="2">وصول كامل — تعديل + إضافة + حذف</option>
+                        </select>
+                    </div>
+                </div>
+
+                <input type="hidden" id="foundUserId" value="">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" id="addMemberBtn2" onclick="addMember()" style="display:none;">
+                    <i class="bi bi-plus-lg me-1"></i>إضافة العضو
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function() {
+    'use strict';
+
+    var selectedInitiativeId = null;
+    var selectedInitiativeName = '';
+
+    // Load member counts on page load
+    loadAllCounts();
+
+    // ═══ Select Initiative ═══
+    window.selectInitiative = function(id, name) {
+        selectedInitiativeId = id;
+        selectedInitiativeName = name;
+
+        // Update UI
+        document.getElementById('selectedInitiativeName').textContent = 'أعضاء: ' + name;
+        document.getElementById('addMemberBtn').style.display = '';
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('membersSection').style.display = '';
+
+        // Highlight selected
+        document.querySelectorAll('.initiative-item').forEach(function(el) {
+            el.classList.remove('active');
+        });
+        document.querySelector('.initiative-item[data-id="' + id + '"]').classList.add('active');
+
+        loadMembers(id);
+    };
+
+    // ═══ Filter Initiatives ═══
+    window.filterInitiatives = function(query) {
+        var items = document.querySelectorAll('.initiative-item');
+        var q = query.toLowerCase();
+        items.forEach(function(el) {
+            var name = el.dataset.name.toLowerCase();
+            el.style.display = name.indexOf(q) !== -1 ? '' : 'none';
+        });
+    };
+
+    // ═══ Load Members ═══
+    function loadMembers(initiativeId) {
+        var tbody = document.getElementById('membersTableBody');
+        var noMsg = document.getElementById('noMembersMsg');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+
+        fetch('/Initiatives/GetMembers/' + initiativeId)
+            .then(function(r) { return r.json(); })
+            .then(function(members) {
+                if (members.length === 0) {
+                    tbody.innerHTML = '';
+                    noMsg.style.display = '';
+                    tbody.parentElement.parentElement.style.display = 'none';
+                    return;
+                }
+
+                noMsg.style.display = 'none';
+                tbody.parentElement.parentElement.style.display = '';
+
+                var html = '';
+                members.forEach(function(m, idx) {
+                    var date = new Date(m.grantedAt);
+                    var dateStr = date.toLocaleDateString('ar-OM');
+                    html += '<tr>' +
+                        '<td class="text-muted small">' + (idx + 1) + '</td>' +
+                        '<td>' +
+                            '<div class="fw-bold small">' + m.userName + '</div>' +
+                            (m.userRank ? '<small class="text-muted">' + m.userRank + '</small>' : '') +
+                        '</td>' +
+                        '<td class="small">' + m.userUnit + '</td>' +
+                        '<td>' +
+                            '<select class="form-select form-select-sm" style="font-size:12px;" onchange="updateAccess(' + m.id + ', this.value)">' +
+                                '<option value="0"' + (m.accessLevel === 0 ? ' selected' : '') + '>اطلاع فقط</option>' +
+                                '<option value="1"' + (m.accessLevel === 1 ? ' selected' : '') + '>مساهم</option>' +
+                                '<option value="2"' + (m.accessLevel === 2 ? ' selected' : '') + '>وصول كامل</option>' +
+                            '</select>' +
+                        '</td>' +
+                        '<td class="small text-muted">' + dateStr + '</td>' +
+                        '<td>' +
+                            '<button class="btn btn-sm text-danger" onclick="removeMember(' + m.id + ', \'' + m.userName.replace(/'/g, "\\'") + '\')" title="إزالة">' +
+                                '<i class="bi bi-trash3"></i>' +
+                            '</button>' +
+                        '</td>' +
+                    '</tr>';
+                });
+                tbody.innerHTML = html;
+
+                // Update count badge
+                var countEl = document.getElementById('count-' + initiativeId);
+                if (countEl) countEl.textContent = members.length;
+            });
+    }
+
+    // ═══ Load All Counts ═══
+    function loadAllCounts() {
+        document.querySelectorAll('.initiative-item').forEach(function(el) {
+            var id = el.dataset.id;
+            fetch('/Initiatives/GetMembers/' + id)
+                .then(function(r) { return r.json(); })
+                .then(function(members) {
+                    var countEl = document.getElementById('count-' + id);
+                    if (countEl && members.length > 0) countEl.textContent = members.length;
+                });
+        });
+    }
+
+    // ═══ Show Add Modal ═══
+    window.showAddModal = function() {
+        document.getElementById('modalInitiativeName').value = selectedInitiativeName;
+        // Reset state
+        document.getElementById('empNumberInput').value = '';
+        document.getElementById('searchResult').style.display = 'none';
+        document.getElementById('searchError').style.display = 'none';
+        document.getElementById('employeeCard').style.display = 'none';
+        document.getElementById('accessLevelSection').style.display = 'none';
+        document.getElementById('addMemberBtn2').style.display = 'none';
+        document.getElementById('foundUserId').value = '';
+
+        new bootstrap.Modal(document.getElementById('addMemberModal')).show();
+
+        // Focus on input after modal opens
+        setTimeout(function() {
+            document.getElementById('empNumberInput').focus();
+        }, 500);
+    };
+
+    // ═══ Search Employee ═══
+    window.searchEmployee = function() {
+        var empNumber = document.getElementById('empNumberInput').value.trim();
+        if (!empNumber) return;
+
+        document.getElementById('searchResult').style.display = '';
+        document.getElementById('searchError').style.display = 'none';
+        document.getElementById('employeeCard').style.display = 'none';
+        document.getElementById('accessLevelSection').style.display = 'none';
+        document.getElementById('addMemberBtn2').style.display = 'none';
+        document.getElementById('foundUserId').value = '';
+
+        fetch('/Initiatives/SearchUser?empNumber=' + encodeURIComponent(empNumber) + '&initiativeId=' + selectedInitiativeId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.found) {
+                    document.getElementById('searchError').textContent = data.error;
+                    document.getElementById('searchError').style.display = '';
+                    return;
+                }
+
+                // Show employee card
+                document.getElementById('empInitials').textContent = data.fullNameAr.substring(0, 2);
+                document.getElementById('empNameAr').textContent = data.fullNameAr;
+                document.getElementById('empNameEn').textContent = data.fullNameEn;
+                document.getElementById('empNumber').textContent = data.empNumber;
+                document.getElementById('empRank').textContent = data.rank || '-';
+                document.getElementById('empPosition').textContent = data.position || '-';
+                document.getElementById('empUnit').textContent = data.unit;
+                document.getElementById('empRole').textContent = data.role;
+                document.getElementById('empEmail').textContent = data.email;
+
+                document.getElementById('employeeCard').style.display = '';
+                document.getElementById('accessLevelSection').style.display = '';
+                document.getElementById('addMemberBtn2').style.display = '';
+                document.getElementById('foundUserId').value = data.userId;
+            })
+            .catch(function() {
+                document.getElementById('searchError').textContent = 'خطأ في الاتصال';
+                document.getElementById('searchError').style.display = '';
+            });
+    };
+
+    // ═══ Add Member ═══
+    window.addMember = function() {
+        var userId = document.getElementById('foundUserId').value;
+        var accessLevel = document.getElementById('modalAccessLevel').value;
+        if (!userId) return;
+
+        fetch('/Initiatives/AddMember', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: parseInt(userId),
+                initiativeId: selectedInitiativeId,
+                accessLevel: parseInt(accessLevel)
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('addMemberModal')).hide();
+                loadMembers(selectedInitiativeId);
+            } else {
+                alert(data.error);
+            }
+        });
+    };
+
+    // ═══ Update Access Level ═══
+    window.updateAccess = function(id, accessLevel) {
+        fetch('/Initiatives/UpdateMemberAccess', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, accessLevel: parseInt(accessLevel) })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) alert(data.error);
+        });
+    };
+
+    // ═══ Remove Member ═══
+    window.removeMember = function(id, name) {
+        if (!confirm('إزالة صلاحية "' + name + '" من هذه المبادرة؟')) return;
+
+        fetch('/Initiatives/RemoveMember', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) loadMembers(selectedInitiativeId);
+            else alert(data.error);
+        });
+    };
+
+})();
+</script>
+}

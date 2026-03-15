@@ -36,6 +36,7 @@ namespace OperationalPlanMS.Data
         public DbSet<ExternalOrganizationalUnit> ExternalOrganizationalUnits { get; set; }
         public DbSet<ChatConversation> ChatConversations { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<InitiativeAccess> InitiativeAccess { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -405,6 +406,28 @@ namespace OperationalPlanMS.Data
                 entity.HasOne(e => e.LastModifiedBy)
                     .WithMany()
                     .HasForeignKey(e => e.LastModifiedById)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // InitiativeAccess
+            modelBuilder.Entity<InitiativeAccess>(entity =>
+            {
+                // One user can't have duplicate access to the same initiative
+                entity.HasIndex(e => new { e.UserId, e.InitiativeId }).IsUnique();
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.InitiativeAccessList)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Initiative)
+                    .WithMany(i => i.AccessList)
+                    .HasForeignKey(e => e.InitiativeId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.GrantedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.GrantedById)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }

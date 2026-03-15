@@ -79,6 +79,20 @@ namespace OperationalPlanMS.Controllers
         protected bool CanEditProjects() => IsAdmin() || IsSupervisor();
 
         /// <summary>
+        /// Check if user can edit content inside a specific initiative
+        /// (role-based OR via InitiativeAccess Contributor+)
+        /// </summary>
+        protected bool CanEditInitiativeContent(int initiativeId)
+        {
+            if (IsAdmin() || IsSupervisor()) return true;
+            var db = HttpContext.RequestServices.GetRequiredService<Data.AppDbContext>();
+            var access = db.InitiativeAccess
+                .FirstOrDefault(a => a.InitiativeId == initiativeId
+                    && a.UserId == GetCurrentUserId() && a.IsActive);
+            return access != null && access.AccessLevel >= Models.AccessLevel.Contributor;
+        }
+
+        /// <summary>
         /// Get Arabic name for Status
         /// </summary>
         protected string GetStatusArabicName(Status status) => status switch

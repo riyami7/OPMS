@@ -80,6 +80,9 @@ namespace OperationalPlanMS.Models.Entities
         [InverseProperty("AssignedTo")]
         public virtual ICollection<Step> AssignedSteps { get; set; } = new List<Step>();
 
+        [InverseProperty("User")]
+        public virtual ICollection<InitiativeAccess> InitiativeAccessList { get; set; } = new List<InitiativeAccess>();
+
         #endregion
 
         #region Computed Properties

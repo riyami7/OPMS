@@ -416,13 +416,23 @@ namespace OperationalPlanMS.Services
             if (userRole == UserRole.Admin || userRole == UserRole.Executive) return true;
             var project = step.Project ?? _db.Projects.Include(p => p.Initiative).FirstOrDefault(p => p.Id == step.ProjectId);
             if (project == null) return false;
-            return userRole switch
+
+            // Check role-based access first
+            var hasRoleAccess = userRole switch
             {
                 UserRole.Supervisor => project.Initiative?.SupervisorId == userId,
                 UserRole.User => project.ProjectManagerId == userId,
                 UserRole.StepUser => step.AssignedToId == userId,
                 _ => false
             };
+
+            if (hasRoleAccess) return true;
+
+            // Fallback: check InitiativeAccess
+            return _db.InitiativeAccess.Any(a =>
+                a.InitiativeId == project.InitiativeId &&
+                a.UserId == userId &&
+                a.IsActive);
         }
 
         public bool CanEditProject(Project project, UserRole userRole, int userId)
@@ -431,9 +441,16 @@ namespace OperationalPlanMS.Services
             if (userRole == UserRole.Supervisor)
             {
                 var initiative = project.Initiative ?? _db.Initiatives.FirstOrDefault(i => i.Id == project.InitiativeId);
-                return initiative?.SupervisorId == userId || project.ProjectManagerId == userId;
+                if (initiative?.SupervisorId == userId || project.ProjectManagerId == userId)
+                    return true;
             }
-            return userRole == UserRole.User && project.ProjectManagerId == userId;
+            if (userRole == UserRole.User && project.ProjectManagerId == userId)
+                return true;
+
+            // Fallback: check InitiativeAccess for Contributor or FullAccess
+            var access = _db.InitiativeAccess
+                .FirstOrDefault(a => a.InitiativeId == project.InitiativeId && a.UserId == userId && a.IsActive);
+            return access != null && access.AccessLevel >= AccessLevel.Contributor;
         }
 
         public async Task<bool> IsStepApproverAsync(int userId)

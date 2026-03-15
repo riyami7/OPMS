@@ -60,22 +60,30 @@ namespace OperationalPlanMS.Controllers
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
 
-            // StepUser لا يملك صلاحية التقارير
+            // StepUser can see reports if they have InitiativeAccess
             if (userRole == UserRole.StepUser)
-                return RedirectToAction("Index", "Home");
+            {
+                var hasAccess = _db.InitiativeAccess.Any(a => a.UserId == userId && a.IsActive);
+                if (!hasAccess) return RedirectToAction("Index", "Home");
+            }
 
             if (userRole == UserRole.Supervisor)
             {
-                initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId);
+                var accessibleIds = await _db.InitiativeAccess
+                    .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId || accessibleIds.Contains(i.Id));
             }
-            else if (userRole == UserRole.User)
+            else if (userRole == UserRole.User || userRole == UserRole.StepUser)
             {
                 var userProjectInitiativeIds = await _db.Projects
                     .Where(p => p.ProjectManagerId == userId && !p.IsDeleted)
                     .Select(p => p.InitiativeId)
                     .Distinct()
                     .ToListAsync();
-                initiativesQuery = initiativesQuery.Where(i => userProjectInitiativeIds.Contains(i.Id));
+                var accessibleIds = await _db.InitiativeAccess
+                    .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                var allIds = userProjectInitiativeIds.Union(accessibleIds).ToList();
+                initiativesQuery = initiativesQuery.Where(i => allIds.Contains(i.Id));
             }
 
             if (fiscalYearId.HasValue)
@@ -210,7 +218,10 @@ namespace OperationalPlanMS.Controllers
             var userId = GetCurrentUserId();
 
             if (userRole == UserRole.StepUser)
-                return Forbid();
+            {
+                var hasAccess = _db.InitiativeAccess.Any(a => a.UserId == userId && a.IsActive);
+                if (!hasAccess) return Forbid();
+            }
 
             if (!fiscalYearId.HasValue)
             {
@@ -225,13 +236,20 @@ namespace OperationalPlanMS.Controllers
                 .AsQueryable();
 
             if (userRole == UserRole.Supervisor)
-                initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId);
-            else if (userRole == UserRole.User)
+            {
+                var accessibleIds = await _db.InitiativeAccess
+                    .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId || accessibleIds.Contains(i.Id));
+            }
+            else if (userRole == UserRole.User || userRole == UserRole.StepUser)
             {
                 var ids = await _db.Projects
                     .Where(p => p.ProjectManagerId == userId && !p.IsDeleted)
                     .Select(p => p.InitiativeId).Distinct().ToListAsync();
-                initiativesQuery = initiativesQuery.Where(i => ids.Contains(i.Id));
+                var accessibleIds = await _db.InitiativeAccess
+                    .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                var allIds = ids.Union(accessibleIds).ToList();
+                initiativesQuery = initiativesQuery.Where(i => allIds.Contains(i.Id));
             }
 
             if (fiscalYearId.HasValue)
@@ -375,7 +393,17 @@ namespace OperationalPlanMS.Controllers
                         .AsQueryable();
 
                     if (userRole == UserRole.Supervisor)
-                        initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId);
+                    {
+                        var accessIds = await _db.InitiativeAccess
+                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                        initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId || accessIds.Contains(i.Id));
+                    }
+                    else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+                    {
+                        var accessIds = await _db.InitiativeAccess
+                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                        initiativesQuery = initiativesQuery.Where(i => accessIds.Contains(i.Id));
+                    }
 
                     if (unitIds != null)
                         initiativesQuery = initiativesQuery.Where(i =>
@@ -408,11 +436,22 @@ namespace OperationalPlanMS.Controllers
                         var supervisedIds = await _db.Initiatives
                             .Where(i => i.SupervisorId == userId && !i.IsDeleted)
                             .Select(i => i.Id).ToListAsync();
-                        projectsQuery = projectsQuery.Where(p => supervisedIds.Contains(p.InitiativeId));
+                        var accessIds = await _db.InitiativeAccess
+                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                        var allIds = supervisedIds.Union(accessIds).ToList();
+                        projectsQuery = projectsQuery.Where(p => allIds.Contains(p.InitiativeId));
                     }
                     else if (userRole == UserRole.User)
                     {
-                        projectsQuery = projectsQuery.Where(p => p.ProjectManagerId == userId);
+                        var accessIds = await _db.InitiativeAccess
+                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                        projectsQuery = projectsQuery.Where(p => p.ProjectManagerId == userId || accessIds.Contains(p.InitiativeId));
+                    }
+                    else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+                    {
+                        var accessIds = await _db.InitiativeAccess
+                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                        projectsQuery = projectsQuery.Where(p => accessIds.Contains(p.InitiativeId));
                     }
 
                     if (unitIds != null)
@@ -446,8 +485,11 @@ namespace OperationalPlanMS.Controllers
                         var supervisedIds = await _db.Initiatives
                             .Where(i => i.SupervisorId == userId && !i.IsDeleted)
                             .Select(i => i.Id).ToListAsync();
+                        var accessIds = await _db.InitiativeAccess
+                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                        var allInitIds = supervisedIds.Union(accessIds).ToList();
                         var projectIds = await _db.Projects
-                            .Where(p => supervisedIds.Contains(p.InitiativeId) && !p.IsDeleted)
+                            .Where(p => allInitIds.Contains(p.InitiativeId) && !p.IsDeleted)
                             .Select(p => p.Id).ToListAsync();
                         stepsQuery = stepsQuery.Where(s => projectIds.Contains(s.ProjectId));
                     }
@@ -456,7 +498,22 @@ namespace OperationalPlanMS.Controllers
                         var userProjectIds = await _db.Projects
                             .Where(p => p.ProjectManagerId == userId && !p.IsDeleted)
                             .Select(p => p.Id).ToListAsync();
-                        stepsQuery = stepsQuery.Where(s => userProjectIds.Contains(s.ProjectId));
+                        var accessIds = await _db.InitiativeAccess
+                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                        var accessProjectIds = await _db.Projects
+                            .Where(p => accessIds.Contains(p.InitiativeId) && !p.IsDeleted)
+                            .Select(p => p.Id).ToListAsync();
+                        var allProjIds = userProjectIds.Union(accessProjectIds).ToList();
+                        stepsQuery = stepsQuery.Where(s => allProjIds.Contains(s.ProjectId));
+                    }
+                    else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+                    {
+                        var accessIds = await _db.InitiativeAccess
+                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
+                        var projectIds = await _db.Projects
+                            .Where(p => accessIds.Contains(p.InitiativeId) && !p.IsDeleted)
+                            .Select(p => p.Id).ToListAsync();
+                        stepsQuery = stepsQuery.Where(s => projectIds.Contains(s.ProjectId));
                     }
 
                     var exportSteps = await stepsQuery
@@ -499,7 +556,19 @@ namespace OperationalPlanMS.Controllers
             var userId = GetCurrentUserId();
 
             if (userRole == UserRole.Supervisor && initiative.SupervisorId != userId)
-                return Forbid();
+            {
+                // Check InitiativeAccess as fallback
+                var hasAccess = _db.InitiativeAccess.Any(a =>
+                    a.InitiativeId == id && a.UserId == userId && a.IsActive);
+                if (!hasAccess) return Forbid();
+            }
+            else if (userRole != UserRole.Admin && userRole != UserRole.Executive && userRole != UserRole.Supervisor)
+            {
+                // User, StepUser, etc. — check InitiativeAccess
+                var hasAccess = _db.InitiativeAccess.Any(a =>
+                    a.InitiativeId == id && a.UserId == userId && a.IsActive);
+                if (!hasAccess) return Forbid();
+            }
 
             var projects = initiative.Projects.ToList();
             var steps = projects.SelectMany(p => p.Steps).ToList();
