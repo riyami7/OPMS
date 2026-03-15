@@ -80,7 +80,8 @@
                           onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendPageMessage();}"
                           oninput="autoResizeInput(this)"></textarea>
                 <button id="chatPageSendBtn" onclick="sendPageMessage()" title="إرسال" disabled>
-                    <i class="bi bi-send-fill"></i>
+                    <i class="bi bi-send-fill" id="pageSendIcon"></i>
+                    <i class="bi bi-stop-fill" id="pageStopIcon" style="display:none;"></i>
                 </button>
             </div>
             <div class="chat-input-hint">
@@ -458,8 +459,33 @@
 
     function updatePageSendBtn(streaming) {
         var btn = document.getElementById('chatPageSendBtn');
-        btn.disabled = streaming;
+        var sendIcon = document.getElementById('pageSendIcon');
+        var stopIcon = document.getElementById('pageStopIcon');
+        if (streaming) {
+            btn.disabled = false;
+            btn.style.background = 'linear-gradient(135deg, #b91c1c, #dc2626)';
+            btn.style.color = '#fff';
+            btn.setAttribute('title', 'إيقاف');
+            btn.onclick = function() { stopPageStreaming(); };
+            sendIcon.style.display = 'none';
+            stopIcon.style.display = 'inline';
+        } else {
+            btn.disabled = !document.getElementById('chatPageInput').value.trim();
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.setAttribute('title', 'إرسال');
+            btn.onclick = function() { sendPageMessage(); };
+            sendIcon.style.display = 'inline';
+            stopIcon.style.display = 'none';
+        }
     }
+
+    window.stopPageStreaming = function() {
+        if (currentController) {
+            currentController.abort();
+            currentController = null;
+        }
+    };
 
     window.autoResizeInput = function(el) {
         el.style.height = 'auto';

@@ -71,7 +71,8 @@
             <textarea id="chat-input" placeholder="اكتب رسالتك..." rows="1"
                       onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
             <button id="chat-send-btn" onclick="sendMessage()" title="إرسال">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                <svg id="send-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                <svg id="stop-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
             </button>
         </div>
     </div>
@@ -345,6 +346,13 @@
     }
     #chat-send-btn:hover { transform: scale(1.05); }
     #chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    #chat-send-btn.streaming {
+        background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+        color: #fff;
+        opacity: 1 !important;
+        cursor: pointer !important;
+    }
+    #chat-send-btn.streaming:hover { transform: scale(1.05); }
 
     /* ═══ Scrollbar ═══ */
     #chat-messages::-webkit-scrollbar { width: 4px; }
@@ -703,9 +711,33 @@
         messages.scrollTop = messages.scrollHeight;
     }
 
-    function updateSendButton(disabled) {
-        document.getElementById('chat-send-btn').disabled = disabled;
+    function updateSendButton(streaming) {
+        var btn = document.getElementById('chat-send-btn');
+        var sendIcon = document.getElementById('send-icon');
+        var stopIcon = document.getElementById('stop-icon');
+        if (streaming) {
+            btn.disabled = false;
+            btn.classList.add('streaming');
+            btn.setAttribute('title', 'إيقاف');
+            btn.onclick = function() { stopStreaming(); };
+            sendIcon.style.display = 'none';
+            stopIcon.style.display = 'block';
+        } else {
+            btn.disabled = false;
+            btn.classList.remove('streaming');
+            btn.setAttribute('title', 'إرسال');
+            btn.onclick = function() { sendMessage(); };
+            sendIcon.style.display = 'block';
+            stopIcon.style.display = 'none';
+        }
     }
+
+    window.stopStreaming = function() {
+        if (currentController) {
+            currentController.abort();
+            currentController = null;
+        }
+    };
 
     function escapeHtml(text) {
         var div = document.createElement('div');
