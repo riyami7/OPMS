@@ -175,7 +175,7 @@
         </div>
 
         <!-- Organizational Structure - الهيكل التنظيمي -->
-        @if (!string.IsNullOrEmpty(Model.Project.ExternalUnitName) || Model.Project.SubObjective != null || Model.Project.FinancialCost != null)
+        @if (!string.IsNullOrEmpty(Model.Project.ExternalUnitName) || Model.Project.ProjectSubObjectives?.Any() == true || Model.Project.SubObjective != null || Model.Project.FinancialCost != null)
         {
             <div class="card mb-4 border-primary">
                 <div class="card-header">
@@ -190,11 +190,31 @@
                                 <span class="badge badge-approved">@Model.Project.ExternalUnitName</span>
                             </div>
                         }
-                        @if (Model.Project.SubObjective != null)
+                        @if (Model.Project.ProjectSubObjectives?.Any() == true)
                         {
                             <div class="col-md-6 mb-3">
-                                <strong class="text-muted d-block"><i class="bi bi-bullseye me-1"></i>الهدف الفرعي</strong>
-                                <span class="badge badge-inprogress">@Model.Project.SubObjective.NameAr</span>
+                                <strong class="text-muted d-block mb-2"><i class="bi bi-bullseye me-1"></i>الأهداف الفرعية</strong>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var pso in Model.Project.ProjectSubObjectives)
+                                    {
+                                        <div class="d-inline-flex align-items-center gap-1 px-3 py-1 rounded-pill"
+                                             style="background: linear-gradient(135deg, rgba(30,73,118,0.08), rgba(30,73,118,0.04)); border: 1px solid rgba(30,73,118,0.15); font-size: 0.82rem;">
+                                            <i class="bi bi-check-circle-fill" style="color: var(--primary-light); font-size: 0.7rem;"></i>
+                                            <span style="color: var(--text-dark);">@pso.SubObjective?.NameAr</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else if (Model.Project.SubObjective != null)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <strong class="text-muted d-block mb-2"><i class="bi bi-bullseye me-1"></i>الهدف الفرعي</strong>
+                                <div class="d-inline-flex align-items-center gap-1 px-3 py-1 rounded-pill"
+                                     style="background: linear-gradient(135deg, rgba(30,73,118,0.08), rgba(30,73,118,0.04)); border: 1px solid rgba(30,73,118,0.15); font-size: 0.82rem;">
+                                    <i class="bi bi-check-circle-fill" style="color: var(--primary-light); font-size: 0.7rem;"></i>
+                                    <span style="color: var(--text-dark);">@Model.Project.SubObjective.NameAr</span>
+                                </div>
                             </div>
                         }
                         @if (Model.Project.FinancialCost != null)

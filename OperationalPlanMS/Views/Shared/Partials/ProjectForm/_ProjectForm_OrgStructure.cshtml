@@ -61,11 +61,11 @@
                 </div>
             </div>
             <div class="col-md-6 mb-3">
-                <label asp-for="SubObjectiveId" class="form-label">الهدف الفرعي</label>
-                <select asp-for="SubObjectiveId" id="SubObjectiveId" class="form-select">
-                    <option value="">-- اختر الوحدة أولاً --</option>
-                </select>
-                <small class="text-muted">يتم تحميله بناءً على الوحدة المختارة</small>
+                <label class="form-label"><i class="bi bi-bullseye me-1"></i>الأهداف الفرعية</label>
+                <div id="SubObjectivesContainer" class="border rounded p-2" style="min-height:44px; max-height:200px; overflow-y:auto; background:#fafbfc;">
+                    <small class="text-muted">-- اختر الوحدة أولاً --</small>
+                </div>
+                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>اختياري — يمكنك تحديد أكثر من هدف</small>
             </div>
         </div>
     </div>

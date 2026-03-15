@@ -10,7 +10,7 @@
  *       supportingEntities: array,
  *       existingYearTargets: array,
  *       savedExternalUnitId: number,
- *       savedSubObjectiveId: number  // 0 for Create
+ *       savedSubObjectiveIds: array  // [] for Create
  *   }
  */
 
@@ -25,7 +25,7 @@
 
     const existingYearTargets = config.existingYearTargets || [];
     const savedExternalUnitId = config.savedExternalUnitId || 0;
-    const savedSubObjectiveId = config.savedSubObjectiveId || 0;
+    const savedSubObjectiveIds = config.savedSubObjectiveIds || [];
 
     // ================================================================
     //  DOMContentLoaded
@@ -96,12 +96,12 @@
             }, 200);
         }
 
-        // تحميل الأهداف الفرعية مع القيمة المحفوظة
-        if (savedSubObjectiveId > 0) {
+        // تحميل الأهداف الفرعية مع القيم المحفوظة
+        if (savedSubObjectiveIds.length > 0) {
             setTimeout(() => {
-                const unitName = document.getElementById('ExternalUnitName').value;
-                if (unitName) {
-                    loadSubObjectives(unitName, savedSubObjectiveId);
+                const unitId = document.getElementById('ExternalUnitId').value;
+                if (unitId) {
+                    loadSubObjectives(unitId, savedSubObjectiveIds);
                 }
             }, 300);
         }
@@ -195,31 +195,45 @@
 
         document.getElementById('ExternalUnitId').value = selectedId;
         document.getElementById('ExternalUnitName').value = selectedName;
-        loadSubObjectives(selectedName);
+        loadSubObjectives(selectedId);
     }
 
-    async function loadSubObjectives(unitName, selectedValue) {
-        selectedValue = selectedValue || null;
-        const select = document.getElementById('SubObjectiveId');
-        if (!unitName) {
-            select.innerHTML = '<option value="">-- اختر الوحدة أولاً --</option>';
+    async function loadSubObjectives(unitId, selectedValues) {
+        selectedValues = selectedValues || [];
+        const container = document.getElementById('SubObjectivesContainer');
+        if (!container) return;
+
+        if (!unitId) {
+            container.innerHTML = '<small class="text-muted">-- اختر الوحدة أولاً --</small>';
             return;
         }
 
-        select.innerHTML = '<option value="">-- جاري التحميل --</option>';
+        container.innerHTML = '<div class="d-flex align-items-center gap-2 py-1"><div class="spinner-border spinner-border-sm text-primary"></div><small class="text-muted">جاري التحميل...</small></div>';
 
         try {
-            const response = await fetch(`/Projects/GetSubObjectivesByUnit?unitName=${encodeURIComponent(unitName)}`);
+            const response = await fetch(`/Projects/GetSubObjectivesByUnit?externalUnitId=${encodeURIComponent(unitId)}`);
             if (response.ok) {
                 const objectives = await response.json();
-                select.innerHTML = '<option value="">-- اختر --</option>';
+                container.innerHTML = '';
+
+                if (objectives.length === 0) {
+                    container.innerHTML = '<small class="text-muted">-- لا توجد أهداف فرعية لهذه الوحدة --</small>';
+                    return;
+                }
+
                 objectives.forEach(obj => {
-                    const selected = selectedValue && obj.id == selectedValue ? 'selected' : '';
-                    select.innerHTML += `<option value="${obj.id}" ${selected}>${obj.nameAr}</option>`;
+                    const isChecked = Array.isArray(selectedValues) && selectedValues.includes(obj.id);
+                    const item = document.createElement('div');
+                    item.className = 'form-check py-1';
+                    item.innerHTML =
+                        '<input class="form-check-input" type="checkbox" name="SubObjectiveIds" value="' + obj.id + '" id="so_' + obj.id + '"' + (isChecked ? ' checked' : '') + '>' +
+                        '<label class="form-check-label" for="so_' + obj.id + '" style="cursor:pointer;">' + obj.nameAr + '</label>';
+                    container.appendChild(item);
                 });
             }
         } catch (error) {
             console.error('Error loading sub objectives:', error);
+            container.innerHTML = '<small class="text-danger">خطأ في التحميل</small>';
         }
     }
 

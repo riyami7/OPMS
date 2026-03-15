@@ -13,8 +13,9 @@ namespace OperationalPlanMS.Models.Entities
         [StringLength(50)]
         public string Code { get; set; } = string.Empty;
 
+        [Required]
         [StringLength(50)]
-        public string? ProjectNumber { get; set; }
+        public string ProjectNumber { get; set; } = string.Empty;
 
         [Required]
         [StringLength(200)]
@@ -124,6 +125,7 @@ namespace OperationalPlanMS.Models.Entities
         public virtual ICollection<ProjectKPI> ProjectKPIs { get; set; } = new List<ProjectKPI>();
         public virtual ICollection<ProjectSupportingUnit> SupportingUnits { get; set; } = new List<ProjectSupportingUnit>();
         public virtual ICollection<ProjectYearTarget> YearTargets { get; set; } = new List<ProjectYearTarget>();
+        public virtual ICollection<ProjectSubObjective> ProjectSubObjectives { get; set; } = new List<ProjectSubObjective>();
 
         // Computed Properties
         [NotMapped]

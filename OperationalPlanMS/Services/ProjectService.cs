@@ -129,6 +129,7 @@ namespace OperationalPlanMS.Services
                 .Include(p => p.Initiative).Include(p => p.ExternalUnit)
                 .Include(p => p.ProjectManager).Include(p => p.CreatedBy)
                 .Include(p => p.SubObjective).Include(p => p.FinancialCost)
+                .Include(p => p.ProjectSubObjectives).ThenInclude(ps => ps.SubObjective)
                 .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
             if (project == null) return null;
 
@@ -216,6 +217,7 @@ namespace OperationalPlanMS.Services
                 .Include(p => p.ProjectKPIs.OrderBy(k => k.OrderIndex))
                 .Include(p => p.SupportingUnits).ThenInclude(s => s.SupportingEntity)
                 .Include(p => p.YearTargets.OrderBy(y => y.Year))
+                .Include(p => p.ProjectSubObjectives)
                 .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
             if (project == null) return null;
 
@@ -278,6 +280,7 @@ namespace OperationalPlanMS.Services
             _db.ProjectKPIs.RemoveRange(await _db.ProjectKPIs.Where(k => k.ProjectId == id).ToListAsync());
             _db.ProjectSupportingUnits.RemoveRange(await _db.ProjectSupportingUnits.Where(s => s.ProjectId == id).ToListAsync());
             _db.ProjectYearTargets.RemoveRange(await _db.ProjectYearTargets.Where(y => y.ProjectId == id).ToListAsync());
+            _db.ProjectSubObjectives.RemoveRange(await _db.ProjectSubObjectives.Where(ps => ps.ProjectId == id).ToListAsync());
             await _db.SaveChangesAsync();
 
             await SaveRelatedDataAsync(project.Id, model);
@@ -431,7 +434,7 @@ namespace OperationalPlanMS.Services
             model.ProjectManagers = new SelectList(await _db.Users.Where(u => u.IsActive).ToListAsync(), "Id", "FullNameAr", model.ProjectManagerId);
             model.FinancialCosts = new SelectList(await _db.FinancialCosts.Where(f => f.IsActive).OrderBy(f => f.OrderIndex).Select(f => new { f.Id, f.NameAr }).ToListAsync(), "Id", "NameAr", model.FinancialCostId);
             if (model.ExternalUnitId.HasValue)
-                model.SubObjectives = new SelectList(await _db.SubObjectives.Where(s => s.ExternalUnitId == model.ExternalUnitId.Value && s.IsActive).OrderBy(s => s.OrderIndex).Select(s => new { s.Id, s.NameAr }).ToListAsync(), "Id", "NameAr", model.SubObjectiveId);
+                model.SubObjectives = new SelectList(await _db.SubObjectives.Where(s => s.ExternalUnitId == model.ExternalUnitId.Value && s.IsActive).OrderBy(s => s.OrderIndex).Select(s => new { s.Id, s.NameAr }).ToListAsync(), "Id", "NameAr");
             model.SubObjectives ??= new SelectList(Enumerable.Empty<SelectListItem>());
         }
 
@@ -508,6 +511,14 @@ namespace OperationalPlanMS.Services
                 var entities = model.YearTargets.Where(y => y.TargetPercentage > 0)
                     .Select(y => new ProjectYearTarget { ProjectId = projectId, Year = y.Year, TargetPercentage = y.TargetPercentage, Notes = y.Notes?.Trim(), CreatedAt = DateTime.Now }).ToList();
                 if (entities.Any()) { _db.ProjectYearTargets.AddRange(entities); await _db.SaveChangesAsync(); }
+            }
+            // SubObjectives (many-to-many)
+            if (model.SubObjectiveIds?.Any() == true)
+            {
+                var entities = model.SubObjectiveIds.Distinct()
+                    .Select(soId => new ProjectSubObjective { ProjectId = projectId, SubObjectiveId = soId }).ToList();
+                _db.ProjectSubObjectives.AddRange(entities);
+                await _db.SaveChangesAsync();
             }
         }
 

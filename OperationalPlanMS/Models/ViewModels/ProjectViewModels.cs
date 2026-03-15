@@ -33,9 +33,10 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "الكود")]
         public string Code { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "رقم المشروع مطلوب")]
         [StringLength(50)]
         [Display(Name = "رقم المشروع")]
-        public string? ProjectNumber { get; set; }
+        public string ProjectNumber { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "الاسم بالعربية مطلوب")]
         [StringLength(200)]
@@ -138,13 +139,13 @@ namespace OperationalPlanMS.Models.ViewModels
         /// </summary>
         public string? ProjectManagerRank { get; set; }
 
-        // ======= الهدف الفرعي (جديد) =======
+        // ======= الأهداف الفرعية (multi-select) =======
 
         /// <summary>
-        /// الهدف الفرعي المرتبط بالوحدة
+        /// الأهداف الفرعية المرتبطة بالمشروع (اختياري، أكثر من هدف)
         /// </summary>
-        [Display(Name = "الهدف الفرعي")]
-        public int? SubObjectiveId { get; set; }
+        [Display(Name = "الأهداف الفرعية")]
+        public List<int> SubObjectiveIds { get; set; } = new();
 
         public SelectList? SubObjectives { get; set; }
 
@@ -253,7 +254,7 @@ namespace OperationalPlanMS.Models.ViewModels
                 ProjectManagerEmpNumber = entity.ProjectManagerEmpNumber,
                 ProjectManagerName = entity.ProjectManagerName,
                 ProjectManagerRank = entity.ProjectManagerRank,
-                SubObjectiveId = entity.SubObjectiveId,
+                SubObjectiveIds = entity.ProjectSubObjectives?.Select(ps => ps.SubObjectiveId).ToList() ?? new List<int>(),
                 FinancialCostId = entity.FinancialCostId
             };
 
@@ -352,7 +353,8 @@ namespace OperationalPlanMS.Models.ViewModels
             entity.ProjectManagerEmpNumber = ProjectManagerEmpNumber;
             entity.ProjectManagerName = ProjectManagerName;
             entity.ProjectManagerRank = ProjectManagerRank;
-            entity.SubObjectiveId = SubObjectiveId;
+            // SubObjectives handled separately in Service (many-to-many)
+            entity.SubObjectiveId = SubObjectiveIds.FirstOrDefault(); // backward compat
             entity.FinancialCostId = FinancialCostId;
 
             // قيم افتراضية للحقول القديمة

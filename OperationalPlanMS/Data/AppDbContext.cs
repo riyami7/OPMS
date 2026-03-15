@@ -37,6 +37,7 @@ namespace OperationalPlanMS.Data
         public DbSet<ChatConversation> ChatConversations { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<InitiativeAccess> InitiativeAccess { get; set; }
+        public DbSet<ProjectSubObjective> ProjectSubObjectives { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -428,6 +429,22 @@ namespace OperationalPlanMS.Data
                 entity.HasOne(e => e.GrantedBy)
                     .WithMany()
                     .HasForeignKey(e => e.GrantedById)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ProjectSubObjective (many-to-many)
+            modelBuilder.Entity<ProjectSubObjective>(entity =>
+            {
+                entity.HasIndex(e => new { e.ProjectId, e.SubObjectiveId }).IsUnique();
+
+                entity.HasOne(e => e.Project)
+                    .WithMany(p => p.ProjectSubObjectives)
+                    .HasForeignKey(e => e.ProjectId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.SubObjective)
+                    .WithMany()
+                    .HasForeignKey(e => e.SubObjectiveId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }
