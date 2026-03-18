@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MOD.OPMS.HttpApi.ExternalApiClients.Jund.Dto
+namespace OPMS.HttpApi.ExternalApiClients.Hr.Dto
 {
     public class Employee
     {

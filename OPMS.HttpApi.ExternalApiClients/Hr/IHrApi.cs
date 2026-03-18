@@ -1,5 +1,4 @@
-﻿using MOD.OPMS.HttpApi.ExternalApiClients.Jund.Dto;
-using OPMS.HttpApi.ExternalApiClients.Jund.Dto;
+﻿using OPMS.HttpApi.ExternalApiClients.Hr.Dto;
 using Refit;
 using System;
 using System.Collections.Generic;
@@ -9,9 +8,9 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
-namespace MOD.OPMS.HttpApi.ExternalApiClients.Jund
+namespace OPMS.HttpApi.ExternalApiClients.Hr
 {
-    public interface IJundApi
+    public interface IHrApi
     {
         [Get("/person-by-service-id/{serviceId}")]
         Task<Employee> GetEmployeeAsync(string serviceId);
@@ -20,7 +19,7 @@ namespace MOD.OPMS.HttpApi.ExternalApiClients.Jund
         Task<byte[]> GetEmployeePhotoAsync(string serviceId);
 
         [Get("/units-list")]
-        Task<ExtendedPagedListResultDto<UnitTreeDto>> GetModUnitsAsync();
+        Task<ExtendedPagedListResultDto<UnitTreeDto>> GetUnitsAsync();
     }
 
 }

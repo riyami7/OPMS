@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OPMS.HttpApi.ExternalApiClients.Jund.Dto
+namespace OPMS.HttpApi.ExternalApiClients.Hr.Dto
 {
     public class UnitTreeDto
     {

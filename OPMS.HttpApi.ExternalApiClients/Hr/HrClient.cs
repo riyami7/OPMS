@@ -1,18 +1,21 @@
 ﻿using Microsoft.Extensions.Configuration;
-using MOD.OPMS.HttpApi.ExternalApiClients.Jund.Dto;
+using OPMS.HttpApi.ExternalApiClients.Hr;
+using OPMS.HttpApi.ExternalApiClients.Hr;
+using OPMS.HttpApi.ExternalApiClients.Hr.Dto;
 using Refit;
 using System.Data;
 
-namespace MOD.OPMS.HttpApi.ExternalApiClients.Jund
+namespace MOD.OPMS.HttpApi.ExternalApiClients.Hr
+
 {
-    public class JundClient : IHrClient
+    public class HrClient : IHrClient
     {
         private IHrApi _hrApi;
         //private readonly OrganizationUnitManager _organizationUnitManager;
 
 
-        public JundClient(
-           JundAuthHeaderHandler authHeaderHandler,
+        public HrClient(
+           HrAuthHeaderHandler authHeaderHandler,
            IConfiguration configuration
            //OrganizationUnitManager organizationUnitManager
            )

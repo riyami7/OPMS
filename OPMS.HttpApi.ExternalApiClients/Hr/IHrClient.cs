@@ -1,4 +1,5 @@
-﻿using MOD.OPMS.HttpApi.ExternalApiClients.Jund.Dto;
+﻿
+using OPMS.HttpApi.ExternalApiClients.Hr.Dto;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,13 +7,10 @@ using System.Text;
 using System.Threading.Tasks;
 
 
-namespace MOD.OPMS.HttpApi.ExternalApiClients.Jund
+namespace OPMS.HttpApi.ExternalApiClients.Hr
 {
-    public interface IJundClient 
+    public interface IHrClient 
     {
         Task<Employee> GetEmployeeAsync(string serviceMilitaryId);
-
-      ///  Task  GetModUnitsAsync();
-
     }
 }

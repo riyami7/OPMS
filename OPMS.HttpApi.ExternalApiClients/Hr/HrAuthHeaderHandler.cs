@@ -1,7 +1,7 @@
 ﻿using Duende.IdentityModel.Client;
 using Microsoft.Extensions.Configuration;
 
-namespace MOD.OPMS.HttpApi.ExternalApiClients.Jund
+namespace OPMS.HttpApi.ExternalApiClients.Hr
 {
     public class HrAuthHeaderHandler : HttpClientHandler 
     {
