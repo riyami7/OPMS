@@ -1,4 +1,4 @@
-﻿namespace OPMS.HttpApi.ExternalApiClients.Hr.Dto
+﻿namespace OPMS.HttpApi.ExternalApiClients.Jund.Dto
 {
  
         public class ExtendedPagedListResultDto<T> 

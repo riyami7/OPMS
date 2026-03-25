@@ -33,4 +33,8 @@
 	  <Folder Include="wwwroot\lib\chartjs\" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <ProjectReference Include="..\OPMS.HttpApi.ExternalApiClients\OPMS.HttpApi.ExternalApiClients.csproj" />
+	</ItemGroup>
+
 </Project>

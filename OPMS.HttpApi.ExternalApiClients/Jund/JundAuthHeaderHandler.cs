@@ -1,14 +1,14 @@
 ﻿using Duende.IdentityModel.Client;
 using Microsoft.Extensions.Configuration;
 
-namespace OPMS.HttpApi.ExternalApiClients.Hr
+namespace OPMS.HttpApi.ExternalApiClients.Jund
 {
-    public class HrAuthHeaderHandler : HttpClientHandler 
+    public class JundAuthHeaderHandler : HttpClientHandler 
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
 
-        public HrAuthHeaderHandler(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        public JundAuthHeaderHandler(IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _configuration = configuration;
@@ -37,12 +37,7 @@ namespace OPMS.HttpApi.ExternalApiClients.Hr
             if (request.Content != null)
             {
                 var requestBody = await request.Content.ReadAsStringAsync();
-                //var jsonData = JObject.Parse(requestBody);
-                //var nic = jsonData.GetValue("HR023_NIC_NO").ToString();
-                //if (nic == "21479268")
-                //{
-
-                //}
+               
             }
 
 

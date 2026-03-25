@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Services;
+using OPMS.HttpApi.ExternalApiClients;
 using System.IO.Compression;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -103,6 +104,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+
 // Swagger — API documentation
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -124,6 +126,8 @@ builder.Services.AddSwaggerGen(c =>
 // External API Service
 builder.Services.AddHttpClient<IExternalApiService, ExternalApiService>();
 builder.Services.AddMemoryCache();
+//builder.Services.AddExternalApiClients(builder.Configuration);
+
 
 // User Management Service
 builder.Services.AddScoped<IUserService, UserService>();
