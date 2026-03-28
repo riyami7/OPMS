@@ -394,7 +394,7 @@ namespace OperationalPlanMS.Models.ViewModels
             entity.DeputyManagerName = DeputyManagerName;
             entity.DeputyManagerRank = DeputyManagerRank;
             // SubObjectives handled separately in Service (many-to-many)
-            entity.SubObjectiveId = SubObjectiveIds.FirstOrDefault(); // backward compat
+            entity.SubObjectiveId = SubObjectiveIds.Any() ? SubObjectiveIds.First() : null; // backward compat
             entity.FinancialCostId = FinancialCostId;
 
             // قيم افتراضية للحقول القديمة

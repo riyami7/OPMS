@@ -137,7 +137,7 @@
                     <div class="mb-3">
                         <label asp-for="ProgressPercentage" class="form-label"></label>
                         <div class="input-group">
-                            <input asp-for="ProgressPercentage" type="number" step="1" min="0" max="100" class="form-control" id="progressInput" />
+                            <input name="ProgressPercentage" type="number" step="1" min="0" max="100" value="@((int)Model.ProgressPercentage)" class="form-control" id="progressInput" />
                             <span class="input-group-text">%</span>
                         </div>
                         <span asp-validation-for="ProgressPercentage" class="text-danger small"></span>
