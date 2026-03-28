@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Services;
-using OPMS.HttpApi.ExternalApiClients;
 using System.IO.Compression;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;

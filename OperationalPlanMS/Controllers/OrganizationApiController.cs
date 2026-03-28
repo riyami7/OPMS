@@ -13,6 +13,7 @@ namespace OperationalPlanMS.Controllers.Api
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [IgnoreAntiforgeryToken]    // أضف هذا السطر
     [EnableRateLimiting("api")]
     public class OrganizationApiController : ControllerBase
     {
@@ -36,6 +37,7 @@ namespace OperationalPlanMS.Controllers.Api
         /// جلب جميع الوحدات التنظيمية من الجدول المحلي
         /// </summary>
         [HttpGet("units/all")]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> GetAllUnits()
         {
             try

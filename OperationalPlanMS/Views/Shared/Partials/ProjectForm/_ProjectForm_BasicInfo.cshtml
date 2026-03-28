@@ -12,8 +12,8 @@
                 <input asp-for="Code" class="form-control" readonly />
             </div>
             <div class="col-md-4 mb-3">
-                <label asp-for="ProjectNumber" class="form-label">رقم المشروع</label>
-                <input asp-for="ProjectNumber" class="form-control" />
+                <label asp-for="ProjectNumber" class="form-label">رقم المشروع <span class="text-danger">*</span> </label>
+                <input asp-for="ProjectNumber" class="form-control" required />
             </div>
             <div class="col-md-4 mb-3">
                 <label asp-for="FinancialCostId" class="form-label">التكلفة المالية</label>
