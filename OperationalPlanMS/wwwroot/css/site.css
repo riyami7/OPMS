@@ -6,13 +6,13 @@
    CSS Variables
    ===================================================== */
 :root {
-    /* ألوان رئيسية */
-    --primary: #1a3a5c;
-    --primary-mid: #1e4976;
-    --primary-light: #2563a8;
-    --accent: #c9a84c;
-    --accent-light: #e8c96e;
-    --accent-dark: #a8862e;
+    /* ألوان رئيسية — أخضر زيتوني عسكري */
+    --primary: #2D4A22;
+    --primary-mid: #3A5C2E;
+    --primary-light: #4A7035;
+    --accent: #C9A84C;
+    --accent-light: #E8C96E;
+    --accent-dark: #A8862E;
     /* ألوان الحالة */
     --success: #0e7d5a;
     --success-light: #d1f0e5;
@@ -25,8 +25,8 @@
     /* خلفيات */
     --bg-page: #f0f2f5;
     --bg-card: #ffffff;
-    --bg-sidebar: #0f2544;
-    --bg-sidebar-end: #091a33;
+    --bg-sidebar: #1B3A2A;
+    --bg-sidebar-end: #0F2A1C;
     /* نصوص */
     --text-dark: #0f172a;
     --text-body: #334155;
@@ -61,7 +61,7 @@
 }
 
 body {
-    font-family: 'Tajawal', 'Segoe UI', sans-serif;
+    font-family: 'AlQabas', 'Segoe UI', sans-serif;
     background-color: var(--bg-page);
     color: var(--text-body);
     font-size: 14px;
@@ -501,7 +501,7 @@ h1, h2, h3, h4, h5, h6 {
     }
 
 .bg-gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2D4A22 0%, #4A7035 100%);
 }
 
 .bg-gradient-success {
@@ -513,7 +513,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .bg-gradient-warning {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: linear-gradient(135deg, #C9A84C 0%, #8B7355 100%);
 }
 
 .bg-gradient-danger {
@@ -521,7 +521,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .bg-gradient-dark {
-    background: linear-gradient(135deg, #232526 0%, #414345 100%);
+    background: linear-gradient(135deg, #1B3A2A 0%, #2D4A22 100%);
 }
 
 /* =====================================================

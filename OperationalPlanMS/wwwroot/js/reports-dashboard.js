@@ -57,7 +57,7 @@
                 labels: ['مكتمل', 'قيد التنفيذ', 'متأخر', 'لم يبدأ'],
                 datasets: [{
                     data: [d.completed, d.inProgress, d.delayed, d.notStarted],
-                    backgroundColor: ['#0e7d5a', '#1a3a5c', '#b91c1c', '#94a3b8'],
+                    backgroundColor: ['#0e7d5a', '#2D4A22', '#b91c1c', '#94a3b8'],
                     borderWidth: 0,
                     hoverOffset: 6
                 }]
@@ -70,13 +70,13 @@
                     if (!els.length) return;
                     var s = ['completed', 'inprogress', 'delayed', 'notstarted'];
                     var l = ['مكتمل', 'قيد التنفيذ', 'متأخر', 'لم يبدأ'];
-                    var c = ['#0e7d5a', '#1a3a5c', '#b91c1c', '#94a3b8'];
+                    var c = ['#0e7d5a', '#2D4A22', '#b91c1c', '#94a3b8'];
                     var n = [d.completed, d.inProgress, d.delayed, d.notStarted];
                     var i = els[0].index;
                     window.showStatusDrillDown(s[i], l[i], c[i], n[i]);
                 },
                 plugins: {
-                    legend: { position: 'bottom', labels: { font: { family: 'Tajawal', size: 11 }, padding: 10, usePointStyle: true } }
+                    legend: { position: 'bottom', labels: { font: { family: 'AlQabas', size: 11 }, padding: 10, usePointStyle: true } }
                 }
             }
         });
@@ -108,8 +108,8 @@
                     window.showUnitDrillDown(u.label, u.unitId);
                 },
                 scales: {
-                    x: { beginAtZero: true, max: 100, grid: { display: false }, ticks: { callback: function (v) { return v + '%'; }, font: { family: 'Tajawal' } } },
-                    y: { grid: { display: false }, ticks: { font: { family: 'Tajawal', size: 11 } } }
+                    x: { beginAtZero: true, max: 100, grid: { display: false }, ticks: { callback: function (v) { return v + '%'; }, font: { family: 'AlQabas' } } },
+                    y: { grid: { display: false }, ticks: { font: { family: 'AlQabas', size: 11 } } }
                 },
                 plugins: {
                     legend: { display: false },
@@ -131,12 +131,12 @@
                     {
                         label: 'الإنجاز الفعلي',
                         data: monthly.map(function (m) { return m.actual; }),
-                        borderColor: '#1a3a5c',
+                        borderColor: '#2D4A22',
                         backgroundColor: 'rgba(26,58,92,0.07)',
                         borderWidth: 2.5,
                         tension: 0.4,
                         fill: true,
-                        pointBackgroundColor: '#1a3a5c',
+                        pointBackgroundColor: '#2D4A22',
                         pointRadius: 4
                     },
                     {
@@ -156,11 +156,11 @@
                 responsive: true,
                 maintainAspectRatio: true,
                 scales: {
-                    y: { beginAtZero: true, max: 100, ticks: { callback: function (v) { return v + '%'; }, font: { family: 'Tajawal' } }, grid: { color: '#f1f5f9' } },
-                    x: { ticks: { font: { family: 'Tajawal' } }, grid: { display: false } }
+                    y: { beginAtZero: true, max: 100, ticks: { callback: function (v) { return v + '%'; }, font: { family: 'AlQabas' } }, grid: { color: '#f1f5f9' } },
+                    x: { ticks: { font: { family: 'AlQabas' } }, grid: { display: false } }
                 },
                 plugins: {
-                    legend: { position: 'top', labels: { font: { family: 'Tajawal', size: 11 }, usePointStyle: true } },
+                    legend: { position: 'top', labels: { font: { family: 'AlQabas', size: 11 }, usePointStyle: true } },
                     tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + '%'; } } }
                 }
             }

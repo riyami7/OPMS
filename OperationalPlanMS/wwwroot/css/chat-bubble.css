@@ -14,7 +14,7 @@
     border-radius: 50%;
     border: none;
     padding: 0;
-    background: linear-gradient(145deg, #0f2544, #1a3a5c);
+    background: linear-gradient(145deg, var(--bg-sidebar), var(--primary));
     color: #c9a84c;
     cursor: pointer;
     display: flex;
@@ -102,7 +102,7 @@
     justify-content: space-between;
     gap: 8px;
     padding: 14px 16px;
-    background: linear-gradient(145deg, #0f2544, #1a3a5c);
+    background: linear-gradient(145deg, var(--bg-sidebar), var(--primary));
     color: #fff;
 }
 
@@ -139,7 +139,7 @@
     height: 11px;
     background: #22c55e;
     border-radius: 50%;
-    border: 2px solid #0f2544;
+    border: 2px solid var(--bg-sidebar);
 }
 
 .aichat__hd-txt {
@@ -230,7 +230,7 @@
     height: 52px;
     margin: 0 auto 12px;
     border-radius: 14px;
-    background: linear-gradient(145deg, #0f2544, #1a3a5c);
+    background: linear-gradient(145deg, var(--bg-sidebar), var(--primary));
     color: #c9a84c;
     display: flex;
     align-items: center;
@@ -274,16 +274,16 @@
     border-radius: 10px;
     font-family: inherit;
     font-size: .82rem;
-    color: #1a3a5c;
+    color: var(--primary);
     cursor: pointer;
     transition: all .2s ease;
     text-align: right;
 }
 
     .aichat__chip:hover {
-        background: #0f2544;
+        background: var(--bg-sidebar);
         color: #c9a84c;
-        border-color: #0f2544;
+        border-color: var(--bg-sidebar);
         transform: translateX(-2px);
         box-shadow: 0 2px 10px rgba(15,37,68,.15);
     }
@@ -335,13 +335,13 @@
     }
 
 .aichat-m--u .aichat-m__a {
-    background: linear-gradient(145deg, #0f2544, #1a3a5c);
+    background: linear-gradient(145deg, var(--bg-sidebar), var(--primary));
     color: #c9a84c;
 }
 
 .aichat-m--b .aichat-m__a {
     background: #fff;
-    color: #1a3a5c;
+    color: var(--primary);
     border: 1px solid #e2e8f0;
 }
 
@@ -355,7 +355,7 @@
 }
 
 .aichat-m--u .aichat-m__t {
-    background: linear-gradient(145deg, #0f2544, #1a3a5c);
+    background: linear-gradient(145deg, var(--bg-sidebar), var(--primary));
     color: #e8ecf2;
     border-bottom-right-radius: 3px;
 }
@@ -459,7 +459,7 @@
     height: 36px;
     border-radius: 10px;
     border: none;
-    background: linear-gradient(145deg, #0f2544, #1a3a5c);
+    background: linear-gradient(145deg, var(--bg-sidebar), var(--primary));
     color: #c9a84c;
     cursor: pointer;
     display: flex;
