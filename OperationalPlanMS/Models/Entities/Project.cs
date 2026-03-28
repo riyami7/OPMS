@@ -64,7 +64,7 @@ namespace OperationalPlanMS.Models.Entities
         public string? RiskNotes { get; set; }
 
         // ========== الوحدة التنظيمية من API ==========
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         [StringLength(300)]
         public string? ExternalUnitName { get; set; }

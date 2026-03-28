@@ -87,7 +87,7 @@ namespace OperationalPlanMS.Models.ViewModels
         // ========== الحقول القديمة (للتوافق) ==========
 
         // ========== الحقول الجديدة من API ==========
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
         public string? ExternalUnitName { get; set; }
 
         // ==========================================================

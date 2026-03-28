@@ -15,18 +15,18 @@ namespace OperationalPlanMS.Models.Entities
         /// </summary>
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.None)] // لا يُولّد تلقائياً - يأتي من API
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         /// <summary>
         /// معرف الوحدة الأب (للهيكل الهرمي)
         /// null أو 0 = المستوى الأول (الجذر)
         /// </summary>
-        public int? ParentId { get; set; }
+        public Guid? ParentId { get; set; }
 
         /// <summary>
         /// معرف المستأجر من API
         /// </summary>
-        public int TenantId { get; set; }
+        public Guid TenantId { get; set; }
 
         /// <summary>
         /// كود الوحدة
@@ -82,7 +82,7 @@ namespace OperationalPlanMS.Models.Entities
         /// هل هذه وحدة جذر (المستوى الأول)
         /// </summary>
         [NotMapped]
-        public bool IsRoot => !ParentId.HasValue || ParentId == 0;
+        public bool IsRoot => !ParentId.HasValue;
 
         /// <summary>
         /// الاسم للعرض (يفضل ArabicName)

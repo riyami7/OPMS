@@ -9,7 +9,7 @@
  *       kpiIndex: number,
  *       supportingEntities: array,  // each with .representatives[] array
  *       existingYearTargets: array,
- *       savedExternalUnitId: number,
+ *       savedExternalUnitId: string,
  *       savedSubObjectiveIds: array  // [] for Create
  *   }
  */
@@ -33,7 +33,7 @@
     let allUnitsCache = [];
 
     const existingYearTargets = config.existingYearTargets || [];
-    const savedExternalUnitId = config.savedExternalUnitId || 0;
+    const savedExternalUnitId = config.savedExternalUnitId || '';
     const savedSubObjectiveIds = config.savedSubObjectiveIds || [];
 
     // ================================================================
@@ -62,7 +62,7 @@
 
                 populateLevel1();
 
-                if (savedExternalUnitId > 0) {
+                if (savedExternalUnitId) {
                     await restoreSelection(savedExternalUnitId);
                 }
             } else {
@@ -461,13 +461,13 @@
 
         let unitId, unitName;
         if (level3.value) {
-            unitId = parseInt(level3.value);
+            unitId = level3.value;
             unitName = level3.options[level3.selectedIndex]?.dataset.name || '';
         } else if (level2.value) {
-            unitId = parseInt(level2.value);
+            unitId = level2.value;
             unitName = level2.options[level2.selectedIndex]?.dataset.name || '';
         } else if (level1.value) {
-            unitId = parseInt(level1.value);
+            unitId = level1.value;
             unitName = level1.options[level1.selectedIndex]?.dataset.name || '';
         } else {
             alert('يرجى اختيار جهة');
@@ -521,7 +521,7 @@
                                 <span class="fw-bold">${rep.rank || ''} ${rep.name}</span>
                                 <small class="text-muted me-2">${rep.empNumber}</small>
                             </div>
-                            <span class="remove-btn" onclick="removeRep(${entity.externalUnitId}, ${repIndex})">
+                            <span class="remove-btn" onclick="removeRep('${entity.externalUnitId}', ${repIndex})">
                                 <i class="bi bi-x-circle"></i>
                             </span>
                         </div>
@@ -533,7 +533,7 @@
                 <div class="supporting-entity-item" id="entity_${entity.externalUnitId}">
                     <div class="entity-header">
                         <span class="entity-name"><i class="bi bi-building me-1"></i>${entity.unitName}</span>
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupportingEntity(${entity.externalUnitId})">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupportingEntity('${entity.externalUnitId}')">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -548,7 +548,7 @@
                         <div class="rep-search-wrapper position-relative mt-1">
                             <input type="text" id="repSearch_${entity.externalUnitId}" class="form-control form-control-sm"
                                    placeholder="ابحث برقم أو اسم الموظف لإضافة ممثل..." 
-                                   oninput="searchEntityRep(${entity.externalUnitId}, this.value)" />
+                                   oninput="searchEntityRep('${entity.externalUnitId}', this.value)" />
                             <div id="repResults_${entity.externalUnitId}" class="search-dropdown"></div>
                         </div>
                     </div>

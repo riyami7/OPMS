@@ -222,7 +222,7 @@
         function loadOrganizationalUnits() {
             fetch('/api/OrganizationApi/units/all')
                 .then(r => r.ok ? r.json() : Promise.reject())
-                .then(data => { allUnits = data; populateFilterLevel1(); if (selectedExternalUnitId) restoreFilterSelection(parseInt(selectedExternalUnitId)); })
+                .then(data => { allUnits = data; populateFilterLevel1(); if (selectedExternalUnitId) restoreFilterSelection(selectedExternalUnitId); })
                 .catch(() => document.getElementById('filterLevel1').innerHTML = '<option value="">-- فشل التحميل --</option>');
         }
         function populateFilterLevel1() {
@@ -235,18 +235,18 @@
             items.forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; selectEl.appendChild(o); });
         }
         function onLevel1Change() {
-            var id = parseInt(this.value), l2 = document.getElementById('filterLevel2'), l3 = document.getElementById('filterLevel3');
+            var id = this.value, l2 = document.getElementById('filterLevel2'), l3 = document.getElementById('filterLevel3');
             l2.disabled = true; l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; l3.disabled = true;
             if (id) { var ch = allUnits.filter(u => u.parentId === id); fillSelect(l2, ch, ch.length ? '-- اختر --' : '-- لا توجد فروع --'); l2.disabled = !ch.length; updateSelectedUnit(id); }
             else { l2.innerHTML = '<option value="">-- اختر الأول --</option>'; document.getElementById('ExternalUnitId').value = ''; }
         }
         function onLevel2Change() {
-            var id = parseInt(this.value), l3 = document.getElementById('filterLevel3');
+            var id = this.value, l3 = document.getElementById('filterLevel3');
             l3.disabled = true;
             if (id) { var ch = allUnits.filter(u => u.parentId === id); fillSelect(l3, ch, ch.length ? '-- اختر --' : '-- لا توجد أقسام --'); l3.disabled = !ch.length; updateSelectedUnit(id); }
-            else { l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; var l1v = parseInt(document.getElementById('filterLevel1').value); if (l1v) updateSelectedUnit(l1v); else document.getElementById('ExternalUnitId').value = ''; }
+            else { l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; var l1v = document.getElementById('filterLevel1').value; if (l1v) updateSelectedUnit(l1v); else document.getElementById('ExternalUnitId').value = ''; }
         }
-        function onLevel3Change() { var id = parseInt(this.value); if (id) updateSelectedUnit(id); else { var l2v = parseInt(document.getElementById('filterLevel2').value); if (l2v) updateSelectedUnit(l2v); } }
+        function onLevel3Change() { var id = this.value; if (id) updateSelectedUnit(id); else { var l2v = document.getElementById('filterLevel2').value; if (l2v) updateSelectedUnit(l2v); } }
         function updateSelectedUnit(id) { document.getElementById('ExternalUnitId').value = id; }
         function restoreFilterSelection(unitId) {
             var unit = allUnits.find(u => u.id === unitId); if (!unit) return;

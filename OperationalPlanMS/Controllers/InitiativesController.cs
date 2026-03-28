@@ -20,7 +20,7 @@ namespace OperationalPlanMS.Controllers
         }
 
         // GET: /Initiatives
-        public async Task<IActionResult> Index(InitiativeListViewModel model, int? externalUnitId)
+        public async Task<IActionResult> Index(InitiativeListViewModel model, Guid? externalUnitId)
         {
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();

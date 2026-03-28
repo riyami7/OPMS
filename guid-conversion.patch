@@ -1,0 +1,986 @@
+diff --git a/OperationalPlanMS/Controllers/InitiativesController.cs b/OperationalPlanMS/Controllers/InitiativesController.cs
+index 6f8892c..dd61e9f 100644
+--- a/OperationalPlanMS/Controllers/InitiativesController.cs
++++ b/OperationalPlanMS/Controllers/InitiativesController.cs
+@@ -20,7 +20,7 @@ namespace OperationalPlanMS.Controllers
+         }
+ 
+         // GET: /Initiatives
+-        public async Task<IActionResult> Index(InitiativeListViewModel model, int? externalUnitId)
++        public async Task<IActionResult> Index(InitiativeListViewModel model, Guid? externalUnitId)
+         {
+             var userRole = GetCurrentUserRole();
+             var userId = GetCurrentUserId();
+diff --git a/OperationalPlanMS/Controllers/ProjectsController.cs b/OperationalPlanMS/Controllers/ProjectsController.cs
+index 808c9e3..deef542 100644
+--- a/OperationalPlanMS/Controllers/ProjectsController.cs
++++ b/OperationalPlanMS/Controllers/ProjectsController.cs
+@@ -17,7 +17,7 @@ namespace OperationalPlanMS.Controllers
+         }
+ 
+         // GET: /Projects
+-        public async Task<IActionResult> Index(ProjectListViewModel model, int? externalUnitId)
++        public async Task<IActionResult> Index(ProjectListViewModel model, Guid? externalUnitId)
+         {
+             var userRole = GetCurrentUserRole();
+             var userId = GetCurrentUserId();
+@@ -51,7 +51,7 @@ namespace OperationalPlanMS.Controllers
+ 
+         // API: GET /Projects/GetSubObjectivesByUnit?externalUnitId=5
+         [HttpGet]
+-        public async Task<IActionResult> GetSubObjectivesByUnit(int? externalUnitId) =>
++        public async Task<IActionResult> GetSubObjectivesByUnit(Guid? externalUnitId) =>
+             Json(await _projectService.GetSubObjectivesByUnitAsync(externalUnitId));
+ 
+         // GET: /Projects/Details/5
+diff --git a/OperationalPlanMS/Controllers/ReportsController.cs b/OperationalPlanMS/Controllers/ReportsController.cs
+index 668e3eb..71ca7c3 100644
+--- a/OperationalPlanMS/Controllers/ReportsController.cs
++++ b/OperationalPlanMS/Controllers/ReportsController.cs
+@@ -21,7 +21,7 @@ namespace OperationalPlanMS.Controllers
+         }
+ 
+         // GET: /Reports
+-        public async Task<IActionResult> Index(int? fiscalYearId, int? externalUnitId)
++        public async Task<IActionResult> Index(int? fiscalYearId, Guid? externalUnitId)
+         {
+             var viewModel = new ReportsDashboardViewModel
+             {
+@@ -212,7 +212,7 @@ namespace OperationalPlanMS.Controllers
+ 
+         // GET: /Reports/GetChartData
+         [HttpGet]
+-        public async Task<IActionResult> GetChartData(int? fiscalYearId, int? externalUnitId)
++        public async Task<IActionResult> GetChartData(int? fiscalYearId, Guid? externalUnitId)
+         {
+             var userRole = GetCurrentUserRole();
+             var userId = GetCurrentUserId();
+@@ -273,7 +273,7 @@ namespace OperationalPlanMS.Controllers
+                 color = u.AverageProgress >= 80 ? "#0e7d5a" :
+                          u.AverageProgress >= 50 ? "#1a3a5c" :
+                          u.AverageProgress >= 30 ? "#b45309" : "#b91c1c",
+-                unitId = u.ExternalUnitId ?? u.UnitId ?? 0
++                unitId = (u.ExternalUnitId ?? u.UnitId)?.ToString() ?? ""
+             }).ToList();
+ 
+             // Donut counts
+@@ -300,7 +300,7 @@ namespace OperationalPlanMS.Controllers
+             });
+         }
+ 
+-        private async Task<List<int>> GetUnitAndChildrenIds(int unitId)
++        private async Task<List<Guid>> GetUnitAndChildrenIds(Guid unitId)
+         {
+             // تحميل كل الوحدات النشطة مرة واحدة ثم تصفية في الذاكرة
+             var allUnits = await _db.ExternalOrganizationalUnits
+@@ -308,7 +308,7 @@ namespace OperationalPlanMS.Controllers
+                 .Select(u => new { u.Id, u.ParentId })
+                 .ToListAsync();
+ 
+-            var result = new List<int> { unitId };
++            var result = new List<Guid> { unitId };
+ 
+             // المستوى الثاني (أبناء مباشرون)
+             var children = allUnits.Where(u => u.ParentId == unitId).Select(u => u.Id).ToList();
+@@ -369,7 +369,7 @@ namespace OperationalPlanMS.Controllers
+ 
+         // GET: /Reports/Export
+         [HttpGet]
+-        public async Task<IActionResult> Export(string type = "initiatives", int? fiscalYearId = null, int? externalUnitId = null)
++        public async Task<IActionResult> Export(string type = "initiatives", int? fiscalYearId = null, Guid? externalUnitId = null)
+         {
+             var csv = new StringBuilder();
+             csv.AppendLine("\uFEFF");
+@@ -377,7 +377,7 @@ namespace OperationalPlanMS.Controllers
+             var userRole = GetCurrentUserRole();
+             var userId = GetCurrentUserId();
+ 
+-            List<int>? unitIds = null;
++            List<Guid>? unitIds = null;
+             if (externalUnitId.HasValue)
+                 unitIds = await GetUnitAndChildrenIds(externalUnitId.Value);
+ 
+diff --git a/OperationalPlanMS/Controllers/StrategicPlanningController.cs b/OperationalPlanMS/Controllers/StrategicPlanningController.cs
+index fca79a9..24399dc 100644
+--- a/OperationalPlanMS/Controllers/StrategicPlanningController.cs
++++ b/OperationalPlanMS/Controllers/StrategicPlanningController.cs
+@@ -87,7 +87,7 @@ namespace OperationalPlanMS.Controllers
+ 
+         [HttpPost, ValidateAntiForgeryToken]
+         public async Task<IActionResult> AddUnitSettings(
+-            int? ExternalUnitId, string? ExternalUnitName,
++            Guid? ExternalUnitId, string? ExternalUnitName,
+             string? VisionAr, string? VisionEn, string? MissionAr, string? MissionEn)
+         {
+             if (!IsAdmin()) return Forbid();
+@@ -341,7 +341,7 @@ namespace OperationalPlanMS.Controllers
+ 
+         [HttpPost, ValidateAntiForgeryToken]
+         public async Task<IActionResult> AddSubObjective(string NameAr, string NameEn, string? DescriptionAr, int MainObjectiveId,
+-            int? ExternalUnitId, string? ExternalUnitName, int OrderIndex, bool IsActive = true)
++            Guid? ExternalUnitId, string? ExternalUnitName, int OrderIndex, bool IsActive = true)
+         {
+             if (!IsAdmin()) return Forbid();
+             var lastObj = await _db.SubObjectives.OrderByDescending(s => s.Id).FirstOrDefaultAsync();
+diff --git a/OperationalPlanMS/Models/Entities/ExternalOrganizationalUnit.cs b/OperationalPlanMS/Models/Entities/ExternalOrganizationalUnit.cs
+index d985826..3ce848e 100644
+--- a/OperationalPlanMS/Models/Entities/ExternalOrganizationalUnit.cs
++++ b/OperationalPlanMS/Models/Entities/ExternalOrganizationalUnit.cs
+@@ -15,18 +15,18 @@ namespace OperationalPlanMS.Models.Entities
+         /// </summary>
+         [Key]
+         [DatabaseGenerated(DatabaseGeneratedOption.None)] // لا يُولّد تلقائياً - يأتي من API
+-        public int Id { get; set; }
++        public Guid Id { get; set; }
+ 
+         /// <summary>
+         /// معرف الوحدة الأب (للهيكل الهرمي)
+         /// null أو 0 = المستوى الأول (الجذر)
+         /// </summary>
+-        public int? ParentId { get; set; }
++        public Guid? ParentId { get; set; }
+ 
+         /// <summary>
+         /// معرف المستأجر من API
+         /// </summary>
+-        public int TenantId { get; set; }
++        public Guid TenantId { get; set; }
+ 
+         /// <summary>
+         /// كود الوحدة
+@@ -82,7 +82,7 @@ namespace OperationalPlanMS.Models.Entities
+         /// هل هذه وحدة جذر (المستوى الأول)
+         /// </summary>
+         [NotMapped]
+-        public bool IsRoot => !ParentId.HasValue || ParentId == 0;
++        public bool IsRoot => !ParentId.HasValue;
+ 
+         /// <summary>
+         /// الاسم للعرض (يفضل ArabicName)
+diff --git a/OperationalPlanMS/Models/Entities/Initiative.cs b/OperationalPlanMS/Models/Entities/Initiative.cs
+index d84c6fe..ea26da3 100644
+--- a/OperationalPlanMS/Models/Entities/Initiative.cs
++++ b/OperationalPlanMS/Models/Entities/Initiative.cs
+@@ -60,7 +60,7 @@ namespace OperationalPlanMS.Models.Entities
+         public string? StrategicObjective { get; set; }
+ 
+         // ========== الوحدة التنظيمية من API ==========
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         [StringLength(300)]
+         public string? ExternalUnitName { get; set; }
+diff --git a/OperationalPlanMS/Models/Entities/OrganizationalUnitSettings.cs b/OperationalPlanMS/Models/Entities/OrganizationalUnitSettings.cs
+index 7dbb44b..abcbc2b 100644
+--- a/OperationalPlanMS/Models/Entities/OrganizationalUnitSettings.cs
++++ b/OperationalPlanMS/Models/Entities/OrganizationalUnitSettings.cs
+@@ -15,7 +15,7 @@ namespace OperationalPlanMS.Models.Entities
+         /// <summary>
+         /// معرف الوحدة التنظيمية من API الخارجي
+         /// </summary>
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         [StringLength(300)]
+         public string? ExternalUnitName { get; set; }
+diff --git a/OperationalPlanMS/Models/Entities/Project.cs b/OperationalPlanMS/Models/Entities/Project.cs
+index 3aae243..2416cf4 100644
+--- a/OperationalPlanMS/Models/Entities/Project.cs
++++ b/OperationalPlanMS/Models/Entities/Project.cs
+@@ -64,7 +64,7 @@ namespace OperationalPlanMS.Models.Entities
+         public string? RiskNotes { get; set; }
+ 
+         // ========== الوحدة التنظيمية من API ==========
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         [StringLength(300)]
+         public string? ExternalUnitName { get; set; }
+diff --git a/OperationalPlanMS/Models/Entities/ProjectSupportingUnit.cs b/OperationalPlanMS/Models/Entities/ProjectSupportingUnit.cs
+index 0387cbc..7774f0f 100644
+--- a/OperationalPlanMS/Models/Entities/ProjectSupportingUnit.cs
++++ b/OperationalPlanMS/Models/Entities/ProjectSupportingUnit.cs
+@@ -29,7 +29,7 @@ namespace OperationalPlanMS.Models.Entities
+         /// <summary>
+         /// معرف الوحدة من ExternalOrganizationalUnits
+         /// </summary>
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         /// <summary>
+         /// اسم الوحدة (للحفظ والعرض السريع)
+diff --git a/OperationalPlanMS/Models/Entities/SubObjective.cs b/OperationalPlanMS/Models/Entities/SubObjective.cs
+index a5480d7..eb0d00d 100644
+--- a/OperationalPlanMS/Models/Entities/SubObjective.cs
++++ b/OperationalPlanMS/Models/Entities/SubObjective.cs
+@@ -27,7 +27,7 @@ namespace OperationalPlanMS.Models.Entities
+         public int MainObjectiveId { get; set; }
+ 
+         // ========== الوحدة التنظيمية من API ==========
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         [StringLength(300)]
+         public string? ExternalUnitName { get; set; }
+diff --git a/OperationalPlanMS/Models/Entities/User.cs b/OperationalPlanMS/Models/Entities/User.cs
+index 2be0e4c..39d3c6c 100644
+--- a/OperationalPlanMS/Models/Entities/User.cs
++++ b/OperationalPlanMS/Models/Entities/User.cs
+@@ -53,7 +53,7 @@ namespace OperationalPlanMS.Models.Entities
+         /// <summary>
+         /// معرف الوحدة التنظيمية من API الخارجي
+         /// </summary>
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         [StringLength(300)]
+         public string? ExternalUnitName { get; set; }
+diff --git a/OperationalPlanMS/Models/ViewModels/AdminViewModels.cs b/OperationalPlanMS/Models/ViewModels/AdminViewModels.cs
+index 6c901e1..f129ff6 100644
+--- a/OperationalPlanMS/Models/ViewModels/AdminViewModels.cs
++++ b/OperationalPlanMS/Models/ViewModels/AdminViewModels.cs
+@@ -66,7 +66,7 @@ namespace OperationalPlanMS.Models.ViewModels
+         public string? BranchName { get; set; }
+ 
+         [Display(Name = "الوحدة التنظيمية (API)")]
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         [StringLength(300)]
+         [Display(Name = "اسم الوحدة (API)")]
+diff --git a/OperationalPlanMS/Models/ViewModels/InitiativeViewModel.cs b/OperationalPlanMS/Models/ViewModels/InitiativeViewModel.cs
+index eb0df0d..cc65310 100644
+--- a/OperationalPlanMS/Models/ViewModels/InitiativeViewModel.cs
++++ b/OperationalPlanMS/Models/ViewModels/InitiativeViewModel.cs
+@@ -65,7 +65,7 @@ namespace OperationalPlanMS.Models.ViewModels
+         public int? SupervisorId { get; set; }
+ 
+         [Display(Name = "الوحدة التنظيمية")]
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         [Display(Name = "اسم الوحدة")]
+         public string? ExternalUnitName { get; set; }
+diff --git a/OperationalPlanMS/Models/ViewModels/ProjectViewModels.cs b/OperationalPlanMS/Models/ViewModels/ProjectViewModels.cs
+index e6b820c..e51df11 100644
+--- a/OperationalPlanMS/Models/ViewModels/ProjectViewModels.cs
++++ b/OperationalPlanMS/Models/ViewModels/ProjectViewModels.cs
+@@ -113,7 +113,7 @@ namespace OperationalPlanMS.Models.ViewModels
+         /// معرف الوحدة التنظيمية من API (آخر مستوى مختار)
+         /// </summary>
+         [Display(Name = "الوحدة التنظيمية")]
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         /// <summary>
+         /// اسم الوحدة المختارة (للعرض)
+@@ -417,7 +417,7 @@ namespace OperationalPlanMS.Models.ViewModels
+         /// <summary>
+         /// معرف الوحدة من API (إذا من API)
+         /// </summary>
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         /// <summary>
+         /// اسم الوحدة
+@@ -549,7 +549,7 @@ namespace OperationalPlanMS.Models.ViewModels
+     /// </summary>
+     public class SupportingEntityDisplayItem
+     {
+-        public int Id { get; set; }
++        public string Id { get; set; } = string.Empty;
+         public string NameAr { get; set; } = string.Empty;
+         public string NameEn { get; set; } = string.Empty;
+ 
+diff --git a/OperationalPlanMS/Models/ViewModels/ReportViewModel.cs b/OperationalPlanMS/Models/ViewModels/ReportViewModel.cs
+index 13dc5a0..f48f6d8 100644
+--- a/OperationalPlanMS/Models/ViewModels/ReportViewModel.cs
++++ b/OperationalPlanMS/Models/ViewModels/ReportViewModel.cs
+@@ -11,7 +11,7 @@ namespace OperationalPlanMS.Models.ViewModels
+         // الوحدة التنظيمية المحلية (للتوافقية)
+ 
+         // الوحدة التنظيمية من API الخارجي - الفلتر الفعلي
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         // اسم الوحدة المختارة للعرض
+         public string? SelectedUnitName { get; set; }
+@@ -118,10 +118,10 @@ namespace OperationalPlanMS.Models.ViewModels
+     public class UnitSummary
+     {
+         // الوحدة المحلية (للتوافقية)
+-        public int? UnitId { get; set; }
++        public Guid? UnitId { get; set; }
+ 
+         // الوحدة من API الخارجي
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+ 
+         public string UnitName { get; set; } = string.Empty;
+         public int InitiativeCount { get; set; }
+diff --git a/OperationalPlanMS/Models/ViewModels/VisionMissionViewModels.cs b/OperationalPlanMS/Models/ViewModels/VisionMissionViewModels.cs
+index 77a8af9..885ca91 100644
+--- a/OperationalPlanMS/Models/ViewModels/VisionMissionViewModels.cs
++++ b/OperationalPlanMS/Models/ViewModels/VisionMissionViewModels.cs
+@@ -87,7 +87,7 @@ namespace OperationalPlanMS.Models.ViewModels
+         // ========== الحقول القديمة (للتوافق) ==========
+ 
+         // ========== الحقول الجديدة من API ==========
+-        public int? ExternalUnitId { get; set; }
++        public Guid? ExternalUnitId { get; set; }
+         public string? ExternalUnitName { get; set; }
+ 
+         // ==========================================================
+diff --git a/OperationalPlanMS/Services/ExternalApiService.cs b/OperationalPlanMS/Services/ExternalApiService.cs
+index 697f210..ba65a9b 100644
+--- a/OperationalPlanMS/Services/ExternalApiService.cs
++++ b/OperationalPlanMS/Services/ExternalApiService.cs
+@@ -25,7 +25,7 @@ namespace OperationalPlanMS.Services
+ 
+         // جلب من قاعدة البيانات المحلية
+         Task<List<OrganizationalUnitDto>> GetLocalUnitsAsync();
+-        Task<List<OrganizationalUnitDto>> GetLocalChildUnitsAsync(int parentId);
++        Task<List<OrganizationalUnitDto>> GetLocalChildUnitsAsync(Guid parentId);
+ 
+         // جلب موظف برقم الموظف
+         Task<EmployeeDto?> GetEmployeeByNumberAsync(string empNumber);
+@@ -62,7 +62,7 @@ namespace OperationalPlanMS.Services
+ 
+         // API Settings
+         private readonly string _baseUrl;
+-        private readonly int _tenantId;
++        private readonly string _tenantId;
+ 
+         // Cache keys
+         private const string TOKEN_CACHE_KEY = "ExternalApi_AccessToken";
+@@ -90,7 +90,7 @@ namespace OperationalPlanMS.Services
+ 
+             // API Settings
+             _baseUrl = _configuration["ExternalApi:BaseUrl"] ?? "";
+-            _tenantId = _configuration.GetValue<int>("ExternalApi:TenantId", 1);
++            _tenantId = _configuration.GetValue<string>("ExternalApi:TenantId") ?? "1";
+         }
+ 
+         #region OAuth2 Authentication
+@@ -161,7 +161,7 @@ namespace OperationalPlanMS.Services
+                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+             }
+ 
+-            request.Headers.Add("__tenant", _tenantId.ToString());
++            request.Headers.Add("__tenant", _tenantId);
+ 
+             return request;
+         }
+@@ -246,7 +246,7 @@ namespace OperationalPlanMS.Services
+                         var newUnit = new ExternalUnitEntity
+                         {
+                             Id = extUnit.Id,
+-                            ParentId = extUnit.ParentId == 0 ? null : extUnit.ParentId,
++                            ParentId = extUnit.ParentId,
+                             Code = extUnit.Code ?? "",
+                             ArabicName = extUnit.ArabicName,
+                             ArabicUnitName = extUnit.ArabicUnitName ?? "",
+@@ -259,7 +259,7 @@ namespace OperationalPlanMS.Services
+                     }
+                     else
+                     {
+-                        existing.ParentId = extUnit.ParentId == 0 ? null : extUnit.ParentId;
++                        existing.ParentId = extUnit.ParentId;
+                         existing.Code = extUnit.Code ?? existing.Code;
+                         existing.ArabicName = extUnit.ArabicName ?? existing.ArabicName;
+                         existing.ArabicUnitName = extUnit.ArabicUnitName ?? existing.ArabicUnitName;
+@@ -315,7 +315,7 @@ namespace OperationalPlanMS.Services
+         /// <summary>
+         /// جلب الوحدات الفرعية لوحدة معينة
+         /// </summary>
+-        public async Task<List<OrganizationalUnitDto>> GetLocalChildUnitsAsync(int parentId)
++        public async Task<List<OrganizationalUnitDto>> GetLocalChildUnitsAsync(Guid parentId)
+         {
+             var units = await _db.ExternalOrganizationalUnits
+                 .Where(u => u.IsActive && u.ParentId == parentId)
+@@ -449,26 +449,27 @@ namespace OperationalPlanMS.Services
+         {
+             _logger.LogInformation("Using mock organizational units data");
+ 
++            var t = Guid.Parse("00000000-0000-0000-0000-000000000001"); // Tenant
+             return new List<ExternalOrganizationalUnitApi>
+             {
+                 // المستوى 1
+-                new() { Id = 1, ParentId = 0, TenentId = 1, ArabicUnitName = "الإدارة العامة", Code = "001", ArabicName = "الإدارة العامة" },
+-                new() { Id = 2, ParentId = 0, TenentId = 1, ArabicUnitName = "الشؤون المالية", Code = "002", ArabicName = "الشؤون المالية" },
+-                new() { Id = 3, ParentId = 0, TenentId = 1, ArabicUnitName = "الموارد البشرية", Code = "003", ArabicName = "الموارد البشرية" },
++                new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000001"), ParentId = null, TenentId = t, ArabicUnitName = "الإدارة العامة", Code = "001", ArabicName = "الإدارة العامة" },
++                new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000002"), ParentId = null, TenentId = t, ArabicUnitName = "الشؤون المالية", Code = "002", ArabicName = "الشؤون المالية" },
++                new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000003"), ParentId = null, TenentId = t, ArabicUnitName = "الموارد البشرية", Code = "003", ArabicName = "الموارد البشرية" },
+ 
+                 // المستوى 2
+-                new() { Id = 4, ParentId = 1, TenentId = 1, ArabicUnitName = "مكتب المدير العام", Code = "001-01", ArabicName = "مكتب المدير العام" },
+-                new() { Id = 5, ParentId = 1, TenentId = 1, ArabicUnitName = "إدارة التخطيط", Code = "001-02", ArabicName = "إدارة التخطيط" },
+-                new() { Id = 6, ParentId = 2, TenentId = 1, ArabicUnitName = "قسم المحاسبة", Code = "002-01", ArabicName = "قسم المحاسبة" },
+-                new() { Id = 7, ParentId = 2, TenentId = 1, ArabicUnitName = "قسم الميزانية", Code = "002-02", ArabicName = "قسم الميزانية" },
+-                new() { Id = 8, ParentId = 3, TenentId = 1, ArabicUnitName = "قسم التوظيف", Code = "003-01", ArabicName = "قسم التوظيف" },
+-                new() { Id = 9, ParentId = 3, TenentId = 1, ArabicUnitName = "قسم التدريب", Code = "003-02", ArabicName = "قسم التدريب" },
++                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000004"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000001"), TenentId = t, ArabicUnitName = "مكتب المدير العام", Code = "001-01", ArabicName = "مكتب المدير العام" },
++                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000005"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000001"), TenentId = t, ArabicUnitName = "إدارة التخطيط", Code = "001-02", ArabicName = "إدارة التخطيط" },
++                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000006"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000002"), TenentId = t, ArabicUnitName = "قسم المحاسبة", Code = "002-01", ArabicName = "قسم المحاسبة" },
++                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000007"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000002"), TenentId = t, ArabicUnitName = "قسم الميزانية", Code = "002-02", ArabicName = "قسم الميزانية" },
++                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000008"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000003"), TenentId = t, ArabicUnitName = "قسم التوظيف", Code = "003-01", ArabicName = "قسم التوظيف" },
++                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000009"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000003"), TenentId = t, ArabicUnitName = "قسم التدريب", Code = "003-02", ArabicName = "قسم التدريب" },
+ 
+                 // المستوى 3
+-                new() { Id = 10, ParentId = 5, TenentId = 1, ArabicUnitName = "وحدة المتابعة", Code = "001-02-01", ArabicName = "وحدة المتابعة" },
+-                new() { Id = 11, ParentId = 5, TenentId = 1, ArabicUnitName = "وحدة التقييم", Code = "001-02-02", ArabicName = "وحدة التقييم" },
+-                new() { Id = 12, ParentId = 6, TenentId = 1, ArabicUnitName = "شعبة الرواتب", Code = "002-01-01", ArabicName = "شعبة الرواتب" },
+-                new() { Id = 13, ParentId = 8, TenentId = 1, ArabicUnitName = "شعبة الاستقطاب", Code = "003-01-01", ArabicName = "شعبة الاستقطاب" },
++                new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000010"), ParentId = Guid.Parse("20000000-0000-0000-0000-000000000005"), TenentId = t, ArabicUnitName = "وحدة المتابعة", Code = "001-02-01", ArabicName = "وحدة المتابعة" },
++                new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000011"), ParentId = Guid.Parse("20000000-0000-0000-0000-000000000005"), TenentId = t, ArabicUnitName = "وحدة التقييم", Code = "001-02-02", ArabicName = "وحدة التقييم" },
++                new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000012"), ParentId = Guid.Parse("20000000-0000-0000-0000-000000000006"), TenentId = t, ArabicUnitName = "شعبة الرواتب", Code = "002-01-01", ArabicName = "شعبة الرواتب" },
++                new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000013"), ParentId = Guid.Parse("20000000-0000-0000-0000-000000000008"), TenentId = t, ArabicUnitName = "شعبة الاستقطاب", Code = "003-01-01", ArabicName = "شعبة الاستقطاب" },
+             };
+         }
+ 
+@@ -521,9 +522,9 @@ namespace OperationalPlanMS.Services
+     /// </summary>
+     public class ExternalOrganizationalUnitApi
+     {
+-        public int Id { get; set; }
+-        public int? ParentId { get; set; }
+-        public int TenentId { get; set; }
++        public Guid Id { get; set; }
++        public Guid? ParentId { get; set; }
++        public Guid TenentId { get; set; }
+         public string? Code { get; set; }
+         public string? ArabicName { get; set; }
+         public string? ArabicUnitName { get; set; }
+diff --git a/OperationalPlanMS/Services/InitiativeService.cs b/OperationalPlanMS/Services/InitiativeService.cs
+index 195f9dc..b4489dd 100644
+--- a/OperationalPlanMS/Services/InitiativeService.cs
++++ b/OperationalPlanMS/Services/InitiativeService.cs
+@@ -10,7 +10,7 @@ namespace OperationalPlanMS.Services
+     public interface IInitiativeService
+     {
+         // القراءة
+-        Task<InitiativeListViewModel> GetListAsync(string? searchTerm, int? fiscalYearId, int? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
++        Task<InitiativeListViewModel> GetListAsync(string? searchTerm, int? fiscalYearId, Guid? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
+         Task<InitiativeDetailsViewModel?> GetDetailsAsync(int id);
+         Task<Initiative?> GetByIdAsync(int id);
+ 
+@@ -33,7 +33,7 @@ namespace OperationalPlanMS.Services
+         AccessLevel? GetAccessLevel(int initiativeId, UserRole userRole, int userId);
+ 
+         // معلومات الوحدة التنظيمية
+-        Task<string?> GetUnitNameAsync(int externalUnitId);
++        Task<string?> GetUnitNameAsync(Guid externalUnitId);
+     }
+ 
+     public class InitiativeService : IInitiativeService
+@@ -50,7 +50,7 @@ namespace OperationalPlanMS.Services
+         #region القراءة
+ 
+         public async Task<InitiativeListViewModel> GetListAsync(
+-            string? searchTerm, int? fiscalYearId, int? externalUnitId,
++            string? searchTerm, int? fiscalYearId, Guid? externalUnitId,
+             int page, int pageSize, UserRole userRole, int userId)
+         {
+             var query = _db.Initiatives.Where(i => !i.IsDeleted)
+@@ -339,15 +339,15 @@ namespace OperationalPlanMS.Services
+                 await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(), "Id", "NameAr", model.FiscalYearId);
+         }
+ 
+-        public async Task<string?> GetUnitNameAsync(int externalUnitId)
++        public async Task<string?> GetUnitNameAsync(Guid externalUnitId)
+         {
+             var unit = await _db.ExternalOrganizationalUnits.FirstOrDefaultAsync(u => u.Id == externalUnitId);
+             return unit?.ArabicName ?? unit?.ArabicUnitName;
+         }
+ 
+-        private async Task<List<int>> GetUnitAndChildrenIdsAsync(int unitId)
++        private async Task<List<Guid>> GetUnitAndChildrenIdsAsync(Guid unitId)
+         {
+-            var result = new List<int> { unitId };
++            var result = new List<Guid> { unitId };
+             var children = await _db.ExternalOrganizationalUnits
+                 .Where(u => u.ParentId == unitId && u.IsActive).Select(u => u.Id).ToListAsync();
+ 
+diff --git a/OperationalPlanMS/Services/ProjectService.cs b/OperationalPlanMS/Services/ProjectService.cs
+index 44c7d0b..01297d6 100644
+--- a/OperationalPlanMS/Services/ProjectService.cs
++++ b/OperationalPlanMS/Services/ProjectService.cs
+@@ -10,7 +10,7 @@ namespace OperationalPlanMS.Services
+     public interface IProjectService
+     {
+         // القراءة
+-        Task<ProjectListViewModel> GetListAsync(string? searchTerm, int? initiativeId, int? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
++        Task<ProjectListViewModel> GetListAsync(string? searchTerm, int? initiativeId, Guid? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
+         Task<ProjectDetailsViewModel?> GetDetailsAsync(int id);
+         Task<Project?> GetByIdAsync(int id);
+         Task<Project?> GetWithInitiativeAsync(int id);
+@@ -40,10 +40,10 @@ namespace OperationalPlanMS.Services
+         // API Endpoints
+         Task<object> GetSupportingEntitiesAsync();
+         Task<object?> GetSupportingEntityInfoAsync(int id);
+-        Task<object> GetSubObjectivesByUnitAsync(int? externalUnitId);
++        Task<object> GetSubObjectivesByUnitAsync(Guid? externalUnitId);
+ 
+         // معلومات الوحدة
+-        Task<string?> GetUnitNameAsync(int externalUnitId);
++        Task<string?> GetUnitNameAsync(Guid externalUnitId);
+     }
+ 
+     public class ProjectService : IProjectService
+@@ -60,7 +60,7 @@ namespace OperationalPlanMS.Services
+         #region القراءة
+ 
+         public async Task<ProjectListViewModel> GetListAsync(
+-            string? searchTerm, int? initiativeId, int? externalUnitId,
++            string? searchTerm, int? initiativeId, Guid? externalUnitId,
+             int page, int pageSize, UserRole userRole, int userId)
+         {
+             var query = _db.Projects.Where(p => !p.IsDeleted)
+@@ -150,7 +150,7 @@ namespace OperationalPlanMS.Services
+ 
+             var supportingEntities = supportingUnits.Select(s => new SupportingEntityDisplayItem
+             {
+-                Id = s.SupportingEntityId > 0 ? s.SupportingEntity!.Id : (s.ExternalUnitId ?? 0),
++                Id = s.SupportingEntityId > 0 ? s.SupportingEntity!.Id.ToString() : (s.ExternalUnitId?.ToString() ?? ""),
+                 NameAr = s.ExternalUnitName ?? s.SupportingEntity?.NameAr ?? "",
+                 NameEn = s.SupportingEntity != null ? s.SupportingEntity.NameEn ?? "" : "",
+                 // ممثلين متعددين (جديد)
+@@ -410,14 +410,14 @@ namespace OperationalPlanMS.Services
+                 .Select(e => new { e.Id, e.NameAr }).FirstOrDefaultAsync();
+         }
+ 
+-        public async Task<object> GetSubObjectivesByUnitAsync(int? externalUnitId)
++        public async Task<object> GetSubObjectivesByUnitAsync(Guid? externalUnitId)
+         {
+             if (!externalUnitId.HasValue) return new List<object>();
+             return await _db.SubObjectives.Where(s => s.ExternalUnitId == externalUnitId.Value && s.IsActive)
+                 .OrderBy(s => s.OrderIndex).Select(s => new { id = s.Id, nameAr = s.NameAr, nameEn = s.NameEn }).ToListAsync();
+         }
+ 
+-        public async Task<string?> GetUnitNameAsync(int externalUnitId)
++        public async Task<string?> GetUnitNameAsync(Guid externalUnitId)
+         {
+             var unit = await _db.ExternalOrganizationalUnits.FirstOrDefaultAsync(u => u.Id == externalUnitId);
+             return unit?.ArabicName ?? unit?.ArabicUnitName;
+@@ -574,9 +574,9 @@ namespace OperationalPlanMS.Services
+             }
+         }
+ 
+-        private async Task<List<int>> GetUnitAndChildrenIdsAsync(int unitId)
++        private async Task<List<Guid>> GetUnitAndChildrenIdsAsync(Guid unitId)
+         {
+-            var result = new List<int> { unitId };
++            var result = new List<Guid> { unitId };
+             var children = await _db.ExternalOrganizationalUnits.Where(u => u.ParentId == unitId && u.IsActive).Select(u => u.Id).ToListAsync();
+             foreach (var childId in children)
+             {
+diff --git a/OperationalPlanMS/Views/Initiatives/Create.cshtml b/OperationalPlanMS/Views/Initiatives/Create.cshtml
+index a6eb650..f7d2d09 100644
+--- a/OperationalPlanMS/Views/Initiatives/Create.cshtml
++++ b/OperationalPlanMS/Views/Initiatives/Create.cshtml
+@@ -244,7 +244,7 @@
+ 
+         // عند اختيار المستوى الأول
+         document.getElementById('ExternalLevel1').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level2 = document.getElementById('ExternalLevel2');
+             const level3 = document.getElementById('ExternalLevel3');
+ 
+@@ -269,7 +269,7 @@
+ 
+         // عند اختيار المستوى الثاني
+         document.getElementById('ExternalLevel2').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level3 = document.getElementById('ExternalLevel3');
+ 
+             level3.innerHTML = '<option value="">-- اختر --</option>';
+diff --git a/OperationalPlanMS/Views/Initiatives/Details.cshtml b/OperationalPlanMS/Views/Initiatives/Details.cshtml
+index d6dea22..ccc6ebb 100644
+--- a/OperationalPlanMS/Views/Initiatives/Details.cshtml
++++ b/OperationalPlanMS/Views/Initiatives/Details.cshtml
+@@ -395,7 +395,7 @@
+         document.addEventListener('DOMContentLoaded', function() {
+             var externalUnitIdEl = document.getElementById('externalUnitId');
+             if (externalUnitIdEl && externalUnitIdEl.value) {
+-                loadUnitHierarchy(parseInt(externalUnitIdEl.value));
++                loadUnitHierarchy(externalUnitIdEl.value);
+             }
+         });
+ 
+diff --git a/OperationalPlanMS/Views/Initiatives/Edit.cshtml b/OperationalPlanMS/Views/Initiatives/Edit.cshtml
+index ba14fef..f5b0228 100644
+--- a/OperationalPlanMS/Views/Initiatives/Edit.cshtml
++++ b/OperationalPlanMS/Views/Initiatives/Edit.cshtml
+@@ -234,7 +234,7 @@
+     <partial name="_ValidationScriptsPartial" />
+     <script>
+         let allUnits = [];
+-        const savedExternalUnitId = @(Model.ExternalUnitId?.ToString() ?? "null");
++        const savedExternalUnitId = '@(Model.ExternalUnitId?.ToString() ?? "")';
+ 
+         // تحميل الوحدات التنظيمية عند بدء الصفحة
+         document.addEventListener('DOMContentLoaded', function() {
+@@ -306,7 +306,7 @@
+ 
+         // عند اختيار المستوى الأول
+         document.getElementById('ExternalLevel1').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level2 = document.getElementById('ExternalLevel2');
+             const level3 = document.getElementById('ExternalLevel3');
+ 
+@@ -331,7 +331,7 @@
+ 
+         // عند اختيار المستوى الثاني
+         document.getElementById('ExternalLevel2').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level3 = document.getElementById('ExternalLevel3');
+ 
+             level3.innerHTML = '<option value="">-- اختر --</option>';
+diff --git a/OperationalPlanMS/Views/Initiatives/Index.cshtml b/OperationalPlanMS/Views/Initiatives/Index.cshtml
+index 2ad3125..8df3d92 100644
+--- a/OperationalPlanMS/Views/Initiatives/Index.cshtml
++++ b/OperationalPlanMS/Views/Initiatives/Index.cshtml
+@@ -222,7 +222,7 @@
+         function loadOrganizationalUnits() {
+             fetch('/api/OrganizationApi/units/all')
+                 .then(r => r.ok ? r.json() : Promise.reject())
+-                .then(data => { allUnits = data; populateFilterLevel1(); if (selectedExternalUnitId) restoreFilterSelection(parseInt(selectedExternalUnitId)); })
++                .then(data => { allUnits = data; populateFilterLevel1(); if (selectedExternalUnitId) restoreFilterSelection(selectedExternalUnitId); })
+                 .catch(() => document.getElementById('filterLevel1').innerHTML = '<option value="">-- فشل التحميل --</option>');
+         }
+         function populateFilterLevel1() {
+@@ -235,18 +235,18 @@
+             items.forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; selectEl.appendChild(o); });
+         }
+         function onLevel1Change() {
+-            var id = parseInt(this.value), l2 = document.getElementById('filterLevel2'), l3 = document.getElementById('filterLevel3');
++            var id = this.value, l2 = document.getElementById('filterLevel2'), l3 = document.getElementById('filterLevel3');
+             l2.disabled = true; l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; l3.disabled = true;
+             if (id) { var ch = allUnits.filter(u => u.parentId === id); fillSelect(l2, ch, ch.length ? '-- اختر --' : '-- لا توجد فروع --'); l2.disabled = !ch.length; updateSelectedUnit(id); }
+             else { l2.innerHTML = '<option value="">-- اختر الأول --</option>'; document.getElementById('ExternalUnitId').value = ''; }
+         }
+         function onLevel2Change() {
+-            var id = parseInt(this.value), l3 = document.getElementById('filterLevel3');
++            var id = this.value, l3 = document.getElementById('filterLevel3');
+             l3.disabled = true;
+             if (id) { var ch = allUnits.filter(u => u.parentId === id); fillSelect(l3, ch, ch.length ? '-- اختر --' : '-- لا توجد أقسام --'); l3.disabled = !ch.length; updateSelectedUnit(id); }
+-            else { l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; var l1v = parseInt(document.getElementById('filterLevel1').value); if (l1v) updateSelectedUnit(l1v); else document.getElementById('ExternalUnitId').value = ''; }
++            else { l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; var l1v = document.getElementById('filterLevel1').value; if (l1v) updateSelectedUnit(l1v); else document.getElementById('ExternalUnitId').value = ''; }
+         }
+-        function onLevel3Change() { var id = parseInt(this.value); if (id) updateSelectedUnit(id); else { var l2v = parseInt(document.getElementById('filterLevel2').value); if (l2v) updateSelectedUnit(l2v); } }
++        function onLevel3Change() { var id = this.value; if (id) updateSelectedUnit(id); else { var l2v = document.getElementById('filterLevel2').value; if (l2v) updateSelectedUnit(l2v); } }
+         function updateSelectedUnit(id) { document.getElementById('ExternalUnitId').value = id; }
+         function restoreFilterSelection(unitId) {
+             var unit = allUnits.find(u => u.id === unitId); if (!unit) return;
+diff --git a/OperationalPlanMS/Views/Projects/Create.cshtml b/OperationalPlanMS/Views/Projects/Create.cshtml
+index f529485..6492d1a 100644
+--- a/OperationalPlanMS/Views/Projects/Create.cshtml
++++ b/OperationalPlanMS/Views/Projects/Create.cshtml
+@@ -47,7 +47,7 @@
+             kpiIndex: @(Model.KPIItems?.Count ?? 0),
+             supportingEntities: @Html.Raw(Json.Serialize(Model.SupportingEntitiesWithReps ?? new List<OperationalPlanMS.Models.ViewModels.SupportingEntityWithRepViewModel>())),
+             existingYearTargets: @Html.Raw(Json.Serialize(Model.YearTargets ?? new List<OperationalPlanMS.Models.ViewModels.YearTargetItemViewModel>())),
+-            savedExternalUnitId: @(Model.ExternalUnitId ?? 0),
++            savedExternalUnitId: '@(Model.ExternalUnitId?.ToString() ?? "")',
+             savedSubObjectiveIds: []
+         };
+     </script>
+diff --git a/OperationalPlanMS/Views/Projects/Edit.cshtml b/OperationalPlanMS/Views/Projects/Edit.cshtml
+index dcc97df..22a03d4 100644
+--- a/OperationalPlanMS/Views/Projects/Edit.cshtml
++++ b/OperationalPlanMS/Views/Projects/Edit.cshtml
+@@ -67,7 +67,7 @@
+             kpiIndex: @(Model.KPIItems?.Count ?? 0),
+             supportingEntities: @Html.Raw(Json.Serialize(Model.SupportingEntitiesWithReps ?? new List<OperationalPlanMS.Models.ViewModels.SupportingEntityWithRepViewModel>())),
+             existingYearTargets: @Html.Raw(Json.Serialize(Model.YearTargets ?? new List<OperationalPlanMS.Models.ViewModels.YearTargetItemViewModel>())),
+-            savedExternalUnitId: @(Model.ExternalUnitId ?? 0),
++            savedExternalUnitId: '@(Model.ExternalUnitId?.ToString() ?? "")',
+             savedSubObjectiveIds: @Html.Raw(Json.Serialize(Model.SubObjectiveIds ?? new List<int>()))
+         };
+     </script>
+diff --git a/OperationalPlanMS/Views/Projects/Index.cshtml b/OperationalPlanMS/Views/Projects/Index.cshtml
+index e5fe328..20eb09a 100644
+--- a/OperationalPlanMS/Views/Projects/Index.cshtml
++++ b/OperationalPlanMS/Views/Projects/Index.cshtml
+@@ -195,7 +195,7 @@
+         function loadOrganizationalUnits() {
+             fetch('/api/OrganizationApi/units/all')
+                 .then(r => r.ok ? r.json() : Promise.reject())
+-                .then(data => { allUnits = data; populateFilterLevel1(); if (selectedExternalUnitId) restoreFilterSelection(parseInt(selectedExternalUnitId)); })
++                .then(data => { allUnits = data; populateFilterLevel1(); if (selectedExternalUnitId) restoreFilterSelection(selectedExternalUnitId); })
+                 .catch(() => document.getElementById('filterLevel1').innerHTML = '<option value="">-- فشل التحميل --</option>');
+         }
+         function populateFilterLevel1() {
+@@ -205,18 +205,18 @@
+         }
+         function fillSelect(el, items, ph) { el.innerHTML = '<option value="">' + ph + '</option>'; items.forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; el.appendChild(o); }); }
+         function onLevel1Change() {
+-            var id = parseInt(this.value), l2 = document.getElementById('filterLevel2'), l3 = document.getElementById('filterLevel3');
++            var id = this.value, l2 = document.getElementById('filterLevel2'), l3 = document.getElementById('filterLevel3');
+             l2.disabled = true; l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; l3.disabled = true;
+             if (id) { var ch = allUnits.filter(u => u.parentId === id); fillSelect(l2, ch, ch.length ? '-- جميع الفروع --' : '-- لا توجد فروع --'); l2.disabled = !ch.length; updateSelectedUnit(id); }
+             else { l2.innerHTML = '<option value="">-- اختر الأول --</option>'; document.getElementById('ExternalUnitId').value = ''; updateSelectedUnitDisplay(''); }
+         }
+         function onLevel2Change() {
+-            var id = parseInt(this.value), l3 = document.getElementById('filterLevel3');
++            var id = this.value, l3 = document.getElementById('filterLevel3');
+             l3.disabled = true;
+             if (id) { var ch = allUnits.filter(u => u.parentId === id); fillSelect(l3, ch, ch.length ? '-- جميع الأقسام --' : '-- لا توجد أقسام --'); l3.disabled = !ch.length; updateSelectedUnit(id); }
+-            else { l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; var l1v = parseInt(document.getElementById('filterLevel1').value); if (l1v) updateSelectedUnit(l1v); else { document.getElementById('ExternalUnitId').value = ''; updateSelectedUnitDisplay(''); } }
++            else { l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; var l1v = document.getElementById('filterLevel1').value; if (l1v) updateSelectedUnit(l1v); else { document.getElementById('ExternalUnitId').value = ''; updateSelectedUnitDisplay(''); } }
+         }
+-        function onLevel3Change() { var id = parseInt(this.value); if (id) updateSelectedUnit(id); else { var l2v = parseInt(document.getElementById('filterLevel2').value); if (l2v) updateSelectedUnit(l2v); } }
++        function onLevel3Change() { var id = this.value; if (id) updateSelectedUnit(id); else { var l2v = document.getElementById('filterLevel2').value; if (l2v) updateSelectedUnit(l2v); } }
+         function updateSelectedUnit(id) {
+             document.getElementById('ExternalUnitId').value = id;
+             var unit = allUnits.find(u => u.id === id);
+diff --git a/OperationalPlanMS/Views/Reports/Index.cshtml b/OperationalPlanMS/Views/Reports/Index.cshtml
+index a06101c..8800d14 100644
+--- a/OperationalPlanMS/Views/Reports/Index.cshtml
++++ b/OperationalPlanMS/Views/Reports/Index.cshtml
+@@ -397,7 +397,7 @@
+                             <tbody>
+                                 @foreach (var unit in Model.UnitSummaries)
+                                 {
+-                                    var uid = unit.ExternalUnitId ?? unit.UnitId ?? 0;
++                                    var uid = (unit.ExternalUnitId ?? unit.UnitId)?.ToString() ?? "";
+                                     var unitNameJs = (unit.UnitName ?? "").Replace("'", "\\'");
+                                     string pc;
+                                     if (unit.AverageProgress >= 80) { pc = "var(--success)"; }
+diff --git a/OperationalPlanMS/Views/StrategicPlanning/EditSubObjective.cshtml b/OperationalPlanMS/Views/StrategicPlanning/EditSubObjective.cshtml
+index 3f58f44..fd84563 100644
+--- a/OperationalPlanMS/Views/StrategicPlanning/EditSubObjective.cshtml
++++ b/OperationalPlanMS/Views/StrategicPlanning/EditSubObjective.cshtml
+@@ -111,7 +111,7 @@
+     <partial name="_ValidationScriptsPartial" />
+     <script>
+         let allUnits = [];
+-        const savedExternalUnitId = @(Model.ExternalUnitId?.ToString() ?? "null");
++        const savedExternalUnitId = '@(Model.ExternalUnitId?.ToString() ?? "")';
+ 
+         // تحميل الوحدات عند بدء الصفحة
+         document.addEventListener('DOMContentLoaded', function() {
+@@ -183,7 +183,7 @@
+ 
+         // عند اختيار المستوى الأول
+         document.getElementById('ExternalLevel1').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level2 = document.getElementById('ExternalLevel2');
+             const level3 = document.getElementById('ExternalLevel3');
+ 
+@@ -208,7 +208,7 @@
+ 
+         // عند اختيار المستوى الثاني
+         document.getElementById('ExternalLevel2').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level3 = document.getElementById('ExternalLevel3');
+ 
+             level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
+diff --git a/OperationalPlanMS/Views/StrategicPlanning/EditUnitSettings.cshtml b/OperationalPlanMS/Views/StrategicPlanning/EditUnitSettings.cshtml
+index 49201b6..44fc73a 100644
+--- a/OperationalPlanMS/Views/StrategicPlanning/EditUnitSettings.cshtml
++++ b/OperationalPlanMS/Views/StrategicPlanning/EditUnitSettings.cshtml
+@@ -130,7 +130,7 @@
+     <partial name="_ValidationScriptsPartial" />
+     <script>
+         let allUnits = [];
+-        const savedExternalUnitId = @(Model.ExternalUnitId?.ToString() ?? "null");
++        const savedExternalUnitId = '@(Model.ExternalUnitId?.ToString() ?? "")';
+ 
+         // تحميل الوحدات عند بدء الصفحة
+         document.addEventListener('DOMContentLoaded', function() {
+@@ -202,7 +202,7 @@
+ 
+         // عند اختيار المستوى الأول
+         document.getElementById('ExternalLevel1').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level2 = document.getElementById('ExternalLevel2');
+             const level3 = document.getElementById('ExternalLevel3');
+ 
+@@ -227,7 +227,7 @@
+ 
+         // عند اختيار المستوى الثاني
+         document.getElementById('ExternalLevel2').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level3 = document.getElementById('ExternalLevel3');
+ 
+             level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
+diff --git a/OperationalPlanMS/Views/StrategicPlanning/Index.cshtml b/OperationalPlanMS/Views/StrategicPlanning/Index.cshtml
+index d5897fe..727775e 100644
+--- a/OperationalPlanMS/Views/StrategicPlanning/Index.cshtml
++++ b/OperationalPlanMS/Views/StrategicPlanning/Index.cshtml
+@@ -738,7 +738,7 @@
+ 
+         // عند اختيار المستوى الأول
+         document.getElementById('addSubLevel1').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level2 = document.getElementById('addSubLevel2');
+             const level3 = document.getElementById('addSubLevel3');
+ 
+@@ -763,7 +763,7 @@
+ 
+         // عند اختيار المستوى الثاني
+         document.getElementById('addSubLevel2').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level3 = document.getElementById('addSubLevel3');
+ 
+             level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
+diff --git a/OperationalPlanMS/Views/StrategicPlanning/VisionMission.cshtml b/OperationalPlanMS/Views/StrategicPlanning/VisionMission.cshtml
+index e94819d..6793be5 100644
+--- a/OperationalPlanMS/Views/StrategicPlanning/VisionMission.cshtml
++++ b/OperationalPlanMS/Views/StrategicPlanning/VisionMission.cshtml
+@@ -357,7 +357,7 @@
+ 
+         // عند اختيار المستوى الأول
+         document.getElementById('addLevel1').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level2 = document.getElementById('addLevel2');
+             const level3 = document.getElementById('addLevel3');
+ 
+@@ -382,7 +382,7 @@
+ 
+         // عند اختيار المستوى الثاني
+         document.getElementById('addLevel2').addEventListener('change', function() {
+-            const parentId = parseInt(this.value);
++            const parentId = this.value;
+             const level3 = document.getElementById('addLevel3');
+ 
+             level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
+diff --git a/OperationalPlanMS/wwwroot/js/project-form.js b/OperationalPlanMS/wwwroot/js/project-form.js
+index 8e1fd7e..3cb7b58 100644
+--- a/OperationalPlanMS/wwwroot/js/project-form.js
++++ b/OperationalPlanMS/wwwroot/js/project-form.js
+@@ -9,7 +9,7 @@
+  *       kpiIndex: number,
+  *       supportingEntities: array,  // each with .representatives[] array
+  *       existingYearTargets: array,
+- *       savedExternalUnitId: number,
++ *       savedExternalUnitId: string,
+  *       savedSubObjectiveIds: array  // [] for Create
+  *   }
+  */
+@@ -33,7 +33,7 @@
+     let allUnitsCache = [];
+ 
+     const existingYearTargets = config.existingYearTargets || [];
+-    const savedExternalUnitId = config.savedExternalUnitId || 0;
++    const savedExternalUnitId = config.savedExternalUnitId || '';
+     const savedSubObjectiveIds = config.savedSubObjectiveIds || [];
+ 
+     // ================================================================
+@@ -62,7 +62,7 @@
+ 
+                 populateLevel1();
+ 
+-                if (savedExternalUnitId > 0) {
++                if (savedExternalUnitId) {
+                     await restoreSelection(savedExternalUnitId);
+                 }
+             } else {
+@@ -461,13 +461,13 @@
+ 
+         let unitId, unitName;
+         if (level3.value) {
+-            unitId = parseInt(level3.value);
++            unitId = level3.value;
+             unitName = level3.options[level3.selectedIndex]?.dataset.name || '';
+         } else if (level2.value) {
+-            unitId = parseInt(level2.value);
++            unitId = level2.value;
+             unitName = level2.options[level2.selectedIndex]?.dataset.name || '';
+         } else if (level1.value) {
+-            unitId = parseInt(level1.value);
++            unitId = level1.value;
+             unitName = level1.options[level1.selectedIndex]?.dataset.name || '';
+         } else {
+             alert('يرجى اختيار جهة');
+@@ -521,7 +521,7 @@
+                                 <span class="fw-bold">${rep.rank || ''} ${rep.name}</span>
+                                 <small class="text-muted me-2">${rep.empNumber}</small>
+                             </div>
+-                            <span class="remove-btn" onclick="removeRep(${entity.externalUnitId}, ${repIndex})">
++                            <span class="remove-btn" onclick="removeRep('${entity.externalUnitId}', ${repIndex})">
+                                 <i class="bi bi-x-circle"></i>
+                             </span>
+                         </div>
+@@ -533,7 +533,7 @@
+                 <div class="supporting-entity-item" id="entity_${entity.externalUnitId}">
+                     <div class="entity-header">
+                         <span class="entity-name"><i class="bi bi-building me-1"></i>${entity.unitName}</span>
+-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupportingEntity(${entity.externalUnitId})">
++                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupportingEntity('${entity.externalUnitId}')">
+                             <i class="bi bi-trash"></i>
+                         </button>
+                     </div>
+@@ -548,7 +548,7 @@
+                         <div class="rep-search-wrapper position-relative mt-1">
+                             <input type="text" id="repSearch_${entity.externalUnitId}" class="form-control form-control-sm"
+                                    placeholder="ابحث برقم أو اسم الموظف لإضافة ممثل..." 
+-                                   oninput="searchEntityRep(${entity.externalUnitId}, this.value)" />
++                                   oninput="searchEntityRep('${entity.externalUnitId}', this.value)" />
+                             <div id="repResults_${entity.externalUnitId}" class="search-dropdown"></div>
+                         </div>
+                     </div>
+diff --git a/OperationalPlanMS/wwwroot/js/reports-dashboard.js b/OperationalPlanMS/wwwroot/js/reports-dashboard.js
+index 6b38137..9f6bdec 100644
+--- a/OperationalPlanMS/wwwroot/js/reports-dashboard.js
++++ b/OperationalPlanMS/wwwroot/js/reports-dashboard.js
+@@ -176,7 +176,7 @@
+             .then(function (data) {
+                 allUnits = data;
+                 populateFilterLevel1();
+-                if (selectedExternalUnitId) { restoreFilterSelection(parseInt(selectedExternalUnitId)); }
++                if (selectedExternalUnitId) { restoreFilterSelection(selectedExternalUnitId); }
+             })
+             .catch(function () {
+                 document.getElementById('filterLevel1').innerHTML = '<option value="">-- فشل التحميل --</option>';
+@@ -199,7 +199,7 @@
+     }
+ 
+     function onLevel1Change() {
+-        var id = parseInt(this.value);
++        var id = this.value;
+         var l2 = document.getElementById('filterLevel2');
+         var l3 = document.getElementById('filterLevel3');
+         l2.disabled = true;
+@@ -218,7 +218,7 @@
+     }
+ 
+     function onLevel2Change() {
+-        var id = parseInt(this.value);
++        var id = this.value;
+         var l3 = document.getElementById('filterLevel3');
+         l3.disabled = true;
+         if (id) {
+@@ -228,16 +228,16 @@
+             updateSelectedUnit(id);
+         } else {
+             l3.innerHTML = '<option value="">-- اختر الثاني --</option>';
+-            var l1v = parseInt(document.getElementById('filterLevel1').value);
++            var l1v = document.getElementById('filterLevel1').value;
+             if (l1v) { updateSelectedUnit(l1v); }
+         }
+     }
+ 
+     function onLevel3Change() {
+-        var id = parseInt(this.value);
++        var id = this.value;
+         if (id) { updateSelectedUnit(id); }
+         else {
+-            var l2v = parseInt(document.getElementById('filterLevel2').value);
++            var l2v = document.getElementById('filterLevel2').value;
+             if (l2v) { updateSelectedUnit(l2v); }
+         }
+     }

@@ -47,7 +47,7 @@
             kpiIndex: @(Model.KPIItems?.Count ?? 0),
             supportingEntities: @Html.Raw(Json.Serialize(Model.SupportingEntitiesWithReps ?? new List<OperationalPlanMS.Models.ViewModels.SupportingEntityWithRepViewModel>())),
             existingYearTargets: @Html.Raw(Json.Serialize(Model.YearTargets ?? new List<OperationalPlanMS.Models.ViewModels.YearTargetItemViewModel>())),
-            savedExternalUnitId: @(Model.ExternalUnitId ?? 0),
+            savedExternalUnitId: '@(Model.ExternalUnitId?.ToString() ?? "")',
             savedSubObjectiveIds: []
         };
     </script>

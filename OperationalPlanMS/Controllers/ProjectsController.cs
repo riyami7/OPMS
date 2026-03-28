@@ -17,7 +17,7 @@ namespace OperationalPlanMS.Controllers
         }
 
         // GET: /Projects
-        public async Task<IActionResult> Index(ProjectListViewModel model, int? externalUnitId)
+        public async Task<IActionResult> Index(ProjectListViewModel model, Guid? externalUnitId)
         {
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
@@ -51,7 +51,7 @@ namespace OperationalPlanMS.Controllers
 
         // API: GET /Projects/GetSubObjectivesByUnit?externalUnitId=5
         [HttpGet]
-        public async Task<IActionResult> GetSubObjectivesByUnit(int? externalUnitId) =>
+        public async Task<IActionResult> GetSubObjectivesByUnit(Guid? externalUnitId) =>
             Json(await _projectService.GetSubObjectivesByUnitAsync(externalUnitId));
 
         // GET: /Projects/Details/5

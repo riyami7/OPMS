@@ -21,7 +21,7 @@ namespace OperationalPlanMS.Controllers
         }
 
         // GET: /Reports
-        public async Task<IActionResult> Index(int? fiscalYearId, int? externalUnitId)
+        public async Task<IActionResult> Index(int? fiscalYearId, Guid? externalUnitId)
         {
             var viewModel = new ReportsDashboardViewModel
             {
@@ -212,7 +212,7 @@ namespace OperationalPlanMS.Controllers
 
         // GET: /Reports/GetChartData
         [HttpGet]
-        public async Task<IActionResult> GetChartData(int? fiscalYearId, int? externalUnitId)
+        public async Task<IActionResult> GetChartData(int? fiscalYearId, Guid? externalUnitId)
         {
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
@@ -273,7 +273,7 @@ namespace OperationalPlanMS.Controllers
                 color = u.AverageProgress >= 80 ? "#0e7d5a" :
                          u.AverageProgress >= 50 ? "#1a3a5c" :
                          u.AverageProgress >= 30 ? "#b45309" : "#b91c1c",
-                unitId = u.ExternalUnitId ?? u.UnitId ?? 0
+                unitId = (u.ExternalUnitId ?? u.UnitId)?.ToString() ?? ""
             }).ToList();
 
             // Donut counts
@@ -300,7 +300,7 @@ namespace OperationalPlanMS.Controllers
             });
         }
 
-        private async Task<List<int>> GetUnitAndChildrenIds(int unitId)
+        private async Task<List<Guid>> GetUnitAndChildrenIds(Guid unitId)
         {
             // تحميل كل الوحدات النشطة مرة واحدة ثم تصفية في الذاكرة
             var allUnits = await _db.ExternalOrganizationalUnits
@@ -308,7 +308,7 @@ namespace OperationalPlanMS.Controllers
                 .Select(u => new { u.Id, u.ParentId })
                 .ToListAsync();
 
-            var result = new List<int> { unitId };
+            var result = new List<Guid> { unitId };
 
             // المستوى الثاني (أبناء مباشرون)
             var children = allUnits.Where(u => u.ParentId == unitId).Select(u => u.Id).ToList();
@@ -369,7 +369,7 @@ namespace OperationalPlanMS.Controllers
 
         // GET: /Reports/Export
         [HttpGet]
-        public async Task<IActionResult> Export(string type = "initiatives", int? fiscalYearId = null, int? externalUnitId = null)
+        public async Task<IActionResult> Export(string type = "initiatives", int? fiscalYearId = null, Guid? externalUnitId = null)
         {
             var csv = new StringBuilder();
             csv.AppendLine("\uFEFF");
@@ -377,7 +377,7 @@ namespace OperationalPlanMS.Controllers
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
 
-            List<int>? unitIds = null;
+            List<Guid>? unitIds = null;
             if (externalUnitId.HasValue)
                 unitIds = await GetUnitAndChildrenIds(externalUnitId.Value);
 

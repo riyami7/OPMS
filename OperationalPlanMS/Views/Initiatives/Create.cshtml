@@ -244,7 +244,7 @@
 
         // عند اختيار المستوى الأول
         document.getElementById('ExternalLevel1').addEventListener('change', function() {
-            const parentId = parseInt(this.value);
+            const parentId = this.value;
             const level2 = document.getElementById('ExternalLevel2');
             const level3 = document.getElementById('ExternalLevel3');
 
@@ -269,7 +269,7 @@
 
         // عند اختيار المستوى الثاني
         document.getElementById('ExternalLevel2').addEventListener('change', function() {
-            const parentId = parseInt(this.value);
+            const parentId = this.value;
             const level3 = document.getElementById('ExternalLevel3');
 
             level3.innerHTML = '<option value="">-- اختر --</option>';

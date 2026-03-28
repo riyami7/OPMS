@@ -738,7 +738,7 @@
 
         // عند اختيار المستوى الأول
         document.getElementById('addSubLevel1').addEventListener('change', function() {
-            const parentId = parseInt(this.value);
+            const parentId = this.value;
             const level2 = document.getElementById('addSubLevel2');
             const level3 = document.getElementById('addSubLevel3');
 
@@ -763,7 +763,7 @@
 
         // عند اختيار المستوى الثاني
         document.getElementById('addSubLevel2').addEventListener('change', function() {
-            const parentId = parseInt(this.value);
+            const parentId = this.value;
             const level3 = document.getElementById('addSubLevel3');
 
             level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';

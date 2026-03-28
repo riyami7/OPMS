@@ -10,7 +10,7 @@ namespace OperationalPlanMS.Services
     public interface IProjectService
     {
         // القراءة
-        Task<ProjectListViewModel> GetListAsync(string? searchTerm, int? initiativeId, int? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
+        Task<ProjectListViewModel> GetListAsync(string? searchTerm, int? initiativeId, Guid? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
         Task<ProjectDetailsViewModel?> GetDetailsAsync(int id);
         Task<Project?> GetByIdAsync(int id);
         Task<Project?> GetWithInitiativeAsync(int id);
@@ -40,10 +40,10 @@ namespace OperationalPlanMS.Services
         // API Endpoints
         Task<object> GetSupportingEntitiesAsync();
         Task<object?> GetSupportingEntityInfoAsync(int id);
-        Task<object> GetSubObjectivesByUnitAsync(int? externalUnitId);
+        Task<object> GetSubObjectivesByUnitAsync(Guid? externalUnitId);
 
         // معلومات الوحدة
-        Task<string?> GetUnitNameAsync(int externalUnitId);
+        Task<string?> GetUnitNameAsync(Guid externalUnitId);
     }
 
     public class ProjectService : IProjectService
@@ -60,7 +60,7 @@ namespace OperationalPlanMS.Services
         #region القراءة
 
         public async Task<ProjectListViewModel> GetListAsync(
-            string? searchTerm, int? initiativeId, int? externalUnitId,
+            string? searchTerm, int? initiativeId, Guid? externalUnitId,
             int page, int pageSize, UserRole userRole, int userId)
         {
             var query = _db.Projects.Where(p => !p.IsDeleted)
@@ -150,7 +150,7 @@ namespace OperationalPlanMS.Services
 
             var supportingEntities = supportingUnits.Select(s => new SupportingEntityDisplayItem
             {
-                Id = s.SupportingEntityId > 0 ? s.SupportingEntity!.Id : (s.ExternalUnitId ?? 0),
+                Id = s.SupportingEntityId > 0 ? s.SupportingEntity!.Id.ToString() : (s.ExternalUnitId?.ToString() ?? ""),
                 NameAr = s.ExternalUnitName ?? s.SupportingEntity?.NameAr ?? "",
                 NameEn = s.SupportingEntity != null ? s.SupportingEntity.NameEn ?? "" : "",
                 // ممثلين متعددين (جديد)
@@ -410,14 +410,14 @@ namespace OperationalPlanMS.Services
                 .Select(e => new { e.Id, e.NameAr }).FirstOrDefaultAsync();
         }
 
-        public async Task<object> GetSubObjectivesByUnitAsync(int? externalUnitId)
+        public async Task<object> GetSubObjectivesByUnitAsync(Guid? externalUnitId)
         {
             if (!externalUnitId.HasValue) return new List<object>();
             return await _db.SubObjectives.Where(s => s.ExternalUnitId == externalUnitId.Value && s.IsActive)
                 .OrderBy(s => s.OrderIndex).Select(s => new { id = s.Id, nameAr = s.NameAr, nameEn = s.NameEn }).ToListAsync();
         }
 
-        public async Task<string?> GetUnitNameAsync(int externalUnitId)
+        public async Task<string?> GetUnitNameAsync(Guid externalUnitId)
         {
             var unit = await _db.ExternalOrganizationalUnits.FirstOrDefaultAsync(u => u.Id == externalUnitId);
             return unit?.ArabicName ?? unit?.ArabicUnitName;
@@ -574,9 +574,9 @@ namespace OperationalPlanMS.Services
             }
         }
 
-        private async Task<List<int>> GetUnitAndChildrenIdsAsync(int unitId)
+        private async Task<List<Guid>> GetUnitAndChildrenIdsAsync(Guid unitId)
         {
-            var result = new List<int> { unitId };
+            var result = new List<Guid> { unitId };
             var children = await _db.ExternalOrganizationalUnits.Where(u => u.ParentId == unitId && u.IsActive).Select(u => u.Id).ToListAsync();
             foreach (var childId in children)
             {

@@ -176,7 +176,7 @@
             .then(function (data) {
                 allUnits = data;
                 populateFilterLevel1();
-                if (selectedExternalUnitId) { restoreFilterSelection(parseInt(selectedExternalUnitId)); }
+                if (selectedExternalUnitId) { restoreFilterSelection(selectedExternalUnitId); }
             })
             .catch(function () {
                 document.getElementById('filterLevel1').innerHTML = '<option value="">-- فشل التحميل --</option>';
@@ -199,7 +199,7 @@
     }
 
     function onLevel1Change() {
-        var id = parseInt(this.value);
+        var id = this.value;
         var l2 = document.getElementById('filterLevel2');
         var l3 = document.getElementById('filterLevel3');
         l2.disabled = true;
@@ -218,7 +218,7 @@
     }
 
     function onLevel2Change() {
-        var id = parseInt(this.value);
+        var id = this.value;
         var l3 = document.getElementById('filterLevel3');
         l3.disabled = true;
         if (id) {
@@ -228,16 +228,16 @@
             updateSelectedUnit(id);
         } else {
             l3.innerHTML = '<option value="">-- اختر الثاني --</option>';
-            var l1v = parseInt(document.getElementById('filterLevel1').value);
+            var l1v = document.getElementById('filterLevel1').value;
             if (l1v) { updateSelectedUnit(l1v); }
         }
     }
 
     function onLevel3Change() {
-        var id = parseInt(this.value);
+        var id = this.value;
         if (id) { updateSelectedUnit(id); }
         else {
-            var l2v = parseInt(document.getElementById('filterLevel2').value);
+            var l2v = document.getElementById('filterLevel2').value;
             if (l2v) { updateSelectedUnit(l2v); }
         }
     }

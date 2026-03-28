@@ -10,7 +10,7 @@ namespace OperationalPlanMS.Services
     public interface IInitiativeService
     {
         // القراءة
-        Task<InitiativeListViewModel> GetListAsync(string? searchTerm, int? fiscalYearId, int? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
+        Task<InitiativeListViewModel> GetListAsync(string? searchTerm, int? fiscalYearId, Guid? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
         Task<InitiativeDetailsViewModel?> GetDetailsAsync(int id);
         Task<Initiative?> GetByIdAsync(int id);
 
@@ -33,7 +33,7 @@ namespace OperationalPlanMS.Services
         AccessLevel? GetAccessLevel(int initiativeId, UserRole userRole, int userId);
 
         // معلومات الوحدة التنظيمية
-        Task<string?> GetUnitNameAsync(int externalUnitId);
+        Task<string?> GetUnitNameAsync(Guid externalUnitId);
     }
 
     public class InitiativeService : IInitiativeService
@@ -50,7 +50,7 @@ namespace OperationalPlanMS.Services
         #region القراءة
 
         public async Task<InitiativeListViewModel> GetListAsync(
-            string? searchTerm, int? fiscalYearId, int? externalUnitId,
+            string? searchTerm, int? fiscalYearId, Guid? externalUnitId,
             int page, int pageSize, UserRole userRole, int userId)
         {
             var query = _db.Initiatives.Where(i => !i.IsDeleted)
@@ -339,15 +339,15 @@ namespace OperationalPlanMS.Services
                 await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(), "Id", "NameAr", model.FiscalYearId);
         }
 
-        public async Task<string?> GetUnitNameAsync(int externalUnitId)
+        public async Task<string?> GetUnitNameAsync(Guid externalUnitId)
         {
             var unit = await _db.ExternalOrganizationalUnits.FirstOrDefaultAsync(u => u.Id == externalUnitId);
             return unit?.ArabicName ?? unit?.ArabicUnitName;
         }
 
-        private async Task<List<int>> GetUnitAndChildrenIdsAsync(int unitId)
+        private async Task<List<Guid>> GetUnitAndChildrenIdsAsync(Guid unitId)
         {
-            var result = new List<int> { unitId };
+            var result = new List<Guid> { unitId };
             var children = await _db.ExternalOrganizationalUnits
                 .Where(u => u.ParentId == unitId && u.IsActive).Select(u => u.Id).ToListAsync();
 

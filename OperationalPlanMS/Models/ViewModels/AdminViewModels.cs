@@ -66,7 +66,7 @@ namespace OperationalPlanMS.Models.ViewModels
         public string? BranchName { get; set; }
 
         [Display(Name = "الوحدة التنظيمية (API)")]
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         [StringLength(300)]
         [Display(Name = "اسم الوحدة (API)")]

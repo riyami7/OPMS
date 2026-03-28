@@ -395,7 +395,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             var externalUnitIdEl = document.getElementById('externalUnitId');
             if (externalUnitIdEl && externalUnitIdEl.value) {
-                loadUnitHierarchy(parseInt(externalUnitIdEl.value));
+                loadUnitHierarchy(externalUnitIdEl.value);
             }
         });
 

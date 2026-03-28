@@ -72,7 +72,7 @@ namespace OperationalPlanMS.Controllers.Api
             try
             {
                 var units = await _db.ExternalOrganizationalUnits
-                    .Where(u => u.IsActive && (u.ParentId == null || u.ParentId == 0))
+                    .Where(u => u.IsActive && (u.ParentId == null))
                     .OrderBy(u => u.ArabicName)
                     .Select(u => new
                     {
@@ -95,7 +95,7 @@ namespace OperationalPlanMS.Controllers.Api
         /// جلب الوحدات الفرعية لوحدة معينة
         /// </summary>
         [HttpGet("units/{parentId}/children")]
-        public async Task<IActionResult> GetChildUnits(int parentId)
+        public async Task<IActionResult> GetChildUnits(Guid parentId)
         {
             try
             {

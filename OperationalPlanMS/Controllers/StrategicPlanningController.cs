@@ -87,7 +87,7 @@ namespace OperationalPlanMS.Controllers
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> AddUnitSettings(
-            int? ExternalUnitId, string? ExternalUnitName,
+            Guid? ExternalUnitId, string? ExternalUnitName,
             string? VisionAr, string? VisionEn, string? MissionAr, string? MissionEn)
         {
             if (!IsAdmin()) return Forbid();
@@ -341,7 +341,7 @@ namespace OperationalPlanMS.Controllers
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> AddSubObjective(string NameAr, string NameEn, string? DescriptionAr, int MainObjectiveId,
-            int? ExternalUnitId, string? ExternalUnitName, int OrderIndex, bool IsActive = true)
+            Guid? ExternalUnitId, string? ExternalUnitName, int OrderIndex, bool IsActive = true)
         {
             if (!IsAdmin()) return Forbid();
             var lastObj = await _db.SubObjectives.OrderByDescending(s => s.Id).FirstOrDefaultAsync();

@@ -65,7 +65,7 @@ namespace OperationalPlanMS.Models.ViewModels
         public int? SupervisorId { get; set; }
 
         [Display(Name = "الوحدة التنظيمية")]
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         [Display(Name = "اسم الوحدة")]
         public string? ExternalUnitName { get; set; }

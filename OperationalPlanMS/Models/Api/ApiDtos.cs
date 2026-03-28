@@ -164,7 +164,7 @@ namespace OperationalPlanMS.Models.Api
 
     public class UnitPerformanceDto
     {
-        public int? UnitId { get; set; }
+        public Guid? UnitId { get; set; }
         public string UnitName { get; set; } = string.Empty;
         public int InitiativeCount { get; set; }
         public int ProjectCount { get; set; }

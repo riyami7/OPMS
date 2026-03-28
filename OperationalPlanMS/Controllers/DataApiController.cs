@@ -96,7 +96,7 @@ namespace OperationalPlanMS.Controllers
         /// GET /api/data/initiatives?fiscalYearId=1&unitId=5&search=keyword
         /// </summary>
         [HttpGet("initiatives")]
-        public async Task<IActionResult> GetInitiatives(int? fiscalYearId, int? unitId, string? search)
+        public async Task<IActionResult> GetInitiatives(int? fiscalYearId, Guid? unitId, string? search)
         {
             var query = _db.Initiatives
                 .Where(i => !i.IsDeleted)
@@ -176,7 +176,7 @@ namespace OperationalPlanMS.Controllers
         /// GET /api/data/projects?initiativeId=1&search=keyword
         /// </summary>
         [HttpGet("projects")]
-        public async Task<IActionResult> GetProjects(int? initiativeId, int? unitId, string? search)
+        public async Task<IActionResult> GetProjects(int? initiativeId, Guid? unitId, string? search)
         {
             var query = _db.Projects
                 .Where(p => !p.IsDeleted)

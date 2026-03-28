@@ -11,7 +11,7 @@ namespace OperationalPlanMS.Models.ViewModels
         // الوحدة التنظيمية المحلية (للتوافقية)
 
         // الوحدة التنظيمية من API الخارجي - الفلتر الفعلي
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         // اسم الوحدة المختارة للعرض
         public string? SelectedUnitName { get; set; }
@@ -118,10 +118,10 @@ namespace OperationalPlanMS.Models.ViewModels
     public class UnitSummary
     {
         // الوحدة المحلية (للتوافقية)
-        public int? UnitId { get; set; }
+        public Guid? UnitId { get; set; }
 
         // الوحدة من API الخارجي
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         public string UnitName { get; set; } = string.Empty;
         public int InitiativeCount { get; set; }

@@ -113,7 +113,7 @@ namespace OperationalPlanMS.Models.ViewModels
         /// معرف الوحدة التنظيمية من API (آخر مستوى مختار)
         /// </summary>
         [Display(Name = "الوحدة التنظيمية")]
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         /// <summary>
         /// اسم الوحدة المختارة (للعرض)
@@ -417,7 +417,7 @@ namespace OperationalPlanMS.Models.ViewModels
         /// <summary>
         /// معرف الوحدة من API (إذا من API)
         /// </summary>
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         /// <summary>
         /// اسم الوحدة
@@ -549,7 +549,7 @@ namespace OperationalPlanMS.Models.ViewModels
     /// </summary>
     public class SupportingEntityDisplayItem
     {
-        public int Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         public string NameAr { get; set; } = string.Empty;
         public string NameEn { get; set; } = string.Empty;
 

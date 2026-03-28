@@ -53,7 +53,7 @@ namespace OperationalPlanMS.Models.Entities
         /// <summary>
         /// معرف الوحدة التنظيمية من API الخارجي
         /// </summary>
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         [StringLength(300)]
         public string? ExternalUnitName { get; set; }

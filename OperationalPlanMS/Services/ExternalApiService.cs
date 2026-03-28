@@ -25,7 +25,7 @@ namespace OperationalPlanMS.Services
 
         // جلب من قاعدة البيانات المحلية
         Task<List<OrganizationalUnitDto>> GetLocalUnitsAsync();
-        Task<List<OrganizationalUnitDto>> GetLocalChildUnitsAsync(int parentId);
+        Task<List<OrganizationalUnitDto>> GetLocalChildUnitsAsync(Guid parentId);
 
         // جلب موظف برقم الموظف
         Task<EmployeeDto?> GetEmployeeByNumberAsync(string empNumber);
@@ -62,7 +62,7 @@ namespace OperationalPlanMS.Services
 
         // API Settings
         private readonly string _baseUrl;
-        private readonly int _tenantId;
+        private readonly string _tenantId;
 
         // Cache keys
         private const string TOKEN_CACHE_KEY = "ExternalApi_AccessToken";
@@ -90,7 +90,7 @@ namespace OperationalPlanMS.Services
 
             // API Settings
             _baseUrl = _configuration["ExternalApi:BaseUrl"] ?? "";
-            _tenantId = _configuration.GetValue<int>("ExternalApi:TenantId", 1);
+            _tenantId = _configuration.GetValue<string>("ExternalApi:TenantId") ?? "1";
         }
 
         #region OAuth2 Authentication
@@ -161,7 +161,7 @@ namespace OperationalPlanMS.Services
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
-            request.Headers.Add("__tenant", _tenantId.ToString());
+            request.Headers.Add("__tenant", _tenantId);
 
             return request;
         }
@@ -246,7 +246,7 @@ namespace OperationalPlanMS.Services
                         var newUnit = new ExternalUnitEntity
                         {
                             Id = extUnit.Id,
-                            ParentId = extUnit.ParentId == 0 ? null : extUnit.ParentId,
+                            ParentId = extUnit.ParentId,
                             Code = extUnit.Code ?? "",
                             ArabicName = extUnit.ArabicName,
                             ArabicUnitName = extUnit.ArabicUnitName ?? "",
@@ -259,7 +259,7 @@ namespace OperationalPlanMS.Services
                     }
                     else
                     {
-                        existing.ParentId = extUnit.ParentId == 0 ? null : extUnit.ParentId;
+                        existing.ParentId = extUnit.ParentId;
                         existing.Code = extUnit.Code ?? existing.Code;
                         existing.ArabicName = extUnit.ArabicName ?? existing.ArabicName;
                         existing.ArabicUnitName = extUnit.ArabicUnitName ?? existing.ArabicUnitName;
@@ -315,7 +315,7 @@ namespace OperationalPlanMS.Services
         /// <summary>
         /// جلب الوحدات الفرعية لوحدة معينة
         /// </summary>
-        public async Task<List<OrganizationalUnitDto>> GetLocalChildUnitsAsync(int parentId)
+        public async Task<List<OrganizationalUnitDto>> GetLocalChildUnitsAsync(Guid parentId)
         {
             var units = await _db.ExternalOrganizationalUnits
                 .Where(u => u.IsActive && u.ParentId == parentId)
@@ -449,26 +449,27 @@ namespace OperationalPlanMS.Services
         {
             _logger.LogInformation("Using mock organizational units data");
 
+            var t = Guid.Parse("00000000-0000-0000-0000-000000000001"); // Tenant
             return new List<ExternalOrganizationalUnitApi>
             {
                 // المستوى 1
-                new() { Id = 1, ParentId = 0, TenentId = 1, ArabicUnitName = "الإدارة العامة", Code = "001", ArabicName = "الإدارة العامة" },
-                new() { Id = 2, ParentId = 0, TenentId = 1, ArabicUnitName = "الشؤون المالية", Code = "002", ArabicName = "الشؤون المالية" },
-                new() { Id = 3, ParentId = 0, TenentId = 1, ArabicUnitName = "الموارد البشرية", Code = "003", ArabicName = "الموارد البشرية" },
+                new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000001"), ParentId = null, TenentId = t, ArabicUnitName = "الإدارة العامة", Code = "001", ArabicName = "الإدارة العامة" },
+                new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000002"), ParentId = null, TenentId = t, ArabicUnitName = "الشؤون المالية", Code = "002", ArabicName = "الشؤون المالية" },
+                new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000003"), ParentId = null, TenentId = t, ArabicUnitName = "الموارد البشرية", Code = "003", ArabicName = "الموارد البشرية" },
 
                 // المستوى 2
-                new() { Id = 4, ParentId = 1, TenentId = 1, ArabicUnitName = "مكتب المدير العام", Code = "001-01", ArabicName = "مكتب المدير العام" },
-                new() { Id = 5, ParentId = 1, TenentId = 1, ArabicUnitName = "إدارة التخطيط", Code = "001-02", ArabicName = "إدارة التخطيط" },
-                new() { Id = 6, ParentId = 2, TenentId = 1, ArabicUnitName = "قسم المحاسبة", Code = "002-01", ArabicName = "قسم المحاسبة" },
-                new() { Id = 7, ParentId = 2, TenentId = 1, ArabicUnitName = "قسم الميزانية", Code = "002-02", ArabicName = "قسم الميزانية" },
-                new() { Id = 8, ParentId = 3, TenentId = 1, ArabicUnitName = "قسم التوظيف", Code = "003-01", ArabicName = "قسم التوظيف" },
-                new() { Id = 9, ParentId = 3, TenentId = 1, ArabicUnitName = "قسم التدريب", Code = "003-02", ArabicName = "قسم التدريب" },
+                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000004"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000001"), TenentId = t, ArabicUnitName = "مكتب المدير العام", Code = "001-01", ArabicName = "مكتب المدير العام" },
+                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000005"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000001"), TenentId = t, ArabicUnitName = "إدارة التخطيط", Code = "001-02", ArabicName = "إدارة التخطيط" },
+                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000006"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000002"), TenentId = t, ArabicUnitName = "قسم المحاسبة", Code = "002-01", ArabicName = "قسم المحاسبة" },
+                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000007"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000002"), TenentId = t, ArabicUnitName = "قسم الميزانية", Code = "002-02", ArabicName = "قسم الميزانية" },
+                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000008"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000003"), TenentId = t, ArabicUnitName = "قسم التوظيف", Code = "003-01", ArabicName = "قسم التوظيف" },
+                new() { Id = Guid.Parse("20000000-0000-0000-0000-000000000009"), ParentId = Guid.Parse("10000000-0000-0000-0000-000000000003"), TenentId = t, ArabicUnitName = "قسم التدريب", Code = "003-02", ArabicName = "قسم التدريب" },
 
                 // المستوى 3
-                new() { Id = 10, ParentId = 5, TenentId = 1, ArabicUnitName = "وحدة المتابعة", Code = "001-02-01", ArabicName = "وحدة المتابعة" },
-                new() { Id = 11, ParentId = 5, TenentId = 1, ArabicUnitName = "وحدة التقييم", Code = "001-02-02", ArabicName = "وحدة التقييم" },
-                new() { Id = 12, ParentId = 6, TenentId = 1, ArabicUnitName = "شعبة الرواتب", Code = "002-01-01", ArabicName = "شعبة الرواتب" },
-                new() { Id = 13, ParentId = 8, TenentId = 1, ArabicUnitName = "شعبة الاستقطاب", Code = "003-01-01", ArabicName = "شعبة الاستقطاب" },
+                new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000010"), ParentId = Guid.Parse("20000000-0000-0000-0000-000000000005"), TenentId = t, ArabicUnitName = "وحدة المتابعة", Code = "001-02-01", ArabicName = "وحدة المتابعة" },
+                new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000011"), ParentId = Guid.Parse("20000000-0000-0000-0000-000000000005"), TenentId = t, ArabicUnitName = "وحدة التقييم", Code = "001-02-02", ArabicName = "وحدة التقييم" },
+                new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000012"), ParentId = Guid.Parse("20000000-0000-0000-0000-000000000006"), TenentId = t, ArabicUnitName = "شعبة الرواتب", Code = "002-01-01", ArabicName = "شعبة الرواتب" },
+                new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000013"), ParentId = Guid.Parse("20000000-0000-0000-0000-000000000008"), TenentId = t, ArabicUnitName = "شعبة الاستقطاب", Code = "003-01-01", ArabicName = "شعبة الاستقطاب" },
             };
         }
 
@@ -521,9 +522,9 @@ namespace OperationalPlanMS.Services
     /// </summary>
     public class ExternalOrganizationalUnitApi
     {
-        public int Id { get; set; }
-        public int? ParentId { get; set; }
-        public int TenentId { get; set; }
+        public Guid Id { get; set; }
+        public Guid? ParentId { get; set; }
+        public Guid TenentId { get; set; }
         public string? Code { get; set; }
         public string? ArabicName { get; set; }
         public string? ArabicUnitName { get; set; }

@@ -29,7 +29,7 @@ namespace OperationalPlanMS.Models.Entities
         /// <summary>
         /// معرف الوحدة من ExternalOrganizationalUnits
         /// </summary>
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         /// <summary>
         /// اسم الوحدة (للحفظ والعرض السريع)

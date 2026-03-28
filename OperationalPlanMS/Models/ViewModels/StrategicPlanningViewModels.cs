@@ -230,7 +230,7 @@ namespace OperationalPlanMS.Models.ViewModels
         /// معرف الوحدة من API
         /// </summary>
         [Display(Name = "الوحدة التنظيمية")]
-        public int? ExternalUnitId { get; set; }
+        public Guid? ExternalUnitId { get; set; }
 
         /// <summary>
         /// اسم الوحدة من API
