@@ -269,8 +269,8 @@
         border-radius: 12px;
         font-size: 14px;
         line-height: 1.6;
-        white-space: pre-wrap;
         word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     .chat-msg.user .chat-msg-content {
         background: linear-gradient(135deg, #0a1628 0%, #1a2744 100%);
@@ -364,6 +364,11 @@
         #chat-window { left: 8px; right: 8px; bottom: 80px; width: auto; height: 70vh; }
     }
 </style>
+
+<link rel="stylesheet" href="~/css/chat-markdown.css" />
+<script src="~/lib/marked/marked.min.js"></script>
+<script src="~/lib/chartjs/chart.umd.min.js"></script>
+<script src="~/js/chat-renderer.js"></script>
 
 <script>
 (function() {
@@ -620,11 +625,20 @@
                         if (data.token) {
                             assistantMsg += data.token;
                             if (!msgEl) msgEl = appendMessage('assistant', '');
+                            // During streaming: plain text for performance
                             msgEl.querySelector('.chat-msg-content').textContent = assistantMsg;
                             scrollToBottom();
                         }
                     } catch (e) { }
                 }
+            }
+
+            // After streaming: render markdown + charts
+            if (msgEl && assistantMsg) {
+                var contentEl = msgEl.querySelector('.chat-msg-content');
+                contentEl.innerHTML = ChatRenderer.renderMarkdown(assistantMsg);
+                ChatRenderer.processCharts(msgEl);
+                scrollToBottom();
             }
 
             if (assistantMsg) {
@@ -671,15 +685,17 @@
 
         var welcomeDiv = document.createElement('div');
         welcomeDiv.className = 'chat-msg assistant';
-        welcomeDiv.innerHTML = '<div class="chat-msg-content">' + escapeHtml(WELCOME_MSG) + '</div>';
+        welcomeDiv.innerHTML = '<div class="chat-msg-content">' + ChatRenderer.renderMarkdown(WELCOME_MSG) + '</div>';
         container.appendChild(welcomeDiv);
 
         for (var i = 0; i < displayHistory.length; i++) {
             var msg = displayHistory[i];
             var div = document.createElement('div');
             div.className = 'chat-msg ' + msg.role;
-            div.innerHTML = '<div class="chat-msg-content">' + escapeHtml(msg.content) + '</div>';
+            div.innerHTML = '<div class="chat-msg-content">' +
+                (msg.role === 'assistant' ? ChatRenderer.renderMarkdown(msg.content) : escapeHtml(msg.content)) + '</div>';
             container.appendChild(div);
+            if (msg.role === 'assistant') ChatRenderer.processCharts(div);
         }
         scrollToBottom();
     }
@@ -690,8 +706,10 @@
         var messages = document.getElementById('chat-messages');
         var div = document.createElement('div');
         div.className = 'chat-msg ' + role;
-        div.innerHTML = '<div class="chat-msg-content">' + escapeHtml(content) + '</div>';
+        div.innerHTML = '<div class="chat-msg-content">' +
+            (role === 'assistant' ? ChatRenderer.renderMarkdown(content) : escapeHtml(content)) + '</div>';
         messages.appendChild(div);
+        if (role === 'assistant') ChatRenderer.processCharts(div);
         scrollToBottom();
         return div;
     }

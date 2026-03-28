@@ -1,0 +1,266 @@
+/* ═══════════════════════════════════════════════════════════
+   chat-markdown.css — Markdown & Chart styling for OPMS Chat
+   Shared between /Chat page and _ChatWidget bubble
+   ═══════════════════════════════════════════════════════════ */
+
+/* ═══ Tables ═══ */
+.msg-content table,
+.chat-msg-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 13px;
+    direction: rtl;
+    background: var(--bg-card, #fff);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.msg-content table th,
+.chat-msg-content table th {
+    background: var(--primary, #2D4A22);
+    color: #fff;
+    padding: 8px 12px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.msg-content table td,
+.chat-msg-content table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    text-align: right;
+    color: var(--text-body, #333);
+}
+
+.msg-content table tr:last-child td,
+.chat-msg-content table tr:last-child td {
+    border-bottom: none;
+}
+
+.msg-content table tr:nth-child(even),
+.chat-msg-content table tr:nth-child(even) {
+    background: rgba(45, 74, 34, 0.04);
+}
+
+.msg-content table tr:hover td,
+.chat-msg-content table tr:hover td {
+    background: rgba(201, 168, 76, 0.08);
+}
+
+/* ═══ Headings ═══ */
+.msg-content h1, .msg-content h2, .msg-content h3,
+.msg-content h4, .msg-content h5, .msg-content h6,
+.chat-msg-content h1, .chat-msg-content h2, .chat-msg-content h3,
+.chat-msg-content h4, .chat-msg-content h5, .chat-msg-content h6 {
+    margin: 12px 0 6px;
+    color: var(--text-dark, #1a1a1a);
+    line-height: 1.4;
+}
+
+.msg-content h1, .chat-msg-content h1 { font-size: 18px; }
+.msg-content h2, .chat-msg-content h2 { font-size: 16px; }
+.msg-content h3, .chat-msg-content h3 { font-size: 15px; }
+.msg-content h4, .msg-content h5, .msg-content h6,
+.chat-msg-content h4, .chat-msg-content h5, .chat-msg-content h6 {
+    font-size: 14px;
+}
+
+/* ═══ Lists ═══ */
+.msg-content ul, .msg-content ol,
+.chat-msg-content ul, .chat-msg-content ol {
+    margin: 6px 0;
+    padding-right: 20px;
+    padding-left: 0;
+}
+
+.msg-content li, .chat-msg-content li {
+    margin-bottom: 4px;
+    line-height: 1.6;
+}
+
+.msg-content ul li::marker,
+.chat-msg-content ul li::marker {
+    color: var(--accent, #C9A84C);
+}
+
+/* ═══ Blockquote ═══ */
+.msg-content blockquote,
+.chat-msg-content blockquote {
+    border-right: 3px solid var(--accent, #C9A84C);
+    border-left: none;
+    margin: 8px 0;
+    padding: 8px 14px;
+    background: rgba(201, 168, 76, 0.06);
+    border-radius: 0 6px 6px 0;
+    color: var(--text-body, #555);
+    font-size: 13px;
+}
+
+/* ═══ Code ═══ */
+.msg-content code, .chat-msg-content code {
+    background: rgba(45, 74, 34, 0.08);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--primary, #2D4A22);
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.msg-content pre, .chat-msg-content pre {
+    background: #1a2744;
+    color: #e0e6f0;
+    padding: 12px 14px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 8px 0;
+    font-size: 12px;
+    direction: ltr;
+    text-align: left;
+}
+
+.msg-content pre code, .chat-msg-content pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+}
+
+/* ═══ Horizontal Rule ═══ */
+.msg-content hr, .chat-msg-content hr {
+    border: none;
+    border-top: 1px solid var(--border, #e5e7eb);
+    margin: 12px 0;
+}
+
+/* ═══ Links ═══ */
+.msg-content a, .chat-msg-content a {
+    color: var(--accent-dark, #b8941f);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--accent, #C9A84C);
+}
+
+.msg-content a:hover, .chat-msg-content a:hover {
+    color: var(--primary, #2D4A22);
+    border-bottom-style: solid;
+}
+
+/* ═══ Strong / Bold ═══ */
+.msg-content strong, .chat-msg-content strong {
+    font-weight: 700;
+    color: var(--text-dark, #1a1a1a);
+}
+
+/* ═══ Paragraphs ═══ */
+.msg-content p, .chat-msg-content p {
+    margin: 4px 0;
+    line-height: 1.7;
+}
+
+.msg-content p:first-child, .chat-msg-content p:first-child {
+    margin-top: 0;
+}
+
+.msg-content p:last-child, .chat-msg-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* ═══ Chart Container ═══ */
+.chat-chart-container {
+    margin: 10px 0;
+    padding: 12px;
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+    position: relative;
+    min-height: 180px;
+    max-width: 100%;
+}
+
+.chat-chart-container canvas {
+    max-height: 280px;
+    width: 100% !important;
+}
+
+.chat-chart-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    color: var(--text-muted, #999);
+}
+
+/* ═══ User message overrides ═══ */
+/* Tables inside user messages (dark bg) */
+.msg.user .msg-content table th,
+.chat-msg.user .chat-msg-content table th {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.msg.user .msg-content table td,
+.chat-msg.user .chat-msg-content table td {
+    border-bottom-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.msg.user .msg-content table tr:nth-child(even),
+.chat-msg.user .chat-msg-content table tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.msg.user .msg-content code,
+.chat-msg.user .chat-msg-content code {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.msg.user .msg-content strong,
+.chat-msg.user .chat-msg-content strong {
+    color: #fff;
+}
+
+.msg.user .msg-content a,
+.chat-msg.user .chat-msg-content a {
+    color: #e8d48c;
+}
+
+.msg.user .msg-content blockquote,
+.chat-msg.user .chat-msg-content blockquote {
+    border-right-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* ═══ Responsive — Widget small screens ═══ */
+.chat-msg-content table {
+    font-size: 12px;
+}
+
+.chat-msg-content table th,
+.chat-msg-content table td {
+    padding: 5px 8px;
+}
+
+.chat-chart-container canvas {
+    max-height: 220px;
+}
+
+/* ═══ Scrollable table wrapper for small containers ═══ */
+.msg-content .table-wrapper,
+.chat-msg-content .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 8px 0;
+}
+
+/* ═══ Dark mode tables in assistant bubble (border) ═══ */
+.msg.assistant .msg-content table,
+.chat-msg.assistant .chat-msg-content table {
+    border: 1px solid var(--border, #e5e7eb);
+}

@@ -28,7 +28,7 @@
 
     /* Legend */
     .legend-bar {
-        background: #f8f9fa;
+        background: var(--bg-page);
         border-radius: 10px;
         padding: 0.875rem 1.25rem;
         margin-bottom: 1.5rem;
@@ -40,7 +40,7 @@
 
         .legend-bar span {
             font-size: 0.85rem;
-            color: #666;
+            color: var(--text-muted);
         }
 
     .legend-item {
@@ -65,11 +65,11 @@
         }
 
         .legend-dot.green {
-            background: #27ae60;
+            background: var(--accent);
         }
 
         .legend-dot.teal {
-            background: #17a2b8;
+            background: #8B7355;
         }
 
     /* Level 1: Axis */
@@ -78,12 +78,12 @@
         border-radius: 14px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         margin-bottom: 1.5rem;
-        border: 2px solid var(--accent-dark);
+        border: 2px solid var(--primary);
         overflow: hidden;
     }
 
     .axis-header {
-        background: linear-gradient(135deg, var(--accent-dark), #8363d1);
+        background: linear-gradient(135deg, var(--bg-sidebar), var(--primary));
         color: white;
         padding: 1rem 1.25rem;
         display: flex;
@@ -106,6 +106,7 @@
     .axis-title {
         font-size: 1.1rem;
         font-weight: 600;
+        color: white;
         margin: 0;
     }
 
@@ -115,7 +116,7 @@
 
     /* Level 2: Strategic Objective */
     .strat-obj {
-        background: #f0f7ff;
+        background: #f0f5ed;
         border-radius: 10px;
         border-right: 4px solid var(--primary);
         margin-bottom: 1rem;
@@ -127,12 +128,12 @@
         }
 
     .strat-obj-header {
-        background: rgba(52, 152, 219, 0.12);
+        background: rgba(45, 74, 34, 0.08);
         padding: 0.75rem 1rem;
         display: flex;
         align-items: center;
         gap: 0.6rem;
-        border-bottom: 1px solid rgba(52, 152, 219, 0.15);
+        border-bottom: 1px solid rgba(45, 74, 34, 0.12);
     }
 
     .strat-obj-icon {
@@ -163,8 +164,8 @@
     .main-obj {
         background: white;
         border-radius: 8px;
-        border: 1px solid #d4edda;
-        border-right: 4px solid #27ae60;
+        border: 1px solid #f0e6cc;
+        border-right: 4px solid var(--accent);
         margin-bottom: 0.75rem;
         overflow: hidden;
     }
@@ -174,18 +175,18 @@
         }
 
     .main-obj-header {
-        background: #f0fff4;
+        background: #faf5eb;
         padding: 0.625rem 0.875rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        border-bottom: 1px solid #d4edda;
+        border-bottom: 1px solid #f0e6cc;
     }
 
     .main-obj-icon {
         width: 26px;
         height: 26px;
-        background: #27ae60;
+        background: var(--accent);
         border-radius: 6px;
         display: flex;
         align-items: center;
@@ -204,13 +205,13 @@
 
     .main-obj-body {
         padding: 0.75rem;
-        background: #fafffe;
+        background: #fdfaf5;
     }
 
     /* Level 4: Sub Objective */
     .sub-obj-label {
         font-size: 0.78rem;
-        color: #777;
+        color: var(--text-muted);
         margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
@@ -222,8 +223,8 @@
         align-items: flex-start;
         gap: 0.5rem;
         background: white;
-        border: 1px solid #e0e0e0;
-        border-right: 3px solid #17a2b8;
+        border: 1px solid var(--border);
+        border-right: 3px solid #8B7355;
         border-radius: 6px;
         padding: 0.5rem 0.625rem;
         margin-bottom: 0.4rem;
@@ -236,7 +237,7 @@
     .sub-obj-icon {
         width: 20px;
         height: 20px;
-        background: #17a2b8;
+        background: #8B7355;
         border-radius: 5px;
         display: flex;
         align-items: center;
@@ -253,7 +254,7 @@
 
     .sub-obj-name {
         font-size: 0.85rem;
-        color: #34495e;
+        color: var(--text-dark);
         margin-bottom: 0.2rem;
     }
 
@@ -261,15 +262,15 @@
         display: inline-flex;
         align-items: center;
         gap: 0.2rem;
-        background: #e3f2fd;
-        color: #1565c0;
+        background: #f0f5ed;
+        color: var(--primary);
         font-size: 0.7rem;
         padding: 0.15rem 0.4rem;
         border-radius: 4px;
     }
 
     .no-items {
-        color: #aaa;
+        color: var(--text-light);
         font-size: 0.85rem;
         font-style: italic;
         padding: 0.5rem;
@@ -278,7 +279,7 @@
     .empty-state {
         text-align: center;
         padding: 3rem;
-        color: #aaa;
+        color: var(--text-light);
     }
 
         .empty-state i {

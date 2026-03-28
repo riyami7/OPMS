@@ -61,6 +61,7 @@
         }
 
         .org-card-header h3 {
+            color: white;
             margin: 0;
             font-size: 1.2rem;
             font-weight: 600;
@@ -89,13 +90,13 @@
     }
 
         .vm-box.vision {
-            background: linear-gradient(135deg, #e8f0e5, #f0f8ff);
+            background: linear-gradient(135deg, #e8efe5, #f0f5ed);
             border-color: var(--primary);
         }
 
         .vm-box.mission {
-            background: linear-gradient(135deg, #e8f8ed, #f0fff4);
-            border-color: #27ae60;
+            background: linear-gradient(135deg, #faf5eb, #fdf8f0);
+            border-color: var(--accent);
         }
 
         .vm-box h4 {
@@ -112,20 +113,20 @@
         }
 
         .vm-box.mission h4 {
-            color: #27ae60;
+            color: var(--accent-dark);
         }
 
         .vm-box p {
-            color: #555;
+            color: var(--text-body);
             line-height: 1.8;
             margin: 0;
         }
 
         .vm-box.empty {
-            background: #f8f9fa;
-            border-color: #dee2e6;
+            background: var(--bg-page);
+            border-color: var(--border);
             text-align: center;
-            color: #999;
+            color: var(--text-light);
         }
 
     /* Units Section */
@@ -149,7 +150,7 @@
         }
 
     .unit-card-header {
-        background: linear-gradient(135deg, var(--accent-dark), #8363d1);
+        background: linear-gradient(135deg, var(--bg-sidebar), var(--primary));
         color: white;
         padding: 1rem 1.25rem;
         display: flex;
@@ -162,6 +163,7 @@
         }
 
         .unit-card-header h4 {
+            color: white;
             margin: 0;
             font-size: 1rem;
             font-weight: 600;
@@ -183,13 +185,13 @@
         }
 
         .unit-vm.vision {
-            background: #f0f8ff;
+            background: #f0f5ed;
             border-color: var(--primary);
         }
 
         .unit-vm.mission {
-            background: #f0fff4;
-            border-color: #27ae60;
+            background: #faf5eb;
+            border-color: var(--accent);
         }
 
         .unit-vm h5 {
@@ -206,12 +208,12 @@
         }
 
         .unit-vm.mission h5 {
-            color: #27ae60;
+            color: var(--accent-dark);
         }
 
         .unit-vm p {
             font-size: 0.9rem;
-            color: #555;
+            color: var(--text-body);
             line-height: 1.7;
             margin: 0;
         }
@@ -219,7 +221,7 @@
     .no-data {
         text-align: center;
         padding: 3rem;
-        color: #999;
+        color: var(--text-light);
     }
 
         .no-data i {

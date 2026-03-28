@@ -23,14 +23,14 @@
     }
 
     .page-header h2 i {
-        color: var(--danger);
+        color: var(--primary);
     }
 
     .intro-text {
         text-align: center;
         max-width: 700px;
         margin: 0 auto 2rem;
-        color: #666;
+        color: var(--text-muted);
         font-size: 1.05rem;
         line-height: 1.8;
     }
@@ -59,7 +59,7 @@
         left: 0;
         right: 0;
         height: 5px;
-        background: linear-gradient(90deg, var(--danger), #c0392b);
+        background: linear-gradient(90deg, var(--primary), var(--primary-light));
     }
 
     .value-card:hover {
@@ -70,7 +70,7 @@
     .value-icon {
         width: 80px;
         height: 80px;
-        background: linear-gradient(135deg, #fff0f0, #ffe0e0);
+        background: linear-gradient(135deg, #f0f5ed, #e8efe5);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -80,7 +80,7 @@
 
     .value-icon i {
         font-size: 2rem;
-        color: var(--danger);
+        color: var(--primary);
     }
 
     .value-card h3 {
@@ -91,7 +91,7 @@
     }
 
     .value-card p {
-        color: #666;
+        color: var(--text-muted);
         font-size: 0.95rem;
         line-height: 1.7;
         margin: 0;
@@ -103,20 +103,20 @@
         left: 1rem;
         width: 30px;
         height: 30px;
-        background: #f8f9fa;
+        background: var(--bg-page);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 0.85rem;
         font-weight: 700;
-        color: var(--danger);
+        color: var(--primary);
     }
 
     .empty-state {
         text-align: center;
         padding: 4rem;
-        color: #aaa;
+        color: var(--text-light);
     }
 
     .empty-state i {

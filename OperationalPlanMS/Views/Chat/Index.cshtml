@@ -92,6 +92,10 @@
 </div>
 
 @section Scripts {
+<link rel="stylesheet" href="~/css/chat-markdown.css" />
+<script src="~/lib/marked/marked.min.js"></script>
+<script src="~/lib/chartjs/chart.umd.min.js"></script>
+<script src="~/js/chat-renderer.js"></script>
 <script>
 (function() {
     'use strict';
@@ -381,11 +385,20 @@
                         if (data.token) {
                             assistantMsg += data.token;
                             if (!msgEl) msgEl = appendPageMessage('assistant', '');
+                            // During streaming: show plain text for performance
                             msgEl.querySelector('.msg-content').textContent = assistantMsg;
                             scrollToBottom();
                         }
                     } catch (e) {}
                 }
+            }
+
+            // After streaming completes: render markdown + charts
+            if (msgEl && assistantMsg) {
+                var contentEl = msgEl.querySelector('.msg-content');
+                contentEl.innerHTML = ChatRenderer.renderMarkdown(assistantMsg);
+                ChatRenderer.processCharts(msgEl);
+                scrollToBottom();
             }
 
             // Refresh sidebar if new conversation was created
@@ -428,8 +441,10 @@
             ? '<div class="msg-avatar"><i class="bi bi-person-fill"></i></div>'
             : '<div class="msg-avatar ai"><i class="bi bi-robot"></i></div>';
 
-        div.innerHTML = icon + '<div class="msg-bubble"><div class="msg-content">' + escapeHtml(content) + '</div></div>';
+        div.innerHTML = icon + '<div class="msg-bubble"><div class="msg-content">' +
+            (role === 'assistant' ? ChatRenderer.renderMarkdown(content) : escapeHtml(content)) + '</div></div>';
         container.appendChild(div);
+        if (role === 'assistant') ChatRenderer.processCharts(div);
         scrollToBottom();
         return div;
     }
@@ -846,8 +861,8 @@
     border-radius: var(--radius-md);
     font-size: 14px;
     line-height: 1.7;
-    white-space: pre-wrap;
     word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 .msg.user .msg-bubble {
     background: var(--primary);
