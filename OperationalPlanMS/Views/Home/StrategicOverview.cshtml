@@ -6,7 +6,7 @@
 
 <style>
     .hero-section {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
         color: white;
         padding: 3rem 2rem;
         border-radius: 20px;
@@ -18,6 +18,7 @@
         font-size: 2.2rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
+        color: white;
     }
 
     .hero-section p {
@@ -61,27 +62,27 @@
     }
 
     .nav-card.vision-mission {
-        border-top: 5px solid #3498db;
+        border-top: 5px solid var(--primary);
     }
 
     .nav-card.vision-mission:hover {
-        border-color: #3498db;
+        border-color: var(--primary);
     }
 
     .nav-card.objectives {
-        border-top: 5px solid #6f42c1;
+        border-top: 5px solid var(--accent);
     }
 
     .nav-card.objectives:hover {
-        border-color: #6f42c1;
+        border-color: var(--accent);
     }
 
     .nav-card.values {
-        border-top: 5px solid #e74c3c;
+        border-top: 5px solid #8B7355;
     }
 
     .nav-card.values:hover {
-        border-color: #e74c3c;
+        border-color: #8B7355;
     }
 
     .nav-card .card-icon {
@@ -95,34 +96,34 @@
     }
 
     .nav-card.vision-mission .card-icon {
-        background: linear-gradient(135deg, #e8f4fc, #d0ebff);
+        background: linear-gradient(135deg, #e8f0e5, #d0e5c8);
     }
 
     .nav-card.objectives .card-icon {
-        background: linear-gradient(135deg, #f3e8ff, #e5d0ff);
+        background: linear-gradient(135deg, #fdf5e6, #f5e6c8);
     }
 
     .nav-card.values .card-icon {
-        background: linear-gradient(135deg, #ffe8e8, #ffd0d0);
+        background: linear-gradient(135deg, #f0ebe4, #e5ddd2);
     }
 
     .nav-card .card-icon i {
         font-size: 2.2rem;
     }
 
-    .nav-card.vision-mission .card-icon i { color: #3498db; }
-    .nav-card.objectives .card-icon i { color: #6f42c1; }
-    .nav-card.values .card-icon i { color: #e74c3c; }
+    .nav-card.vision-mission .card-icon i { color: var(--primary); }
+    .nav-card.objectives .card-icon i { color: var(--accent-dark); }
+    .nav-card.values .card-icon i { color: #8B7355; }
 
     .nav-card h3 {
         font-size: 1.3rem;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--text-dark);
         margin-bottom: 0.5rem;
     }
 
     .nav-card p {
-        color: #7f8c8d;
+        color: var(--text-muted);
         font-size: 0.95rem;
         margin-bottom: 1rem;
     }
@@ -140,12 +141,12 @@
     .nav-card .stat .num {
         font-size: 1.5rem;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--text-dark);
     }
 
     .nav-card .stat .lbl {
         font-size: 0.75rem;
-        color: #95a5a6;
+        color: var(--text-muted);
     }
 
     .nav-card .btn-view {
@@ -156,19 +157,19 @@
     }
 
     .nav-card.vision-mission .btn-view {
-        background: #3498db;
+        background: var(--primary);
         color: white;
         border: none;
     }
 
     .nav-card.objectives .btn-view {
-        background: #6f42c1;
+        background: var(--accent-dark);
         color: white;
         border: none;
     }
 
     .nav-card.values .btn-view {
-        background: #e74c3c;
+        background: #8B7355;
         color: white;
         border: none;
     }
@@ -183,7 +184,7 @@
 
     .quick-stats h5 {
         font-size: 1rem;
-        color: #7f8c8d;
+        color: var(--text-muted);
         margin-bottom: 1rem;
         text-align: center;
     }
@@ -208,12 +209,12 @@
     .stat-item .number {
         font-size: 1.75rem;
         font-weight: 700;
-        color: #6f42c1;
+        color: var(--primary);
     }
 
     .stat-item .label {
         font-size: 0.8rem;
-        color: #7f8c8d;
+        color: var(--text-muted);
         margin-top: 0.25rem;
     }
 </style>

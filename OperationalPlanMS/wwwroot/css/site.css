@@ -957,6 +957,11 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden;
 }
 
+    .welcome-banner h3,
+    .welcome-banner p {
+        color: white;
+    }
+
     .welcome-banner::before {
         content: '';
         position: absolute;
@@ -989,6 +994,14 @@ h1, h2, h3, h4, h5, h6 {
     color: white;
     margin-bottom: 1.5rem;
 }
+
+    .executive-header h1,
+    .executive-header h2,
+    .executive-header h3,
+    .executive-header h4,
+    .executive-header p {
+        color: white;
+    }
 
 .kpi-card {
     border: 1px solid var(--border);
