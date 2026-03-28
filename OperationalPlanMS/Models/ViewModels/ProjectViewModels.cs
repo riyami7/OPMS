@@ -139,6 +139,25 @@ namespace OperationalPlanMS.Models.ViewModels
         /// </summary>
         public string? ProjectManagerRank { get; set; }
 
+        // ======= مساعد مدير المشروع (جديد - اختياري) =======
+
+        /// <summary>
+        /// رقم مساعد مدير المشروع (من API)
+        /// </summary>
+        [Display(Name = "رقم مساعد مدير المشروع")]
+        public string? DeputyManagerEmpNumber { get; set; }
+
+        /// <summary>
+        /// اسم مساعد مدير المشروع (للعرض)
+        /// </summary>
+        [Display(Name = "مساعد مدير المشروع")]
+        public string? DeputyManagerName { get; set; }
+
+        /// <summary>
+        /// رتبة مساعد مدير المشروع
+        /// </summary>
+        public string? DeputyManagerRank { get; set; }
+
         // ======= الأهداف الفرعية (multi-select) =======
 
         /// <summary>
@@ -180,7 +199,7 @@ namespace OperationalPlanMS.Models.ViewModels
         public List<int> SupportingEntityIds { get; set; } = new();
 
         /// <summary>
-        /// الجهات المساندة مع الممثلين (جديد) - من API
+        /// الجهات المساندة مع الممثلين (متعددين) - من API
         /// </summary>
         [Display(Name = "الجهات المساندة")]
         public List<SupportingEntityWithRepViewModel> SupportingEntitiesWithReps { get; set; } = new();
@@ -254,6 +273,9 @@ namespace OperationalPlanMS.Models.ViewModels
                 ProjectManagerEmpNumber = entity.ProjectManagerEmpNumber,
                 ProjectManagerName = entity.ProjectManagerName,
                 ProjectManagerRank = entity.ProjectManagerRank,
+                DeputyManagerEmpNumber = entity.DeputyManagerEmpNumber,
+                DeputyManagerName = entity.DeputyManagerName,
+                DeputyManagerRank = entity.DeputyManagerRank,
                 SubObjectiveIds = entity.ProjectSubObjectives?.Select(ps => ps.SubObjectiveId).ToList() ?? new List<int>(),
                 FinancialCostId = entity.FinancialCostId
             };
@@ -282,26 +304,41 @@ namespace OperationalPlanMS.Models.ViewModels
                     .ToList();
             }
 
-            // تحميل جهات المساندة (القديم والجديد)
+            // تحميل جهات المساندة مع ممثلين متعددين
             if (entity.SupportingUnits != null && entity.SupportingUnits.Any())
             {
-               
                 // النظام القديم - فقط الجهات المحلية (SupportingEntityId > 0)
                 vm.SupportingEntityIds = entity.SupportingUnits
                     .Where(s => s.SupportingEntityId.HasValue && s.SupportingEntityId.Value > 0)
                     .Select(s => s.SupportingEntityId!.Value)
                     .ToList();
 
-                // النظام الجديد مع الممثلين
+                // النظام الجديد مع ممثلين متعددين
                 vm.SupportingEntitiesWithReps = entity.SupportingUnits
                     .Select(s => new SupportingEntityWithRepViewModel
                     {
                         SupportingEntityId = s.SupportingEntityId > 0 ? s.SupportingEntityId : null,
                         ExternalUnitId = s.ExternalUnitId,
                         UnitName = s.ExternalUnitName ?? s.SupportingEntity?.NameAr ?? "",
-                        RepresentativeEmpNumber = s.RepresentativeEmpNumber,
-                        RepresentativeName = s.RepresentativeName,
-                        RepresentativeRank = s.RepresentativeRank
+                        Representatives = s.Representatives != null && s.Representatives.Any()
+                            ? s.Representatives.OrderBy(r => r.OrderIndex).Select(r => new RepresentativeViewModel
+                            {
+                                EmpNumber = r.EmpNumber,
+                                Name = r.Name,
+                                Rank = r.Rank
+                            }).ToList()
+                            // Backward compat: إذا ما فيه ممثلين في الجدول الجديد، جرّب القديم
+                            : (!string.IsNullOrEmpty(s.RepresentativeEmpNumber)
+                                ? new List<RepresentativeViewModel>
+                                {
+                                    new()
+                                    {
+                                        EmpNumber = s.RepresentativeEmpNumber!,
+                                        Name = s.RepresentativeName ?? "",
+                                        Rank = s.RepresentativeRank
+                                    }
+                                }
+                                : new List<RepresentativeViewModel>())
                     })
                     .ToList();
             }
@@ -353,6 +390,9 @@ namespace OperationalPlanMS.Models.ViewModels
             entity.ProjectManagerEmpNumber = ProjectManagerEmpNumber;
             entity.ProjectManagerName = ProjectManagerName;
             entity.ProjectManagerRank = ProjectManagerRank;
+            entity.DeputyManagerEmpNumber = DeputyManagerEmpNumber;
+            entity.DeputyManagerName = DeputyManagerName;
+            entity.DeputyManagerRank = DeputyManagerRank;
             // SubObjectives handled separately in Service (many-to-many)
             entity.SubObjectiveId = SubObjectiveIds.FirstOrDefault(); // backward compat
             entity.FinancialCostId = FinancialCostId;
@@ -365,7 +405,7 @@ namespace OperationalPlanMS.Models.ViewModels
     }
 
     /// <summary>
-    /// جهة مساندة مع ممثلها (جديد)
+    /// جهة مساندة مع ممثليها (متعددين)
     /// </summary>
     public class SupportingEntityWithRepViewModel
     {
@@ -385,19 +425,37 @@ namespace OperationalPlanMS.Models.ViewModels
         public string UnitName { get; set; } = string.Empty;
 
         /// <summary>
-        /// رقم ممثل الجهة (من API) - اختياري
+        /// ممثلو الجهة (متعددين)
         /// </summary>
-        public string? RepresentativeEmpNumber { get; set; }
+        public List<RepresentativeViewModel> Representatives { get; set; } = new();
+    }
+
+    /// <summary>
+    /// بيانات ممثل واحد
+    /// </summary>
+    public class RepresentativeViewModel
+    {
+        /// <summary>
+        /// رقم الموظف
+        /// </summary>
+        public string EmpNumber { get; set; } = string.Empty;
 
         /// <summary>
-        /// اسم ممثل الجهة
+        /// اسم الممثل
         /// </summary>
-        public string? RepresentativeName { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
-        /// رتبة ممثل الجهة
+        /// رتبة الممثل
         /// </summary>
-        public string? RepresentativeRank { get; set; }
+        public string? Rank { get; set; }
+
+        /// <summary>
+        /// الاسم الكامل
+        /// </summary>
+        public string FullName => !string.IsNullOrEmpty(Rank)
+            ? $"{Rank} {Name}".Trim()
+            : Name;
     }
 
     /// <summary>
@@ -487,7 +545,7 @@ namespace OperationalPlanMS.Models.ViewModels
     }
 
     /// <summary>
-    /// عنصر عرض جهة مساندة
+    /// عنصر عرض جهة مساندة مع ممثلين متعددين
     /// </summary>
     public class SupportingEntityDisplayItem
     {
@@ -495,17 +553,44 @@ namespace OperationalPlanMS.Models.ViewModels
         public string NameAr { get; set; } = string.Empty;
         public string NameEn { get; set; } = string.Empty;
 
-        // الحقول الجديدة
+        /// <summary>
+        /// ممثلو الجهة (متعددين)
+        /// </summary>
+        public List<RepresentativeViewModel> Representatives { get; set; } = new();
+
+        // ===== Backward compat (القديم) =====
         public string? RepresentativeEmpNumber { get; set; }
         public string? RepresentativeName { get; set; }
         public string? RepresentativeRank { get; set; }
 
         /// <summary>
-        /// الاسم الكامل للممثل
+        /// [مهمل] الاسم الكامل للممثل القديم
         /// </summary>
         public string? RepresentativeFullName => 
             string.IsNullOrEmpty(RepresentativeName) ? null : 
             $"{RepresentativeRank} {RepresentativeName}".Trim();
+
+        /// <summary>
+        /// كل الممثلين (الجديد + القديم كـ fallback)
+        /// </summary>
+        public List<RepresentativeViewModel> AllRepresentatives
+        {
+            get
+            {
+                if (Representatives.Any()) return Representatives;
+                if (!string.IsNullOrEmpty(RepresentativeEmpNumber))
+                    return new List<RepresentativeViewModel>
+                    {
+                        new()
+                        {
+                            EmpNumber = RepresentativeEmpNumber!,
+                            Name = RepresentativeName ?? "",
+                            Rank = RepresentativeRank
+                        }
+                    };
+                return new();
+            }
+        }
     }
 
     /// <summary>

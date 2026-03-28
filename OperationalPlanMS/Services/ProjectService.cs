@@ -140,17 +140,31 @@ namespace OperationalPlanMS.Services
 
             var requirements = await _db.ProjectRequirements.Where(r => r.ProjectId == id).OrderBy(r => r.OrderIndex).ToListAsync();
             var kpis = await _db.ProjectKPIs.Where(k => k.ProjectId == id).OrderBy(k => k.OrderIndex).ToListAsync();
-            var supportingEntities = await _db.ProjectSupportingUnits.Where(s => s.ProjectId == id)
+
+            // جهات المساندة مع الممثلين المتعددين
+            var supportingUnits = await _db.ProjectSupportingUnits
+                .Where(s => s.ProjectId == id)
                 .Include(s => s.SupportingEntity)
-                .Select(s => new SupportingEntityDisplayItem
+                .Include(s => s.Representatives)
+                .ToListAsync();
+
+            var supportingEntities = supportingUnits.Select(s => new SupportingEntityDisplayItem
+            {
+                Id = s.SupportingEntityId > 0 ? s.SupportingEntity!.Id : (s.ExternalUnitId ?? 0),
+                NameAr = s.ExternalUnitName ?? s.SupportingEntity?.NameAr ?? "",
+                NameEn = s.SupportingEntity != null ? s.SupportingEntity.NameEn ?? "" : "",
+                // ممثلين متعددين (جديد)
+                Representatives = s.Representatives.OrderBy(r => r.OrderIndex).Select(r => new RepresentativeViewModel
                 {
-                    Id = s.SupportingEntityId > 0 ? s.SupportingEntity!.Id : (s.ExternalUnitId ?? 0),
-                    NameAr = s.ExternalUnitName ?? s.SupportingEntity!.NameAr ?? "",
-                    NameEn = s.SupportingEntity != null ? s.SupportingEntity.NameEn ?? "" : "",
-                    RepresentativeEmpNumber = s.RepresentativeEmpNumber,
-                    RepresentativeName = s.RepresentativeName,
-                    RepresentativeRank = s.RepresentativeRank
-                }).ToListAsync();
+                    EmpNumber = r.EmpNumber,
+                    Name = r.Name,
+                    Rank = r.Rank
+                }).ToList(),
+                // القديم (backward compat)
+                RepresentativeEmpNumber = s.RepresentativeEmpNumber,
+                RepresentativeName = s.RepresentativeName,
+                RepresentativeRank = s.RepresentativeRank
+            }).ToList();
 
             var yearTargets = await _db.ProjectYearTargets.Where(y => y.ProjectId == id).OrderBy(y => y.Year).ToListAsync();
             var yearTargetDisplayItems = yearTargets.Select(y => new YearTargetDisplayItem
@@ -216,6 +230,7 @@ namespace OperationalPlanMS.Services
                 .Include(p => p.Requirements.OrderBy(r => r.OrderIndex))
                 .Include(p => p.ProjectKPIs.OrderBy(k => k.OrderIndex))
                 .Include(p => p.SupportingUnits).ThenInclude(s => s.SupportingEntity)
+                .Include(p => p.SupportingUnits).ThenInclude(s => s.Representatives)
                 .Include(p => p.YearTargets.OrderBy(y => y.Year))
                 .Include(p => p.ProjectSubObjectives)
                 .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
@@ -276,9 +291,18 @@ namespace OperationalPlanMS.Services
             await _db.SaveChangesAsync();
 
             // حذف البيانات القديمة وإعادة حفظها
+            // الممثلين يُحذفون تلقائياً مع الجهات المساندة (Cascade)
             _db.ProjectRequirements.RemoveRange(await _db.ProjectRequirements.Where(r => r.ProjectId == id).ToListAsync());
             _db.ProjectKPIs.RemoveRange(await _db.ProjectKPIs.Where(k => k.ProjectId == id).ToListAsync());
-            _db.ProjectSupportingUnits.RemoveRange(await _db.ProjectSupportingUnits.Where(s => s.ProjectId == id).ToListAsync());
+
+            // حذف الممثلين أولاً ثم الجهات المساندة
+            var existingUnits = await _db.ProjectSupportingUnits.Where(s => s.ProjectId == id).Include(s => s.Representatives).ToListAsync();
+            foreach (var unit in existingUnits)
+            {
+                _db.SupportingUnitRepresentatives.RemoveRange(unit.Representatives);
+            }
+            _db.ProjectSupportingUnits.RemoveRange(existingUnits);
+
             _db.ProjectYearTargets.RemoveRange(await _db.ProjectYearTargets.Where(y => y.ProjectId == id).ToListAsync());
             _db.ProjectSubObjectives.RemoveRange(await _db.ProjectSubObjectives.Where(ps => ps.ProjectId == id).ToListAsync());
             await _db.SaveChangesAsync();
@@ -494,16 +518,44 @@ namespace OperationalPlanMS.Services
                     .Select((k, i) => new ProjectKPI { ProjectId = projectId, KPIText = k.KPIText.Trim(), TargetValue = k.TargetValue?.Trim(), ActualValue = k.ActualValue?.Trim(), OrderIndex = i, CreatedAt = DateTime.Now }).ToList();
                 if (entities.Any()) { _db.ProjectKPIs.AddRange(entities); await _db.SaveChangesAsync(); }
             }
-            // Supporting Entities
+            // Supporting Entities مع ممثلين متعددين
             if (model.SupportingEntitiesWithReps?.Any() == true)
             {
-                var units = model.SupportingEntitiesWithReps.Select(e => new ProjectSupportingUnit
+                foreach (var entityVm in model.SupportingEntitiesWithReps)
                 {
-                    ProjectId = projectId, ExternalUnitId = e.ExternalUnitId, ExternalUnitName = e.UnitName,
-                    RepresentativeEmpNumber = e.RepresentativeEmpNumber, RepresentativeName = e.RepresentativeName,
-                    RepresentativeRank = e.RepresentativeRank, CreatedAt = DateTime.Now
-                }).ToList();
-                if (units.Any()) { _db.ProjectSupportingUnits.AddRange(units); await _db.SaveChangesAsync(); }
+                    var unit = new ProjectSupportingUnit
+                    {
+                        ProjectId = projectId,
+                        ExternalUnitId = entityVm.ExternalUnitId,
+                        ExternalUnitName = entityVm.UnitName,
+                        CreatedAt = DateTime.Now
+                    };
+
+                    _db.ProjectSupportingUnits.Add(unit);
+                    await _db.SaveChangesAsync(); // حفظ عشان ناخذ الـ Id
+
+                    // حفظ الممثلين المتعددين
+                    if (entityVm.Representatives?.Any() == true)
+                    {
+                        var reps = entityVm.Representatives
+                            .Where(r => !string.IsNullOrWhiteSpace(r.EmpNumber))
+                            .Select((r, i) => new SupportingUnitRepresentative
+                            {
+                                ProjectSupportingUnitId = unit.Id,
+                                EmpNumber = r.EmpNumber,
+                                Name = r.Name,
+                                Rank = r.Rank,
+                                OrderIndex = i,
+                                CreatedAt = DateTime.Now
+                            }).ToList();
+
+                        if (reps.Any())
+                        {
+                            _db.SupportingUnitRepresentatives.AddRange(reps);
+                            await _db.SaveChangesAsync();
+                        }
+                    }
+                }
             }
             // Year Targets
             if (model.YearTargets?.Any() == true)

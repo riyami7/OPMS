@@ -1484,3 +1484,84 @@ html {
 .card-header i.bi {
     margin-left: 6px;
 }
+
+
+
+/* ممثل صغير في قائمة الممثلين المتعددين */
+.selected-employee.small-employee {
+    padding: 4px 8px;
+    font-size: 0.85rem;
+}
+
+    .selected-employee.small-employee .fw-bold {
+        font-size: 0.85rem;
+    }
+
+    .selected-employee.small-employee small {
+        font-size: 0.75rem;
+    }
+
+/* عنصر بحث الممثلين المعطّل (مضاف مسبقاً) */
+.search-dropdown .item.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    background-color: #f8f9fa;
+}
+
+/* حاوية الممثلين في صفحة التفاصيل */
+.rep-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #e8f4f8;
+    border: 1px solid #bee5eb;
+    font-size: 0.82rem;
+    margin: 2px;
+}
+
+    .rep-badge .bi {
+        font-size: 0.75rem;
+        opacity: 0.6;
+    }
+
+
+* ممثل صغير في قائمة الممثلين المتعددين */
+.selected-employee.small-employee {
+    padding: 4px 8px;
+    font-size: 0.85rem;
+}
+
+.selected-employee.small-employee .fw-bold {
+    font-size: 0.85rem;
+}
+
+.selected-employee.small-employee small {
+    font-size: 0.75rem;
+}
+
+/* عنصر بحث الممثلين المعطّل (مضاف مسبقاً) */
+.search-dropdown .item.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    background-color: #f8f9fa;
+}
+
+/* حاوية الممثلين في صفحة التفاصيل */
+.rep-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #e8f4f8;
+    border: 1px solid #bee5eb;
+    font-size: 0.82rem;
+    margin: 2px;
+}
+
+    .rep-badge .bi {
+        font-size: 0.75rem;
+        opacity: 0.6;
+    }

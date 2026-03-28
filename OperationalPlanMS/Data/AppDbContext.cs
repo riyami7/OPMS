@@ -38,6 +38,8 @@ namespace OperationalPlanMS.Data
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<InitiativeAccess> InitiativeAccess { get; set; }
         public DbSet<ProjectSubObjective> ProjectSubObjectives { get; set; }
+        public DbSet<SupportingUnitRepresentative> SupportingUnitRepresentatives { get; set; }
+
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -446,6 +448,17 @@ namespace OperationalPlanMS.Data
                     .WithMany()
                     .HasForeignKey(e => e.SubObjectiveId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // SupportingUnitRepresentative (ممثلين متعددين)
+            modelBuilder.Entity<SupportingUnitRepresentative>(entity =>
+            {
+                entity.HasOne(e => e.ProjectSupportingUnit)
+                    .WithMany(s => s.Representatives)
+                    .HasForeignKey(e => e.ProjectSupportingUnitId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.ProjectSupportingUnitId, e.EmpNumber }).IsUnique();
             });
         }
     }

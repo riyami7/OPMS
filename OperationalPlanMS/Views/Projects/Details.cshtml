@@ -110,7 +110,7 @@
             </div>
         </div>
     </div>
-    <!-- مدير المشروع -->
+    <!-- مدير المشروع ومساعده -->
     <div class="col-md-3 col-6">
         <div class="card h-100 text-center" style="border-top: 3px solid var(--text-light);">
             <div class="card-body py-3">
@@ -131,6 +131,14 @@
                     <div style="font-size:.9rem; color:var(--text-muted);">غير معين</div>
                 }
                 <div class="text-muted mt-1" style="font-size:.8rem;">مدير المشروع</div>
+
+                @if (!string.IsNullOrEmpty(Model.Project.DeputyManagerName))
+                {
+                    <hr class="my-2" style="opacity:.2;">
+                    <div style="font-size:.82rem; font-weight:600; color:var(--text-dark); line-height:1.3;">@Model.Project.DeputyManagerRank @Model.Project.DeputyManagerName</div>
+                    <small class="text-muted">@Model.Project.DeputyManagerEmpNumber</small>
+                    <div class="text-muted mt-1" style="font-size:.75rem;">مساعد مدير المشروع</div>
+                }
             </div>
         </div>
     </div>
@@ -590,7 +598,6 @@
             </div>
         </div>
 
-        <!-- Supporting Units الجهات المساندة -->
         @if (Model.SupportingEntities != null && Model.SupportingEntities.Any())
         {
             <div class="card mb-4">
@@ -614,16 +621,25 @@
                                         }
                                     </div>
                                 </div>
-                                @if (!string.IsNullOrEmpty(unit.RepresentativeName))
+                                @{
+                                    var reps = unit.AllRepresentatives;
+                                }
+                                @if (reps.Any())
                                 {
-                                    <div class="mt-2 ms-4 p-2 bg-light rounded">
-                                        <small class="text-muted d-block">ممثل الجهة:</small>
-                                        <span class="fw-bold">@unit.RepresentativeRank @unit.RepresentativeName</span>
-                                        @if (!string.IsNullOrEmpty(unit.RepresentativeEmpNumber))
-                                        {
-                                            <br>
-                                            <small class="text-muted">@unit.RepresentativeEmpNumber</small>
-                                        }
+                                    <div class="mt-2">
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="bi bi-people me-1"></i>ممثلو الجهة (@reps.Count):
+                                        </small>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var rep in reps)
+                                            {
+                                                <span class="rep-badge" title="@rep.EmpNumber">
+                                                    <i class="bi bi-person"></i>
+                                                    @rep.FullName
+                                                    <small class="text-muted">(@rep.EmpNumber)</small>
+                                                </span>
+                                            }
+                                        </div>
                                     </div>
                                 }
                             </li>
@@ -678,6 +694,17 @@
                         <tr>
                             <td class="text-muted">رقم المشروع</td>
                             <td class="text-end"><span class="badge bg-secondary">@Model.Project.ProjectNumber</span></td>
+                        </tr>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.Project.DeputyManagerName))
+                    {
+                        <tr>
+                            <td class="text-muted">مساعد مدير المشروع</td>
+                            <td class="text-end">
+                                @Model.Project.DeputyManagerRank @Model.Project.DeputyManagerName
+                                <br><small class="text-muted">@Model.Project.DeputyManagerEmpNumber</small>
+                            </td>
                         </tr>
                     }
                     @if (!string.IsNullOrEmpty(Model.Project.ExternalUnitName))

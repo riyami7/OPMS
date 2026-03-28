@@ -7,7 +7,7 @@
  *   window.ProjectFormConfig = {
  *       requirementIndex: number,
  *       kpiIndex: number,
- *       supportingEntities: array,
+ *       supportingEntities: array,  // each with .representatives[] array
  *       existingYearTargets: array,
  *       savedExternalUnitId: number,
  *       savedSubObjectiveIds: array  // [] for Create
@@ -20,7 +20,16 @@
     const config = window.ProjectFormConfig || {};
     let requirementIndex = config.requirementIndex || 0;
     let kpiIndex = config.kpiIndex || 0;
-    let supportingEntities = config.supportingEntities || [];
+    let supportingEntities = (config.supportingEntities || []).map(e => ({
+        externalUnitId: e.externalUnitId,
+        unitName: e.unitName,
+        // تحويل من النظام القديم للجديد
+        representatives: e.representatives && e.representatives.length > 0
+            ? e.representatives.map(r => ({ empNumber: r.empNumber, name: r.name, rank: r.rank }))
+            : (e.representativeEmpNumber
+                ? [{ empNumber: e.representativeEmpNumber, name: e.representativeName || '', rank: e.representativeRank || '' }]
+                : [])
+    }));
     let allUnitsCache = [];
 
     const existingYearTargets = config.existingYearTargets || [];
@@ -308,14 +317,88 @@
         document.getElementById('projectManagerDisplay').style.display = 'none';
     };
 
+    // ================================================================
+    //  مساعد مدير المشروع — Deputy Manager Search
+    // ================================================================
+    let deputySearchTimeout;
+    const deputyManagerSearch = document.getElementById('deputyManagerSearch');
+    const deputyManagerResults = document.getElementById('deputyManagerResults');
+
+    deputyManagerSearch?.addEventListener('input', function () {
+        clearTimeout(deputySearchTimeout);
+        const term = this.value.trim();
+        if (term.length < 2) {
+            deputyManagerResults.classList.remove('show');
+            return;
+        }
+        deputySearchTimeout = setTimeout(() => searchDeputyEmployees(term), 300);
+    });
+
+    async function searchDeputyEmployees(term) {
+        try {
+            const response = await fetch(`/api/OrganizationApi/employees/search?term=${encodeURIComponent(term)}`);
+            if (response.ok) {
+                const employees = await response.json();
+                if (employees.length === 0) {
+                    deputyManagerResults.innerHTML = '<div class="p-2 text-muted">لا توجد نتائج</div>';
+                } else {
+                    deputyManagerResults.innerHTML = employees.map(emp => `
+                        <div class="item" onclick="selectDeputyManager('${emp.empNumber}', '${emp.name}', '${emp.rank || ''}')">
+                            <div class="emp-name">${emp.rank || ''} ${emp.name}</div>
+                            <div class="emp-info">${emp.empNumber} - ${emp.position || ''}</div>
+                        </div>
+                    `).join('');
+                }
+                deputyManagerResults.classList.add('show');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    window.selectDeputyManager = function (empNumber, name, rank) {
+        document.getElementById('DeputyManagerEmpNumber').value = empNumber;
+        document.getElementById('DeputyManagerName').value = name;
+        document.getElementById('DeputyManagerRank').value = rank;
+
+        document.getElementById('deputyManagerSearch').style.display = 'none';
+        document.getElementById('deputyManagerDisplay').innerHTML = `
+            <div class="selected-employee">
+                <div>
+                    <div class="fw-bold">${rank} ${name}</div>
+                    <small class="text-muted">${empNumber}</small>
+                </div>
+                <span class="remove-btn" onclick="clearDeputyManager()"><i class="bi bi-x-circle"></i></span>
+            </div>
+        `;
+        document.getElementById('deputyManagerDisplay').style.display = 'block';
+        deputyManagerResults.classList.remove('show');
+    };
+
+    window.clearDeputyManager = function () {
+        document.getElementById('DeputyManagerEmpNumber').value = '';
+        document.getElementById('DeputyManagerName').value = '';
+        document.getElementById('DeputyManagerRank').value = '';
+        document.getElementById('deputyManagerSearch').value = '';
+        document.getElementById('deputyManagerSearch').style.display = 'block';
+        document.getElementById('deputyManagerDisplay').style.display = 'none';
+    };
+
     document.addEventListener('click', (e) => {
         if (!e.target.closest('#projectManagerSearch') && !e.target.closest('#projectManagerResults')) {
             projectManagerResults?.classList.remove('show');
         }
+        if (!e.target.closest('#deputyManagerSearch') && !e.target.closest('#deputyManagerResults')) {
+            deputyManagerResults?.classList.remove('show');
+        }
+        // إغلاق dropdowns البحث عن ممثلين
+        if (!e.target.closest('.rep-search-wrapper')) {
+            document.querySelectorAll('.search-dropdown.show').forEach(d => d.classList.remove('show'));
+        }
     });
 
     // ================================================================
-    //  الجهات المساندة — Supporting Entities
+    //  الجهات المساندة — Supporting Entities (ممثلين متعددين)
     // ================================================================
     window.showAddSupportingEntity = function () {
         document.getElementById('addSupportingEntitySection').style.display = 'block';
@@ -399,9 +482,7 @@
         supportingEntities.push({
             externalUnitId: unitId,
             unitName: unitName,
-            representativeEmpNumber: null,
-            representativeName: null,
-            representativeRank: null
+            representatives: []
         });
 
         renderSupportingEntities();
@@ -413,6 +494,9 @@
         renderSupportingEntities();
     };
 
+    // ================================================================
+    //  عرض الجهات المساندة مع ممثلين متعددين
+    // ================================================================
     function renderSupportingEntities() {
         const container = document.getElementById('supportingEntitiesContainer');
         const inputsContainer = document.getElementById('supportingEntitiesInputs');
@@ -427,48 +511,72 @@
 
         noEntities.style.display = 'none';
 
-        container.innerHTML = supportingEntities.map((entity, index) => `
-            <div class="supporting-entity-item" id="entity_${entity.externalUnitId}">
-                <div class="entity-header">
-                    <span class="entity-name"><i class="bi bi-building me-1"></i>${entity.unitName}</span>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupportingEntity(${entity.externalUnitId})">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-                <div class="row align-items-end">
-                    <div class="col">
-                        <label class="form-label small">ممثل الجهة (اختياري)</label>
-                        <div class="position-relative">
-                            <div id="repDisplay_${entity.externalUnitId}" style="display: ${entity.representativeEmpNumber ? 'block' : 'none'};">
-                                ${entity.representativeEmpNumber ? `
-                                    <div class="selected-employee">
-                                        <div>
-                                            <div class="fw-bold">${entity.representativeRank || ''} ${entity.representativeName || ''}</div>
-                                            <small class="text-muted">${entity.representativeEmpNumber}</small>
-                                        </div>
-                                        <span class="remove-btn" onclick="clearEntityRep(${entity.externalUnitId})"><i class="bi bi-x-circle"></i></span>
-                                    </div>
-                                ` : ''}
+        container.innerHTML = supportingEntities.map((entity, entityIndex) => {
+            // عرض الممثلين الحاليين
+            const repsHtml = entity.representatives.map((rep, repIndex) => `
+                <div class="d-flex align-items-center gap-2 mb-1 rep-item">
+                    <div class="flex-grow-1">
+                        <div class="selected-employee small-employee">
+                            <div>
+                                <span class="fw-bold">${rep.rank || ''} ${rep.name}</span>
+                                <small class="text-muted me-2">${rep.empNumber}</small>
                             </div>
+                            <span class="remove-btn" onclick="removeRep(${entity.externalUnitId}, ${repIndex})">
+                                <i class="bi bi-x-circle"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            return `
+                <div class="supporting-entity-item" id="entity_${entity.externalUnitId}">
+                    <div class="entity-header">
+                        <span class="entity-name"><i class="bi bi-building me-1"></i>${entity.unitName}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupportingEntity(${entity.externalUnitId})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    <div class="mt-2">
+                        <label class="form-label small d-flex justify-content-between align-items-center">
+                            <span>ممثلو الجهة (اختياري)</span>
+                            <span class="badge bg-secondary">${entity.representatives.length}</span>
+                        </label>
+                        <div id="repsContainer_${entity.externalUnitId}">
+                            ${repsHtml}
+                        </div>
+                        <div class="rep-search-wrapper position-relative mt-1">
                             <input type="text" id="repSearch_${entity.externalUnitId}" class="form-control form-control-sm"
-                                   placeholder="ابحث برقم الموظف..." oninput="searchEntityRep(${entity.externalUnitId}, this.value)"
-                                   style="display: ${entity.representativeEmpNumber ? 'none' : 'block'};" />
+                                   placeholder="ابحث برقم أو اسم الموظف لإضافة ممثل..." 
+                                   oninput="searchEntityRep(${entity.externalUnitId}, this.value)" />
                             <div id="repResults_${entity.externalUnitId}" class="search-dropdown"></div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
-        inputsContainer.innerHTML = supportingEntities.map((entity, index) => `
-            <input type="hidden" name="SupportingEntitiesWithReps[${index}].ExternalUnitId" value="${entity.externalUnitId || ''}" />
-            <input type="hidden" name="SupportingEntitiesWithReps[${index}].UnitName" value="${entity.unitName}" />
-            <input type="hidden" name="SupportingEntitiesWithReps[${index}].RepresentativeEmpNumber" value="${entity.representativeEmpNumber || ''}" />
-            <input type="hidden" name="SupportingEntitiesWithReps[${index}].RepresentativeName" value="${entity.representativeName || ''}" />
-            <input type="hidden" name="SupportingEntitiesWithReps[${index}].RepresentativeRank" value="${entity.representativeRank || ''}" />
-        `).join('');
+        // Hidden inputs للإرسال
+        let inputsHtml = '';
+        supportingEntities.forEach((entity, entityIndex) => {
+            inputsHtml += `
+                <input type="hidden" name="SupportingEntitiesWithReps[${entityIndex}].ExternalUnitId" value="${entity.externalUnitId || ''}" />
+                <input type="hidden" name="SupportingEntitiesWithReps[${entityIndex}].UnitName" value="${entity.unitName}" />
+            `;
+            entity.representatives.forEach((rep, repIndex) => {
+                inputsHtml += `
+                    <input type="hidden" name="SupportingEntitiesWithReps[${entityIndex}].Representatives[${repIndex}].EmpNumber" value="${rep.empNumber}" />
+                    <input type="hidden" name="SupportingEntitiesWithReps[${entityIndex}].Representatives[${repIndex}].Name" value="${rep.name}" />
+                    <input type="hidden" name="SupportingEntitiesWithReps[${entityIndex}].Representatives[${repIndex}].Rank" value="${rep.rank || ''}" />
+                `;
+            });
+        });
+        inputsContainer.innerHTML = inputsHtml;
     }
 
+    // ================================================================
+    //  بحث وإضافة/حذف ممثلين
+    // ================================================================
     let repSearchTimeout;
     window.searchEntityRep = function (unitId, term) {
         clearTimeout(repSearchTimeout);
@@ -483,14 +591,21 @@
                 const response = await fetch(`/api/OrganizationApi/employees/search?term=${encodeURIComponent(term)}`);
                 if (response.ok) {
                     const employees = await response.json();
+                    const entity = supportingEntities.find(e => e.externalUnitId == unitId);
+                    const existingEmpNumbers = entity ? entity.representatives.map(r => r.empNumber) : [];
+
                     resultsDiv.innerHTML = employees.length === 0
                         ? '<div class="p-2 text-muted">لا توجد نتائج</div>'
-                        : employees.map(emp => `
-                                <div class="item" onclick="selectEntityRep(${unitId}, '${emp.empNumber}', '${emp.name}', '${emp.rank || ''}')">
+                        : employees.map(emp => {
+                            const isAdded = existingEmpNumbers.includes(emp.empNumber);
+                            return `
+                                <div class="item ${isAdded ? 'disabled' : ''}" 
+                                     ${isAdded ? '' : `onclick="addRep(${unitId}, '${emp.empNumber}', '${emp.name}', '${emp.rank || ''}')"`}>
                                     <div class="emp-name">${emp.rank || ''} ${emp.name}</div>
-                                    <div class="emp-info">${emp.empNumber}</div>
+                                    <div class="emp-info">${emp.empNumber}${isAdded ? ' <span class="text-success">✓ مضاف</span>' : ''}</div>
                                 </div>
-                            `).join('');
+                            `;
+                        }).join('');
                     resultsDiv.classList.add('show');
                 }
             } catch (error) {
@@ -499,24 +614,33 @@
         }, 300);
     };
 
-    window.selectEntityRep = function (unitId, empNumber, name, rank) {
+    window.addRep = function (unitId, empNumber, name, rank) {
         const entity = supportingEntities.find(e => e.externalUnitId == unitId);
-        if (entity) {
-            entity.representativeEmpNumber = empNumber;
-            entity.representativeName = name;
-            entity.representativeRank = rank;
+        if (!entity) return;
+
+        // تحقق من عدم التكرار
+        if (entity.representatives.find(r => r.empNumber === empNumber)) {
+            alert('هذا الممثل مضاف مسبقاً');
+            return;
         }
+
+        entity.representatives.push({ empNumber, name, rank });
+        
+        // مسح حقل البحث
+        const searchInput = document.getElementById(`repSearch_${unitId}`);
+        if (searchInput) searchInput.value = '';
+        const resultsDiv = document.getElementById(`repResults_${unitId}`);
+        if (resultsDiv) resultsDiv.classList.remove('show');
+
         renderSupportingEntities();
     };
 
-    window.clearEntityRep = function (unitId) {
+    window.removeRep = function (unitId, repIndex) {
         const entity = supportingEntities.find(e => e.externalUnitId == unitId);
         if (entity) {
-            entity.representativeEmpNumber = null;
-            entity.representativeName = null;
-            entity.representativeRank = null;
+            entity.representatives.splice(repIndex, 1);
+            renderSupportingEntities();
         }
-        renderSupportingEntities();
     };
 
     // ================================================================

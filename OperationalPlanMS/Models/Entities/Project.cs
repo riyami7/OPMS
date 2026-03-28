@@ -79,6 +79,16 @@ namespace OperationalPlanMS.Models.Entities
         [StringLength(100)]
         public string? ProjectManagerRank { get; set; }
 
+        // ========== مساعد مدير المشروع (جديد - اختياري) ==========
+        [StringLength(50)]
+        public string? DeputyManagerEmpNumber { get; set; }
+
+        [StringLength(200)]
+        public string? DeputyManagerName { get; set; }
+
+        [StringLength(100)]
+        public string? DeputyManagerRank { get; set; }
+
         public int? SubObjectiveId { get; set; }
         public int? FinancialCostId { get; set; }
 

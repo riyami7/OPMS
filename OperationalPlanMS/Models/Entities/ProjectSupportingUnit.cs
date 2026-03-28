@@ -1,11 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OperationalPlanMS.Models.Entities
 {
     /// <summary>
-    /// ربط المشروع بالجهات المساندة مع ممثل كل جهة
+    /// ربط المشروع بالجهات المساندة
     /// يدعم الجهات المحلية (SupportingEntities) والجهات من API (ExternalOrganizationalUnits)
+    /// الممثلين الآن في جدول منفصل SupportingUnitRepresentatives (متعددين)
     /// </summary>
     [Table("ProjectSupportingUnits")]
     public class ProjectSupportingUnit
@@ -36,22 +37,22 @@ namespace OperationalPlanMS.Models.Entities
         [StringLength(300)]
         public string? ExternalUnitName { get; set; }
 
-        // ========== ممثل الجهة ==========
+        // ========== ممثل الجهة (القديم — يبقى للتوافق مع البيانات الحالية) ==========
 
         /// <summary>
-        /// رقم ممثل الجهة (من API الموظفين)
+        /// [مهمل] رقم ممثل الجهة — البيانات القديمة فقط. الجديد في SupportingUnitRepresentatives
         /// </summary>
         [StringLength(50)]
         public string? RepresentativeEmpNumber { get; set; }
 
         /// <summary>
-        /// اسم ممثل الجهة
+        /// [مهمل] اسم ممثل الجهة
         /// </summary>
         [StringLength(200)]
         public string? RepresentativeName { get; set; }
 
         /// <summary>
-        /// رتبة ممثل الجهة
+        /// [مهمل] رتبة ممثل الجهة
         /// </summary>
         [StringLength(100)]
         public string? RepresentativeRank { get; set; }
@@ -70,6 +71,11 @@ namespace OperationalPlanMS.Models.Entities
         [ForeignKey("ExternalUnitId")]
         public virtual ExternalOrganizationalUnit? ExternalUnit { get; set; }
 
+        /// <summary>
+        /// ممثلو الجهة المساندة (متعددين)
+        /// </summary>
+        public virtual ICollection<SupportingUnitRepresentative> Representatives { get; set; } = new List<SupportingUnitRepresentative>();
+
         // ========== Helper Properties ==========
 
         /// <summary>
@@ -81,7 +87,7 @@ namespace OperationalPlanMS.Models.Entities
             : SupportingEntity?.NameAr ?? "";
 
         /// <summary>
-        /// الاسم الكامل للممثل
+        /// [مهمل] الاسم الكامل للممثل القديم — استخدم Representatives بدلاً منه
         /// </summary>
         [NotMapped]
         public string RepresentativeFullName => !string.IsNullOrEmpty(RepresentativeName)
