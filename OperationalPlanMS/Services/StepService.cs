@@ -105,6 +105,7 @@ namespace OperationalPlanMS.Services
                 .Include(s => s.AssignedTo).Include(s => s.CreatedBy)
                 .Include(s => s.DependsOnStep).Include(s => s.ApprovedBy)
                 .Include(s => s.Attachments).ThenInclude(a => a.UploadedBy)
+                .Include(s => s.TeamMembers)
                 .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
             if (step == null) return null;
 
@@ -153,6 +154,7 @@ namespace OperationalPlanMS.Services
         {
             var step = await _db.Steps.Include(s => s.Project).ThenInclude(p => p.Initiative)
                 .Include(s => s.Project).ThenInclude(p => p.Steps.Where(st => !st.IsDeleted))
+                .Include(s => s.TeamMembers)
                 .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
             if (step == null) return (null, 0, 0, null, null);
 
@@ -187,6 +189,29 @@ namespace OperationalPlanMS.Services
 
             _db.Steps.Add(step);
             await _db.SaveChangesAsync();
+
+            // حفظ فريق العمل
+            if (model.TeamMembers?.Any() == true)
+            {
+                var members = model.TeamMembers
+                    .Where(m => !string.IsNullOrWhiteSpace(m.EmpNumber))
+                    .Select((m, i) => new StepTeamMember
+                    {
+                        StepId = step.Id,
+                        EmpNumber = m.EmpNumber,
+                        Name = m.Name,
+                        Rank = m.Rank,
+                        Role = m.Role,
+                        OrderIndex = i,
+                        CreatedAt = DateTime.Now
+                    }).ToList();
+                if (members.Any())
+                {
+                    _db.StepTeamMembers.AddRange(members);
+                    await _db.SaveChangesAsync();
+                }
+            }
+
             await UpdateProjectProgressAsync(project.Id);
 
             _logger.LogInformation("تم إنشاء خطوة: {StepNumber} في مشروع {ProjectId}", step.StepNumber, step.ProjectId);
@@ -209,6 +234,27 @@ namespace OperationalPlanMS.Services
             string? warning = null;
             if (!string.IsNullOrWhiteSpace(model.AssignedToEmpNumber) && step.AssignedToId == null)
                 warning = $"تنبيه: مسؤول الخطوة ({model.AssignedToName}) غير مسجّل في النظام.";
+
+            // حذف فريق العمل القديم وإعادة حفظه
+            _db.StepTeamMembers.RemoveRange(await _db.StepTeamMembers.Where(t => t.StepId == id).ToListAsync());
+            if (model.TeamMembers?.Any() == true)
+            {
+                var members = model.TeamMembers
+                    .Where(m => !string.IsNullOrWhiteSpace(m.EmpNumber))
+                    .Select((m, i) => new StepTeamMember
+                    {
+                        StepId = id, EmpNumber = m.EmpNumber, Name = m.Name,
+                        Rank = m.Rank, Role = m.Role, OrderIndex = i, CreatedAt = DateTime.Now
+                    }).ToList();
+                if (members.Any()) _db.StepTeamMembers.AddRange(members);
+            }
+
+            // إذا النسبة أقل من 100 وكانت مؤكدة/مرفوضة — أعد الحالة لـ None
+            if (step.ProgressPercentage < 100 && step.ApprovalStatus != ApprovalStatus.None)
+            {
+                step.ApprovalStatus = ApprovalStatus.None;
+                step.RejectionReason = null;
+            }
 
             step.LastModifiedById = modifiedById;
             step.LastModifiedAt = DateTime.Now;

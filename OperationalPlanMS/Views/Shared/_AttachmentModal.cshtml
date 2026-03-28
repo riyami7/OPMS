@@ -1,0 +1,43 @@
+@model OperationalPlanMS.Models.Entities.StepAttachment
+@{
+    var isPdf = Model.ContentType.Contains("pdf");
+}
+
+<div class="modal fade" id="attachmentModal_@Model.Id" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi @(isPdf ? "bi-file-pdf text-danger" : "bi-file-image text-success") me-2"></i>
+                    @Model.OriginalFileName
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-0" style="min-height: 500px;">
+                @if (isPdf)
+                {
+                    <iframe src="@Model.FilePath" style="width: 100%; height: 600px; border: none;"></iframe>
+                }
+                else
+                {
+                    <img src="@Model.FilePath" alt="@Model.OriginalFileName" class="img-fluid" style="max-height: 600px;">
+                }
+            </div>
+            <div class="modal-footer justify-content-between">
+                <small class="text-muted">
+                    <i class="bi bi-person me-1"></i>@Model.UploadedBy?.FullNameAr
+                    <span class="mx-1">—</span>
+                    @Model.UploadedAt.ToString("yyyy/MM/dd HH:mm")
+                </small>
+                <div>
+                    <a href="@Model.FilePath" download class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download me-1"></i>تحميل
+                    </a>
+                    <a href="@Model.FilePath" target="_blank" class="btn btn-primary btn-sm">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>فتح
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

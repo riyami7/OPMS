@@ -163,6 +163,11 @@ namespace OperationalPlanMS.Models.Entities
         public virtual ICollection<ProgressUpdate> ProgressUpdates { get; set; } = new List<ProgressUpdate>();
         public virtual ICollection<StepAttachment> Attachments { get; set; } = new List<StepAttachment>();
 
+        /// <summary>
+        /// فريق عمل الخطوة (متعددين)
+        /// </summary>
+        public virtual ICollection<StepTeamMember> TeamMembers { get; set; } = new List<StepTeamMember>();
+
         // ========== Computed Properties ==========
 
         /// <summary>

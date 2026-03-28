@@ -197,6 +197,23 @@
                         <small class="text-muted">ابحث عن الموظف من النظام</small>
                     </div>
 
+                    <!-- فريق العمل (جديد) -->
+                    <div class="mb-3">
+                        <label class="form-label d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-people me-1"></i>فريق العمل <small class="text-muted">(اختياري)</small></span>
+                            <span class="badge bg-secondary" id="teamCount">0</span>
+                        </label>
+                        <div id="teamMembersContainer"></div>
+                        <div class="position-relative mt-1">
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="teamMemberSearch" class="form-control"
+                                       placeholder="ابحث لإضافة عضو..." autocomplete="off" />
+                            </div>
+                            <div id="teamMemberResults" class="search-dropdown"></div>
+                        </div>
+                        <div id="teamMembersInputs"></div>
+                    </div>
+
                     <div>
                         <label asp-for="DependsOnStepId" class="form-label"></label>
                         <select asp-for="DependsOnStepId" asp-items="Model.DependsOnSteps" class="form-select">
@@ -316,6 +333,103 @@
             if (!e.target.closest('#assignedToSearch') && !e.target.closest('#assignedToResults')) {
                 assignedToResults.classList.remove('show');
             }
+            if (!e.target.closest('#teamMemberSearch') && !e.target.closest('#teamMemberResults')) {
+                document.getElementById('teamMemberResults').classList.remove('show');
+            }
         });
+
+        // ========== فريق العمل ==========
+        let teamMembers = [];
+
+        function renderTeamMembers() {
+            const container = document.getElementById('teamMembersContainer');
+            const inputsContainer = document.getElementById('teamMembersInputs');
+            document.getElementById('teamCount').textContent = teamMembers.length;
+
+            container.innerHTML = teamMembers.map((m, i) => `
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="flex-grow-1">
+                        <div class="selected-employee small-employee">
+                            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                <div>
+                                    <span class="fw-bold">${m.rank || ''} ${m.name}</span>
+                                    <small class="text-muted me-1">(${m.empNumber})</small>
+                                </div>
+                                <input type="text" class="form-control form-control-sm" style="max-width:140px;"
+                                       placeholder="الدور..." value="${m.role || ''}"
+                                       onchange="updateTeamRole(${i}, this.value)" />
+                            </div>
+                            <span class="remove-btn" onclick="removeTeamMember(${i})">
+                                <i class="bi bi-x-circle"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            inputsContainer.innerHTML = teamMembers.map((m, i) => `
+                <input type="hidden" name="TeamMembers[${i}].EmpNumber" value="${m.empNumber}" />
+                <input type="hidden" name="TeamMembers[${i}].Name" value="${m.name}" />
+                <input type="hidden" name="TeamMembers[${i}].Rank" value="${m.rank || ''}" />
+                <input type="hidden" name="TeamMembers[${i}].Role" value="${m.role || ''}" />
+            `).join('');
+        }
+
+        function updateTeamRole(index, role) {
+            teamMembers[index].role = role;
+            // تحديث hidden input فقط
+            const input = document.querySelector(`input[name="TeamMembers[${index}].Role"]`);
+            if (input) input.value = role;
+        }
+
+        function removeTeamMember(index) {
+            teamMembers.splice(index, 1);
+            renderTeamMembers();
+        }
+        window.removeTeamMember = removeTeamMember;
+        window.updateTeamRole = updateTeamRole;
+
+        // بحث عضو فريق
+        let teamSearchTimeout;
+        const teamMemberSearch = document.getElementById('teamMemberSearch');
+        const teamMemberResults = document.getElementById('teamMemberResults');
+
+        teamMemberSearch.addEventListener('input', function() {
+            clearTimeout(teamSearchTimeout);
+            const term = this.value.trim();
+            if (term.length < 2) {
+                teamMemberResults.classList.remove('show');
+                return;
+            }
+            teamSearchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/OrganizationApi/employees/search?term=${encodeURIComponent(term)}`);
+                    if (response.ok) {
+                        const employees = await response.json();
+                        const existingNums = teamMembers.map(m => m.empNumber);
+                        teamMemberResults.innerHTML = employees.length === 0
+                            ? '<div class="p-2 text-muted text-center">لا توجد نتائج</div>'
+                            : employees.map(emp => {
+                                const added = existingNums.includes(emp.empNumber);
+                                return `<div class="item ${added ? 'disabled' : ''}"
+                                    ${added ? '' : `onclick="addTeamMember('${emp.empNumber}', '${emp.name}', '${emp.rank || ''}')"`}>
+                                    <div class="emp-name">${emp.rank || ''} ${emp.name}</div>
+                                    <div class="emp-info">${emp.empNumber}${added ? ' <span class="text-success">✓ مضاف</span>' : ''}</div>
+                                </div>`;
+                            }).join('');
+                        teamMemberResults.classList.add('show');
+                    }
+                } catch (err) { console.error(err); }
+            }, 300);
+        });
+
+        function addTeamMember(empNumber, name, rank) {
+            if (teamMembers.find(m => m.empNumber === empNumber)) return;
+            teamMembers.push({ empNumber, name, rank, role: '' });
+            teamMemberSearch.value = '';
+            teamMemberResults.classList.remove('show');
+            renderTeamMembers();
+        }
+        window.addTeamMember = addTeamMember;
     </script>
 }

@@ -112,6 +112,14 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "الرتبة")]
         public string? AssignedToRank { get; set; }
 
+        // ======= فريق عمل الخطوة (جديد) =======
+
+        /// <summary>
+        /// أعضاء فريق العمل (متعددين مع دور كل عضو)
+        /// </summary>
+        [Display(Name = "فريق العمل")]
+        public List<TeamMemberViewModel> TeamMembers { get; set; } = new();
+
         /// <summary>
         /// إنشاء ViewModel من Entity
         /// </summary>
@@ -137,7 +145,17 @@ namespace OperationalPlanMS.Models.ViewModels
                 // ========== الحقول الجديدة ==========
                 AssignedToEmpNumber = entity.AssignedToEmpNumber,
                 AssignedToName = entity.AssignedToName,
-                AssignedToRank = entity.AssignedToRank
+                AssignedToRank = entity.AssignedToRank,
+                // فريق العمل
+                TeamMembers = entity.TeamMembers != null
+                    ? entity.TeamMembers.OrderBy(t => t.OrderIndex).Select(t => new TeamMemberViewModel
+                    {
+                        EmpNumber = t.EmpNumber,
+                        Name = t.Name,
+                        Rank = t.Rank,
+                        Role = t.Role
+                    }).ToList()
+                    : new List<TeamMemberViewModel>()
             };
         }
 
@@ -234,5 +252,38 @@ namespace OperationalPlanMS.Models.ViewModels
         [Required(ErrorMessage = "الملاحظة مطلوبة")]
         [Display(Name = "الملاحظة")]
         public string Note { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// عضو فريق عمل الخطوة
+    /// </summary>
+    public class TeamMemberViewModel
+    {
+        /// <summary>
+        /// رقم الموظف
+        /// </summary>
+        public string EmpNumber { get; set; } = string.Empty;
+
+        /// <summary>
+        /// اسم العضو
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// رتبة العضو
+        /// </summary>
+        public string? Rank { get; set; }
+
+        /// <summary>
+        /// دور العضو (حقل نصي حر)
+        /// </summary>
+        public string? Role { get; set; }
+
+        /// <summary>
+        /// الاسم الكامل
+        /// </summary>
+        public string FullName => !string.IsNullOrEmpty(Rank)
+            ? $"{Rank} {Name}".Trim()
+            : Name;
     }
 }

@@ -106,17 +106,47 @@
                             <!-- المرفقات -->
                             @if (step.Attachments != null && step.Attachments.Any())
                             {
+                                var subAt = step.SubmittedForApprovalAt;
+                                var newAttachments = subAt.HasValue
+                                    ? step.Attachments.Where(a => a.UploadedAt >= subAt.Value.AddMinutes(-1)).OrderByDescending(a => a.UploadedAt).ToList()
+                                    : step.Attachments.OrderByDescending(a => a.UploadedAt).ToList();
+                                var oldAttachments = subAt.HasValue
+                                    ? step.Attachments.Where(a => a.UploadedAt < subAt.Value.AddMinutes(-1)).OrderByDescending(a => a.UploadedAt).ToList()
+                                    : new List<OperationalPlanMS.Models.Entities.StepAttachment>();
+
                                 <div class="mb-3">
-                                    <small class="text-muted d-block">المرفقات:</small>
-                                    @foreach (var attachment in step.Attachments)
+                                    <small class="text-muted d-block mb-1">المرفقات:</small>
+                                    @foreach (var attachment in newAttachments)
                                     {
                                         var isPdf = attachment.ContentType.Contains("pdf");
-                                        <button type="button" class="btn btn-sm btn-outline-primary me-1 mb-1"
+                                        <button type="button" class="btn btn-sm btn-primary me-1 mb-1"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#attachModal_@(step.Id)_@(attachment.Id)">
-                                            <i class="bi @(isPdf ? "bi-file-pdf text-danger" : "bi-file-image text-success") me-1"></i>
-                                            @attachment.FileName
+                                            <i class="bi @(isPdf ? "bi-file-pdf" : "bi-file-image") me-1"></i>
+                                            @attachment.OriginalFileName
+                                            <span class="badge bg-light text-primary ms-1" style="font-size:.6rem;">جديد</span>
                                         </button>
+                                    }
+                                    @if (oldAttachments.Any())
+                                    {
+                                        <div class="mt-1">
+                                            <button class="btn btn-sm btn-outline-secondary" type="button"
+                                                    data-bs-toggle="collapse" data-bs-target="#oldAttach_@step.Id">
+                                                <i class="bi bi-clock-history me-1"></i>سابقة (@oldAttachments.Count)
+                                            </button>
+                                            <div class="collapse mt-1" id="oldAttach_@step.Id">
+                                                @foreach (var attachment in oldAttachments)
+                                                {
+                                                    var isPdf = attachment.ContentType.Contains("pdf");
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1 mb-1" style="opacity:.7;"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#attachModal_@(step.Id)_@(attachment.Id)">
+                                                        <i class="bi @(isPdf ? "bi-file-pdf text-danger" : "bi-file-image text-success") me-1"></i>
+                                                        @attachment.OriginalFileName
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
                                     }
                                 </div>
                             }

@@ -39,6 +39,7 @@ namespace OperationalPlanMS.Data
         public DbSet<InitiativeAccess> InitiativeAccess { get; set; }
         public DbSet<ProjectSubObjective> ProjectSubObjectives { get; set; }
         public DbSet<SupportingUnitRepresentative> SupportingUnitRepresentatives { get; set; }
+        public DbSet<StepTeamMember> StepTeamMembers { get; set; }
 
 
 
@@ -459,6 +460,17 @@ namespace OperationalPlanMS.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => new { e.ProjectSupportingUnitId, e.EmpNumber }).IsUnique();
+            });
+
+            // StepTeamMember (فريق عمل الخطوة)
+            modelBuilder.Entity<StepTeamMember>(entity =>
+            {
+                entity.HasOne(e => e.Step)
+                    .WithMany(s => s.TeamMembers)
+                    .HasForeignKey(e => e.StepId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.StepId, e.EmpNumber }).IsUnique();
             });
         }
     }
