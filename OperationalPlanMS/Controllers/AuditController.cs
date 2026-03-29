@@ -26,7 +26,7 @@ namespace OperationalPlanMS.Controllers
             // Admin و Executive فقط
             var roleStr = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
             Enum.TryParse<UserRole>(roleStr, out var userRole);
-            if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+            if (userRole != UserRole.Admin)
             {
                 TempData["ErrorMessage"] = "ليس لديك صلاحية الوصول لسجل التدقيق";
                 return RedirectToAction("Index", "Home");
