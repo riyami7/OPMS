@@ -136,6 +136,7 @@ namespace OperationalPlanMS.Models.Entities
         public virtual ICollection<ProjectSupportingUnit> SupportingUnits { get; set; } = new List<ProjectSupportingUnit>();
         public virtual ICollection<ProjectYearTarget> YearTargets { get; set; } = new List<ProjectYearTarget>();
         public virtual ICollection<ProjectSubObjective> ProjectSubObjectives { get; set; } = new List<ProjectSubObjective>();
+        public virtual ICollection<ProjectStatusChange> StatusChanges { get; set; } = new List<ProjectStatusChange>();
 
         // Computed Properties
         [NotMapped]

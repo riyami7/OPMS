@@ -27,6 +27,9 @@ namespace OperationalPlanMS.Services
         Task<(bool Success, string? Error)> EditNoteAsync(int noteId, int projectId, string notes);
         Task<(bool Success, string? Error)> DeleteNoteAsync(int noteId, int projectId);
 
+        // تغيير حالة المشروع مع السبب
+        Task<(bool Success, string? Error)> ChangeStatusAsync(int projectId, Status newStatus, string reason, ObstacleType? obstacleType, string? obstacleDescription, string? actionTaken, DateTime? expectedResumeDate, int changedById);
+
         // إعادة حساب التقدم
         Task<decimal> RecalculateProgressAsync(int projectId);
         Task UpdateProjectProgressAsync(int projectId);
@@ -180,6 +183,8 @@ namespace OperationalPlanMS.Services
                 Project = project, Steps = steps,
                 Notes = await _db.ProgressUpdates.Where(p => p.ProjectId == id)
                     .Include(p => p.CreatedBy).OrderByDescending(p => p.CreatedAt).Take(20).ToListAsync(),
+                StatusChanges = await _db.ProjectStatusChanges.Where(sc => sc.ProjectId == id)
+                    .Include(sc => sc.ChangedBy).OrderByDescending(sc => sc.ChangedAt).ToListAsync(),
                 Requirements = requirements, KPIs = kpis,
                 SupportingEntities = supportingEntities, YearTargets = yearTargetDisplayItems
             };
@@ -354,6 +359,42 @@ namespace OperationalPlanMS.Services
             var note = await _db.ProgressUpdates.FindAsync(noteId);
             if (note == null || note.ProjectId != projectId) return (false, "الملاحظة غير موجودة");
             _db.ProgressUpdates.Remove(note);
+            await _db.SaveChangesAsync();
+            return (true, null);
+        }
+
+        public async Task<(bool Success, string? Error)> ChangeStatusAsync(
+            int projectId, Status newStatus, string reason,
+            ObstacleType? obstacleType, string? obstacleDescription,
+            string? actionTaken, DateTime? expectedResumeDate, int changedById)
+        {
+            var project = await _db.Projects.FindAsync(projectId);
+            if (project == null || project.IsDeleted) return (false, "المشروع غير موجود");
+
+            if (string.IsNullOrWhiteSpace(reason)) return (false, "السبب مطلوب");
+
+            var isNegative = newStatus == Status.OnHold || newStatus == Status.Delayed || newStatus == Status.Cancelled;
+            if (isNegative && !obstacleType.HasValue) return (false, "نوع العائق مطلوب");
+
+            var statusChange = new ProjectStatusChange
+            {
+                ProjectId = projectId,
+                OldStatus = project.Status,
+                NewStatus = newStatus,
+                ObstacleType = obstacleType,
+                ObstacleDescription = obstacleDescription,
+                Reason = reason,
+                ActionTaken = actionTaken,
+                ExpectedResumeDate = expectedResumeDate,
+                ChangedById = changedById,
+                ChangedAt = DateTime.Now
+            };
+            _db.ProjectStatusChanges.Add(statusChange);
+
+            project.Status = newStatus;
+            project.LastModifiedById = changedById;
+            project.LastModifiedAt = DateTime.Now;
+
             await _db.SaveChangesAsync();
             return (true, null);
         }

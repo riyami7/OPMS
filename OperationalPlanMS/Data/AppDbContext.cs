@@ -40,6 +40,7 @@ namespace OperationalPlanMS.Data
         public DbSet<ProjectSubObjective> ProjectSubObjectives { get; set; }
         public DbSet<SupportingUnitRepresentative> SupportingUnitRepresentatives { get; set; }
         public DbSet<StepTeamMember> StepTeamMembers { get; set; }
+        public DbSet<ProjectStatusChange> ProjectStatusChanges { get; set; }
 
 
 
@@ -471,6 +472,20 @@ namespace OperationalPlanMS.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => new { e.StepId, e.EmpNumber }).IsUnique();
+            });
+
+            // ProjectStatusChange (سجل تغيير الحالة)
+            modelBuilder.Entity<ProjectStatusChange>(entity =>
+            {
+                entity.HasOne(e => e.Project)
+                    .WithMany(p => p.StatusChanges)
+                    .HasForeignKey(e => e.ProjectId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.ChangedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChangedById)
+                    .OnDelete(DeleteBehavior.NoAction);
             });
         }
     }

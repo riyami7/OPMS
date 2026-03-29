@@ -94,4 +94,18 @@ namespace OperationalPlanMS.Models
         Contributor = 1,    // تعديل + إضافة
         FullAccess = 2      // كل شيء بما فيه الحذف
     }
+
+    /// <summary>
+    /// نوع العائق / سبب التأخر أو التوقف
+    /// </summary>
+    public enum ObstacleType
+    {
+        Financial = 0,        // مالي
+        HumanResource = 1,    // نقص كوادر بشرية
+        Technical = 2,        // تقني
+        Administrative = 3,   // إداري
+        External = 4,         // خارجي (جهة خارجية)
+        Procurement = 5,      // مشتريات / توريد
+        Other = 6             // أخرى
+    }
 }

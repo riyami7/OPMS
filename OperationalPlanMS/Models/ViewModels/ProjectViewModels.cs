@@ -522,6 +522,7 @@ namespace OperationalPlanMS.Models.ViewModels
         public Project Project { get; set; } = null!;
         public List<Step> Steps { get; set; } = new();
         public List<ProgressUpdate> Notes { get; set; } = new();
+        public List<ProjectStatusChange> StatusChanges { get; set; } = new();
         
         public List<ProjectRequirement> Requirements { get; set; } = new();
         public List<ProjectKPI> KPIs { get; set; } = new();

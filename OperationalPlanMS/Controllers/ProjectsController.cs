@@ -221,5 +221,26 @@ namespace OperationalPlanMS.Controllers
             await _projectService.RecalculateProgressAsync(id);
             return RedirectToAction(nameof(Details), new { id });
         }
+
+        // POST: /Projects/ChangeStatus
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangeStatus(int projectId, Status newStatus, string reason,
+            ObstacleType? obstacleType, string? obstacleDescription, string? actionTaken, DateTime? expectedResumeDate)
+        {
+            var project = await _projectService.GetByIdAsync(projectId);
+            if (project == null) return NotFound();
+
+            var userRole = GetCurrentUserRole();
+            var userId = GetCurrentUserId();
+            if (!_projectService.CanAccess(project, userRole, userId)) return Forbid();
+
+            var (success, error) = await _projectService.ChangeStatusAsync(
+                projectId, newStatus, reason, obstacleType, obstacleDescription,
+                actionTaken, expectedResumeDate, userId);
+
+            TempData[success ? "SuccessMessage" : "ErrorMessage"] =
+                success ? "تم تغيير حالة المشروع بنجاح" : error;
+            return RedirectToAction(nameof(Details), new { id = projectId });
+        }
     }
 }

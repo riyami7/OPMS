@@ -48,6 +48,9 @@
     <div class="page-header-actions">
         @if (canEdit)
         {
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#changeStatusModal">
+                <i class="bi bi-arrow-repeat"></i>تغيير الحالة
+            </button>
             <a href="/Projects/Edit/@Model.Project.Id" class="btn btn-warning">
                 <i class="bi bi-pencil"></i>تعديل
             </a>
@@ -766,9 +769,150 @@
                 }
             </div>
         </div>
+
+        <!-- سجل تغيير الحالة -->
+        @if (Model.StatusChanges.Any())
+        {
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-arrow-repeat me-2"></i>سجل تغيير الحالة</span>
+                    <span class="badge bg-secondary">@Model.StatusChanges.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @foreach (var sc in Model.StatusChanges)
+                        {
+                            <div class="list-group-item py-3">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <span class="badge @sc.StatusBadgeClass">@sc.NewStatusDisplayAr</span>
+                                    <small class="text-muted">@sc.ChangedAt.ToString("yyyy-MM-dd HH:mm")</small>
+                                </div>
+                                <p class="mb-1 small"><strong>السبب:</strong> @sc.Reason</p>
+                                @if (sc.ObstacleType.HasValue)
+                                {
+                                    <p class="mb-1 small"><strong>نوع العائق:</strong> <span class="badge bg-light text-dark">@sc.ObstacleTypeDisplayAr</span></p>
+                                }
+                                @if (!string.IsNullOrEmpty(sc.ActionTaken))
+                                {
+                                    <p class="mb-1 small"><strong>الإجراء:</strong> @sc.ActionTaken</p>
+                                }
+                                @if (sc.ExpectedResumeDate.HasValue)
+                                {
+                                    <p class="mb-1 small"><strong>الاستئناف المتوقع:</strong> @sc.ExpectedResumeDate.Value.ToString("yyyy-MM-dd")</p>
+                                }
+                                <small class="text-muted">بواسطة: @sc.ChangedBy?.FullNameAr</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal: تغيير حالة المشروع -->
+<div class="modal fade" id="changeStatusModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <form method="post" action="/Projects/ChangeStatus">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="projectId" value="@Model.Project.Id" />
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-arrow-repeat me-2"></i>تغيير حالة المشروع</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحالة الحالية</label>
+                        <div>
+                            @{
+                                var currentStatusText = Model.Project.Status switch
+                                {
+                                    Status.Draft => "مسودة",
+                                    Status.InProgress => "جاري التنفيذ",
+                                    Status.OnHold => "متوقف مؤقتاً",
+                                    Status.Completed => "مكتمل",
+                                    Status.Cancelled => "ملغي",
+                                    Status.Delayed => "متأخر",
+                                    _ => Model.Project.Status.ToString()
+                                };
+                            }
+                            <span class="badge bg-info">@currentStatusText</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="newStatus" class="form-label fw-bold">الحالة الجديدة <span class="text-danger">*</span></label>
+                        <select name="newStatus" id="newStatus" class="form-select" required onchange="onStatusChange()">
+                            <option value="">-- اختر الحالة --</option>
+                            <option value="@((int)Status.InProgress)">جاري التنفيذ</option>
+                            <option value="@((int)Status.OnHold)">متوقف مؤقتاً</option>
+                            <option value="@((int)Status.Delayed)">متأخر</option>
+                            <option value="@((int)Status.Completed)">مكتمل</option>
+                            <option value="@((int)Status.Cancelled)">ملغي</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="obstacleTypeGroup" style="display:none;">
+                        <label for="obstacleType" class="form-label fw-bold">نوع العائق <span class="text-danger">*</span></label>
+                        <select name="obstacleType" id="obstacleType" class="form-select" onchange="onObstacleTypeChange()">
+                            <option value="">-- اختر النوع --</option>
+                            <option value="0">مالي</option>
+                            <option value="1">نقص كوادر بشرية</option>
+                            <option value="2">تقني</option>
+                            <option value="3">إداري</option>
+                            <option value="4">خارجي (جهة خارجية)</option>
+                            <option value="5">مشتريات / توريد</option>
+                            <option value="6">أخرى</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="obstacleDescGroup" style="display:none;">
+                        <label for="obstacleDescription" class="form-label fw-bold">وصف نوع العائق</label>
+                        <input type="text" name="obstacleDescription" id="obstacleDescription" class="form-control" maxlength="200" placeholder="حدد نوع العائق..." />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reason" class="form-label fw-bold">السبب / التبرير <span class="text-danger">*</span></label>
+                        <textarea name="reason" id="reason" class="form-control" rows="3" required maxlength="1000" placeholder="اكتب سبب تغيير الحالة..."></textarea>
+                    </div>
+
+                    <div class="mb-3" id="actionTakenGroup" style="display:none;">
+                        <label for="actionTaken" class="form-label fw-bold">الإجراء المتخذ / المخطط</label>
+                        <textarea name="actionTaken" id="actionTaken" class="form-control" rows="2" maxlength="1000" placeholder="ما الإجراء المتخذ أو المخطط لحل المشكلة؟"></textarea>
+                    </div>
+
+                    <div class="mb-3" id="resumeDateGroup" style="display:none;">
+                        <label for="expectedResumeDate" class="form-label fw-bold">التاريخ المتوقع للاستئناف</label>
+                        <input type="date" name="expectedResumeDate" id="expectedResumeDate" class="form-control" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>حفظ التغيير</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
 @section Scripts {
     <partial name="Partials/_NotesSectionScripts" />
+    <script>
+        function onStatusChange() {
+            var val = parseInt(document.getElementById('newStatus').value);
+            var isNegative = (val === @((int)Status.OnHold) || val === @((int)Status.Delayed) || val === @((int)Status.Cancelled));
+            document.getElementById('obstacleTypeGroup').style.display = isNegative ? '' : 'none';
+            document.getElementById('actionTakenGroup').style.display = isNegative ? '' : 'none';
+            document.getElementById('resumeDateGroup').style.display = (val === @((int)Status.OnHold)) ? '' : 'none';
+            if (!isNegative) {
+                document.getElementById('obstacleType').value = '';
+                document.getElementById('obstacleDescGroup').style.display = 'none';
+            }
+        }
+        function onObstacleTypeChange() {
+            var val = document.getElementById('obstacleType').value;
+            document.getElementById('obstacleDescGroup').style.display = (val === '6') ? '' : 'none';
+        }
+    </script>
 }
