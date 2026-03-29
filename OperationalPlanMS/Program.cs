@@ -143,6 +143,9 @@ builder.Services.AddScoped<IStepService, StepService>();
 // Audit Service
 builder.Services.AddScoped<IAuditService, AuditService>();
 
+// Notification Service
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
 // === Ollama AI Services ===
 builder.Services.Configure<OperationalPlanMS.Services.AI.Models.OllamaSettings>(
     builder.Configuration.GetSection("Ollama"));

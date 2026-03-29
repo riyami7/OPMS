@@ -1,0 +1,72 @@
+@model List<OperationalPlanMS.Models.Entities.Notification>
+@{
+    ViewData["Title"] = "الإشعارات";
+}
+
+<div class="page-header">
+    <div class="page-header-title">
+        <h4 class="mb-0"><i class="bi bi-bell me-2"></i>الإشعارات</h4>
+        <small class="text-muted">جميع الإشعارات الواردة</small>
+    </div>
+    <div class="page-header-actions">
+        @if (Model.Any(n => !n.IsRead))
+        {
+            <button class="btn btn-sm btn-outline-primary" onclick="markAllRead()">
+                <i class="bi bi-check-all me-1"></i>تحديد الكل كمقروء
+            </button>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (Model.Any())
+        {
+            <div class="list-group list-group-flush">
+                @foreach (var n in Model)
+                {
+                    <a href="@(n.Url ?? "#")" class="list-group-item list-group-item-action py-3 @(!n.IsRead ? "bg-light" : "")"
+                       onclick="markRead(@n.Id)">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex gap-3 align-items-start">
+                                <div class="@n.TypeBadgeClass" style="font-size:1.3rem;">
+                                    <i class="bi @n.Icon"></i>
+                                </div>
+                                <div>
+                                    <strong class="d-block" style="font-size:.9rem;">
+                                        @if (!n.IsRead) { <span class="badge bg-primary me-1" style="font-size:.65rem;">جديد</span> }
+                                        @n.Title
+                                    </strong>
+                                    @if (!string.IsNullOrEmpty(n.Message))
+                                    {
+                                        <small class="text-muted d-block mt-1">@n.Message</small>
+                                    }
+                                </div>
+                            </div>
+                            <small class="text-muted text-nowrap me-2">@n.TimeAgo</small>
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-bell-slash" style="font-size:3rem;"></i>
+                <p class="mt-2">لا توجد إشعارات</p>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function markRead(id) {
+            fetch('/Notification/MarkAsRead/' + id, { method: 'POST', headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' } });
+        }
+        function markAllRead() {
+            fetch('/Notification/MarkAllAsRead', { method: 'POST', headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' } })
+                .then(() => location.reload());
+        }
+    </script>
+}

@@ -42,6 +42,7 @@ namespace OperationalPlanMS.Data
         public DbSet<StepTeamMember> StepTeamMembers { get; set; }
         public DbSet<ProjectStatusChange> ProjectStatusChanges { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
 
 

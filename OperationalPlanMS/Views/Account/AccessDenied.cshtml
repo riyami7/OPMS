@@ -3,34 +3,51 @@
     Layout = "_LoginLayout";
 }
 
-<div class="login-card" style="max-width: 480px;">
-    <div class="login-header" style="background: linear-gradient(135deg, #0F2544 0%, #1E4976 100%); padding: 40px 30px;">
-        <div style="width:72px; height:72px; margin:0 auto 16px; background:rgba(201,168,76,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center;">
-            <i class="bi bi-shield-lock" style="font-size:32px; color:#C9A84C;"></i>
-        </div>
-        <h1 style="font-size:22px; margin-bottom:6px;">الوصول مرفوض</h1>
-        <p style="opacity:0.7; font-size:14px; margin:0;">Access Denied</p>
-    </div>
+<div class="login-card" style="max-width: 460px; text-align: center;">
 
-    <div class="login-body text-center" style="padding: 30px;">
-        <p style="font-size:15px; color:#334155; line-height:1.8; margin-bottom:8px;">
-            ليس لديك صلاحية للوصول إلى هذه الصفحة.
-        </p>
-        <p style="font-size:13px; color:#94a3b8; margin-bottom:24px;">
-            إذا كنت تعتقد أن هذا خطأ، تواصل مع مدير النظام.
-        </p>
-
-        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-            <a href="/" class="btn btn-primary" style="background:linear-gradient(135deg, #0F2544, #1E4976); border:none; padding:10px 24px;">
-                <i class="bi bi-house me-2"></i>الرئيسية
-            </a>
-            <button onclick="history.back()" class="btn btn-outline-secondary" style="padding:10px 24px;">
-                <i class="bi bi-arrow-right me-2"></i>رجوع
-            </button>
+    <!-- أيقونة -->
+    <div style="margin-bottom: 1.5rem;">
+        <div style="width: 90px; height: 90px; margin: 0 auto; background: rgba(239,68,68,0.1); border: 2px solid rgba(239,68,68,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+            <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="rgba(239,68,68,0.8)" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+            </svg>
         </div>
     </div>
 
-    <div class="login-footer">
-        <p class="mb-0">&copy; 2026 - نظام إدارة الخطط التشغيلية</p>
+    <!-- العنوان -->
+    <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--txt-1, #f1f5e9); margin-bottom: 0.4rem;">
+        الوصول مرفوض
+    </h2>
+    <p style="font-size: 0.8rem; color: var(--accent, #C9A84C); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 1.5rem;">
+        ACCESS DENIED
+    </p>
+
+    <div class="divider"></div>
+
+    <!-- الرسالة -->
+    <p style="font-size: 0.95rem; color: var(--txt-2, #a3b18a); line-height: 1.8; margin-bottom: 0.5rem;">
+        ليس لديك صلاحية للوصول إلى هذه الصفحة.
+    </p>
+    <p style="font-size: 0.82rem; color: var(--txt-3, #6b7f5a); margin-bottom: 2rem;">
+        إذا كنت تعتقد أن هذا خطأ، تواصل مع مدير النظام.
+    </p>
+
+    <!-- الأزرار -->
+    <div style="display: flex; gap: 12px; justify-content: center;">
+        <a href="/" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; background: linear-gradient(135deg, var(--primary-mid, #3A5C2E), var(--primary, #2D4A22)); border: 1px solid rgba(201,168,76,0.2); border-radius: 12px; color: white; text-decoration: none; font-weight: 700; font-size: 0.9rem; font-family: inherit; transition: all 0.3s;">
+            <i class="bi bi-house"></i>
+            الرئيسية
+        </a>
+        <button onclick="history.back()" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; color: var(--txt-2, #a3b18a); font-weight: 600; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: all 0.3s;">
+            <i class="bi bi-arrow-right"></i>
+            رجوع
+        </button>
+    </div>
+
+    <!-- Footer -->
+    <div style="margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.04);">
+        <p style="font-size: 0.75rem; color: rgba(163,177,138,0.25); margin: 0;">
+            &copy; 2026 جميع الحقوق محفوظة — نظام إدارة الخطط التشغيلية
+        </p>
     </div>
 </div>

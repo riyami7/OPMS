@@ -9,11 +9,11 @@
     var isUser = userRole == UserRole.User;
     var isStepUser = userRole == UserRole.StepUser;
 
-    // صلاحيات العرض
+    // صلاحيات العرض — الكل يشوف المبادرات والمشاريع والخطوات
     var canViewDashboard = isAdmin || isExecutive;
-    var canViewInitiatives = isAdmin || isExecutive || isSupervisor;
-    var canViewProjects = !isStepUser; // StepUser لا يرى قائمة المشاريع
-    var canViewSteps = true; // الكل يرى الخطوات
+    var canViewInitiatives = true; // الكل يشوف (الفلترة في الـ Service)
+    var canViewProjects = true;    // الكل يشوف
+    var canViewSteps = true;       // الكل يشوف
     var canViewReports = isAdmin || isExecutive || isSupervisor;
     var canViewAdmin = isAdmin;
 
@@ -102,37 +102,37 @@
                         </li>
                     }
 
-                    <li class="nav-section">@(isStepUser ? "مهامي" : "الإدارة")</li>
+                    <li class="nav-section">الإدارة</li>
 
-                    <!-- المبادرات - Admin, Executive, Supervisor -->
+                    <!-- المبادرات -->
                     @if (canViewInitiatives)
                     {
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Initiatives" ? "active" : "")" href="/Initiatives">
                                 <i class="bi bi-lightning-charge"></i>
-                                <span>@(isSupervisor ? "مبادراتي" : "المبادرات")</span>
+                                <span>@(isAdmin || isExecutive ? "المبادرات" : "مبادراتي")</span>
                             </a>
                         </li>
                     }
 
-                    <!-- المشاريع - للجميع -->
+                    <!-- المشاريع -->
                     @if (canViewProjects)
                     {
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Projects" ? "active" : "")" href="/Projects">
                                 <i class="bi bi-folder"></i>
-                                <span>@(isUser ? "مشاريعي" : "المشاريع")</span>
+                                <span>@(isAdmin || isExecutive ? "المشاريع" : "مشاريعي")</span>
                             </a>
                         </li>
                     }
 
-                    <!-- الخطوات - للجميع -->
+                    <!-- الخطوات -->
                     @if (canViewSteps)
                     {
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Steps" && ViewContext.RouteData.Values["action"]?.ToString() != "PendingApprovals" ? "active" : "")" href="/Steps">
                                 <i class="bi bi-list-check"></i>
-                                <span>@(isStepUser ? "خطواتي" : isUser ? "مهامي" : "الخطوات")</span>
+                                <span>@(isAdmin || isExecutive ? "الخطوات" : "خطواتي")</span>
                             </a>
                         </li>
                     }
@@ -209,6 +209,29 @@
                 </div>
 
                 <div class="header-actions">
+                    <!-- Notifications Bell -->
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <div class="dropdown me-2">
+                            <button class="btn btn-link position-relative" data-bs-toggle="dropdown" onclick="loadNotifications()" style="color:var(--text-primary);font-size:1.2rem;">
+                                <i class="bi bi-bell"></i>
+                                <span id="notifBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem;display:none;">0</span>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-start shadow" style="width:360px;max-height:450px;overflow-y:auto;" id="notifDropdown">
+                                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                                    <strong style="font-size:.9rem;">الإشعارات</strong>
+                                    <button class="btn btn-sm btn-link text-primary p-0" onclick="markAllNotifRead()" style="font-size:.78rem;">تحديد الكل كمقروء</button>
+                                </div>
+                                <div id="notifList">
+                                    <div class="text-center py-4 text-muted"><small>جاري التحميل...</small></div>
+                                </div>
+                                <div class="border-top text-center py-2">
+                                    <a href="/Notification" class="text-decoration-none" style="font-size:.82rem;">عرض جميع الإشعارات</a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
                     <!-- User Menu -->
                     @if (User.Identity?.IsAuthenticated == true)
                     {
@@ -298,6 +321,46 @@
 
     <!-- Safe DOM Helpers — XSS Prevention -->
     <script src="~/js/safe-dom.js"></script>
+
+    <!-- Notifications -->
+    <script>
+        function loadNotifications() {
+            fetch('/Notification/GetDropdown')
+                .then(r => r.json())
+                .then(data => {
+                    var badge = document.getElementById('notifBadge');
+                    if (data.unreadCount > 0) { badge.textContent = data.unreadCount; badge.style.display = ''; }
+                    else { badge.style.display = 'none'; }
+
+                    var list = document.getElementById('notifList');
+                    if (!data.notifications || data.notifications.length === 0) {
+                        list.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-bell-slash" style="font-size:1.5rem;"></i><br><small>لا توجد إشعارات</small></div>';
+                        return;
+                    }
+                    list.innerHTML = data.notifications.map(function(n) {
+                        return '<a href="' + (n.url || '/Notification') + '" class="dropdown-item py-2 ' + (!n.isRead ? 'bg-light' : '') + '" onclick="markNotifRead(' + n.id + ')" style="white-space:normal;">' +
+                            '<div class="d-flex gap-2 align-items-start">' +
+                            '<i class="bi ' + n.icon + ' ' + n.typeBadgeClass + '" style="font-size:1.1rem;margin-top:2px;"></i>' +
+                            '<div style="flex:1;min-width:0;">' +
+                            '<div style="font-size:.83rem;font-weight:' + (!n.isRead ? '700' : '400') + ';">' + n.title + '</div>' +
+                            (n.message ? '<small class="text-muted d-block" style="font-size:.75rem;">' + n.message + '</small>' : '') +
+                            '<small class="text-muted" style="font-size:.7rem;">' + n.timeAgo + '</small>' +
+                            '</div></div></a>';
+                    }).join('');
+                });
+        }
+        function markNotifRead(id) { fetch('/Notification/MarkAsRead/' + id, { method: 'POST' }); }
+        function markAllNotifRead() {
+            fetch('/Notification/MarkAllAsRead', { method: 'POST' }).then(function() { loadNotifications(); });
+        }
+        // تحميل عدد الإشعارات عند فتح الصفحة
+        if (document.getElementById('notifBadge')) {
+            fetch('/Notification/GetDropdown').then(r => r.json()).then(data => {
+                var badge = document.getElementById('notifBadge');
+                if (data.unreadCount > 0) { badge.textContent = data.unreadCount; badge.style.display = ''; }
+            });
+        }
+    </script>
 
     <!-- المساعد الذكي (يتضمن التحقق من الصلاحيات والإعداد) -->
     @await Html.PartialAsync("_ChatWidget")

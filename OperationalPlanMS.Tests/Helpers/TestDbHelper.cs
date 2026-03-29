@@ -21,6 +21,8 @@ namespace OperationalPlanMS.Tests.Helpers
 
         public static IAuditService CreateAuditService() => new Mock<IAuditService>().Object;
 
+        public static INotificationService CreateNotificationService() => new Mock<INotificationService>().Object;
+
         public static ILogger<T> CreateLogger<T>()
         {
             return new Mock<ILogger<T>>().Object;

@@ -63,23 +63,51 @@ namespace OperationalPlanMS.Services
             // تصفية حسب الدور
             if (userRole == UserRole.Supervisor)
             {
-                // Supervisor sees own initiatives + any via InitiativeAccess
+                // Supervisor sees own initiatives + managed projects + InitiativeAccess
                 var accessibleIds = await _db.InitiativeAccess
                     .Where(a => a.UserId == userId && a.IsActive)
                     .Select(a => a.InitiativeId).ToListAsync();
-                query = query.Where(i => i.SupervisorId == userId || accessibleIds.Contains(i.Id));
+                var managedProjectInitiativeIds = await _db.Projects
+                    .Where(p => !p.IsDeleted && p.ProjectManagerId == userId)
+                    .Select(p => p.InitiativeId).Distinct().ToListAsync();
+                query = query.Where(i => i.SupervisorId == userId
+                    || accessibleIds.Contains(i.Id)
+                    || managedProjectInitiativeIds.Contains(i.Id));
             }
             else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
             {
-                // User, StepUser, or any other role — only see via InitiativeAccess
+                // User, StepUser — sees initiatives where they are:
+                // - project manager or deputy
+                // - step assignee
+                // - via InitiativeAccess
                 var accessibleIds = await _db.InitiativeAccess
                     .Where(a => a.UserId == userId && a.IsActive)
                     .Select(a => a.InitiativeId).ToListAsync();
 
-                if (accessibleIds.Any())
-                    query = query.Where(i => accessibleIds.Contains(i.Id));
+                var managedProjectInitiativeIds = await _db.Projects
+                    .Where(p => !p.IsDeleted && p.ProjectManagerId == userId)
+                    .Select(p => p.InitiativeId).Distinct().ToListAsync();
+
+                var empNumber = await _db.Users.Where(u => u.Id == userId).Select(u => u.ADUsername).FirstOrDefaultAsync();
+                var deputyInitiativeIds = !string.IsNullOrEmpty(empNumber)
+                    ? await _db.Projects.Where(p => !p.IsDeleted && p.DeputyManagerEmpNumber == empNumber)
+                        .Select(p => p.InitiativeId).Distinct().ToListAsync()
+                    : new List<int>();
+
+                var stepInitiativeIds = await _db.Steps
+                    .Where(s => !s.IsDeleted && s.AssignedToId == userId)
+                    .Select(s => s.Project.InitiativeId).Distinct().ToListAsync();
+
+                var allAccessibleIds = accessibleIds
+                    .Union(managedProjectInitiativeIds)
+                    .Union(deputyInitiativeIds)
+                    .Union(stepInitiativeIds)
+                    .Distinct().ToList();
+
+                if (allAccessibleIds.Any())
+                    query = query.Where(i => allAccessibleIds.Contains(i.Id));
                 else
-                    query = query.Where(i => false); // No access
+                    query = query.Where(i => false);
             }
 
             // البحث

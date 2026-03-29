@@ -54,12 +54,14 @@ namespace OperationalPlanMS.Services
         private readonly AppDbContext _db;
         private readonly ILogger<ProjectService> _logger;
         private readonly IAuditService _audit;
+        private readonly INotificationService _notify;
 
-        public ProjectService(AppDbContext db, ILogger<ProjectService> logger, IAuditService audit)
+        public ProjectService(AppDbContext db, ILogger<ProjectService> logger, IAuditService audit, INotificationService notify)
         {
             _db = db;
             _logger = logger;
             _audit = audit;
+            _notify = notify;
         }
 
         #region القراءة
@@ -79,22 +81,35 @@ namespace OperationalPlanMS.Services
                     .Where(i => i.SupervisorId == userId && !i.IsDeleted).Select(i => i.Id).ToListAsync();
                 var accessibleInitiativeIds = await _db.InitiativeAccess
                     .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                var allIds = supervisedInitiativeIds.Union(accessibleInitiativeIds).ToList();
-                query = query.Where(p => allIds.Contains(p.InitiativeId) || p.ProjectManagerId == userId);
-            }
-            else if (userRole == UserRole.User)
-            {
-                var accessibleInitiativeIds = await _db.InitiativeAccess
-                    .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                query = query.Where(p => p.ProjectManagerId == userId || accessibleInitiativeIds.Contains(p.InitiativeId));
-            }
-            else if (userRole == UserRole.StepUser)
-            {
-                var myProjectIds = await _db.Steps.Where(s => !s.IsDeleted && s.AssignedToId == userId)
+                var empNumber = await _db.Users.Where(u => u.Id == userId).Select(u => u.ADUsername).FirstOrDefaultAsync();
+                var deputyProjectIds = !string.IsNullOrEmpty(empNumber)
+                    ? await _db.Projects.Where(p => !p.IsDeleted && p.DeputyManagerEmpNumber == empNumber).Select(p => p.Id).ToListAsync()
+                    : new List<int>();
+                var stepProjectIds = await _db.Steps.Where(s => !s.IsDeleted && s.AssignedToId == userId)
                     .Select(s => s.ProjectId).Distinct().ToListAsync();
+
+                var allInitiativeIds = supervisedInitiativeIds.Union(accessibleInitiativeIds).ToList();
+                query = query.Where(p => allInitiativeIds.Contains(p.InitiativeId)
+                    || p.ProjectManagerId == userId
+                    || deputyProjectIds.Contains(p.Id)
+                    || stepProjectIds.Contains(p.Id));
+            }
+            else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+            {
+                // User, StepUser — sees projects where they are manager, deputy, step assignee, or via InitiativeAccess
                 var accessibleInitiativeIds = await _db.InitiativeAccess
                     .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                query = query.Where(p => myProjectIds.Contains(p.Id) || accessibleInitiativeIds.Contains(p.InitiativeId));
+                var empNumber = await _db.Users.Where(u => u.Id == userId).Select(u => u.ADUsername).FirstOrDefaultAsync();
+                var deputyProjectIds = !string.IsNullOrEmpty(empNumber)
+                    ? await _db.Projects.Where(p => !p.IsDeleted && p.DeputyManagerEmpNumber == empNumber).Select(p => p.Id).ToListAsync()
+                    : new List<int>();
+                var stepProjectIds = await _db.Steps.Where(s => !s.IsDeleted && s.AssignedToId == userId)
+                    .Select(s => s.ProjectId).Distinct().ToListAsync();
+
+                query = query.Where(p => p.ProjectManagerId == userId
+                    || deputyProjectIds.Contains(p.Id)
+                    || stepProjectIds.Contains(p.Id)
+                    || accessibleInitiativeIds.Contains(p.InitiativeId));
             }
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -272,6 +287,29 @@ namespace OperationalPlanMS.Services
             await SaveRelatedDataAsync(project.Id, model);
             _logger.LogInformation("تم إنشاء مشروع: {Code}", project.Code);
             await _audit.LogAsync("Project", project.Id, project.NameAr, "Create", createdById, $"كود: {project.Code}");
+
+            // إشعار لمدير المشروع
+            if (project.ProjectManagerId.HasValue && project.ProjectManagerId.Value != createdById)
+            {
+                await _notify.CreateAsync(project.ProjectManagerId.Value,
+                    "تم تعيينك مديراً لمشروع جديد",
+                    project.NameAr,
+                    "StepAssigned", $"/Projects/Details/{project.Id}", "bi-folder-plus");
+            }
+
+            // إشعار لمساعد مدير المشروع
+            if (!string.IsNullOrWhiteSpace(project.DeputyManagerEmpNumber))
+            {
+                var deputyId = await ResolveProjectManagerIdAsync(project.DeputyManagerEmpNumber);
+                if (deputyId.HasValue && deputyId.Value != createdById && deputyId != project.ProjectManagerId)
+                {
+                    await _notify.CreateAsync(deputyId.Value,
+                        "تم تعيينك مساعداً لمدير مشروع جديد",
+                        project.NameAr,
+                        "StepAssigned", $"/Projects/Details/{project.Id}", "bi-person-badge");
+                }
+            }
+
             return (true, project.InitiativeId, null, warning);
         }
 
@@ -280,6 +318,9 @@ namespace OperationalPlanMS.Services
         {
             var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
             if (project == null) return (false, "المشروع غير موجود", null);
+
+            var oldManagerId = project.ProjectManagerId; // حفظ المدير القديم
+            var oldDeputyEmpNumber = project.DeputyManagerEmpNumber; // حفظ المساعد القديم
 
             if (await _db.Projects.AnyAsync(p => p.Code == model.Code && p.Id != id))
                 return (false, "هذا الكود مستخدم بالفعل", null);
@@ -318,6 +359,32 @@ namespace OperationalPlanMS.Services
             await SaveRelatedDataAsync(project.Id, model);
             _logger.LogInformation("تم تحديث مشروع: {Code}", project.Code);
             await _audit.LogAsync("Project", project.Id, project.NameAr, "Update", modifiedById, $"كود: {project.Code}");
+
+            // إشعار لمدير المشروع الجديد إذا تغيّر
+            if (project.ProjectManagerId.HasValue && project.ProjectManagerId != oldManagerId && project.ProjectManagerId.Value != modifiedById)
+            {
+                await _notify.CreateAsync(project.ProjectManagerId.Value,
+                    "تم تعيينك مديراً لمشروع",
+                    project.NameAr,
+                    "StepAssigned", $"/Projects/Details/{project.Id}", "bi-folder-plus");
+            }
+
+            // إشعار لمساعد مدير المشروع إذا تغيّر
+            if (!string.IsNullOrWhiteSpace(project.DeputyManagerEmpNumber))
+            {
+                var deputyId = await ResolveProjectManagerIdAsync(project.DeputyManagerEmpNumber);
+                if (deputyId.HasValue && deputyId.Value != modifiedById && deputyId != project.ProjectManagerId)
+                {
+                    if (oldDeputyEmpNumber != project.DeputyManagerEmpNumber)
+                    {
+                        await _notify.CreateAsync(deputyId.Value,
+                            "تم تعيينك مساعداً لمدير مشروع",
+                            project.NameAr,
+                            "StepAssigned", $"/Projects/Details/{project.Id}", "bi-person-badge");
+                    }
+                }
+            }
+
             return (true, null, warning);
         }
 
@@ -403,6 +470,21 @@ namespace OperationalPlanMS.Services
             await _db.SaveChangesAsync();
             await _audit.LogAsync("Project", projectId, project.NameAr, "ChangeStatus", changedById,
                 $"{statusChange.OldStatus} → {newStatus}", statusChange.OldStatus.ToString(), newStatus.ToString());
+
+            // إشعار لمدير المشروع ومشرف المبادرة
+            var notifyUsers = new List<int>();
+            if (project.ProjectManagerId.HasValue) notifyUsers.Add(project.ProjectManagerId.Value);
+            var initiative = await _db.Initiatives.FindAsync(project.InitiativeId);
+            if (initiative?.SupervisorId.HasValue == true) notifyUsers.Add(initiative.SupervisorId.Value);
+            notifyUsers = notifyUsers.Where(u => u != changedById).Distinct().ToList();
+            if (notifyUsers.Any())
+            {
+                await _notify.CreateForMultipleAsync(notifyUsers,
+                    $"تغيير حالة مشروع: {statusChange.NewStatusDisplayAr}",
+                    $"{project.NameAr} — {reason}",
+                    "StatusChange", $"/Projects/Details/{projectId}", "bi-arrow-repeat");
+            }
+
             return (true, null);
         }
 
@@ -480,13 +562,18 @@ namespace OperationalPlanMS.Services
             if (userRole == UserRole.Admin || userRole == UserRole.Executive)
                 return true;
 
+            // مدير المشروع أو مساعده — أي دور
+            if (project.ProjectManagerId == userId)
+                return true;
+            if (!string.IsNullOrEmpty(project.DeputyManagerEmpNumber))
+            {
+                var deputyUser = _db.Users.FirstOrDefault(u => u.ADUsername == project.DeputyManagerEmpNumber && u.IsActive);
+                if (deputyUser?.Id == userId) return true;
+            }
+
             // Role-based checks
             if (userRole == UserRole.Supervisor &&
-                (_db.Initiatives.Any(i => i.Id == project.InitiativeId && i.SupervisorId == userId)
-                 || project.ProjectManagerId == userId))
-                return true;
-
-            if (userRole == UserRole.User && project.ProjectManagerId == userId)
+                _db.Initiatives.Any(i => i.Id == project.InitiativeId && i.SupervisorId == userId))
                 return true;
 
             if (userRole == UserRole.StepUser &&

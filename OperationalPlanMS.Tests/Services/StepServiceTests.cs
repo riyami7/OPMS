@@ -16,7 +16,7 @@ namespace OperationalPlanMS.Tests.Services
         public StepServiceTests()
         {
             _db = TestDbHelper.CreateContext();
-            _service = new StepService(_db, TestDbHelper.CreateLogger<StepService>(), TestDbHelper.CreateAuditService());
+            _service = new StepService(_db, TestDbHelper.CreateLogger<StepService>(), TestDbHelper.CreateAuditService(), TestDbHelper.CreateNotificationService());
             SeedAsync().GetAwaiter().GetResult();
         }
 

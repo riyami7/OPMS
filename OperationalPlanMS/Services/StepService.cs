@@ -46,12 +46,14 @@ namespace OperationalPlanMS.Services
         private readonly AppDbContext _db;
         private readonly ILogger<StepService> _logger;
         private readonly IAuditService _audit;
+        private readonly INotificationService _notify;
 
-        public StepService(AppDbContext db, ILogger<StepService> logger, IAuditService audit)
+        public StepService(AppDbContext db, ILogger<StepService> logger, IAuditService audit, INotificationService notify)
         {
             _db = db;
             _logger = logger;
             _audit = audit;
+            _notify = notify;
         }
 
         #region القراءة
@@ -218,6 +220,16 @@ namespace OperationalPlanMS.Services
 
             _logger.LogInformation("تم إنشاء خطوة: {StepNumber} في مشروع {ProjectId}", step.StepNumber, step.ProjectId);
             await _audit.LogAsync("Step", step.Id, step.NameAr, "Create", createdById, $"خطوة #{step.StepNumber} في مشروع #{step.ProjectId}");
+
+            // إشعار للمنفذ المعيّن
+            if (step.AssignedToId.HasValue && step.AssignedToId.Value != createdById)
+            {
+                await _notify.CreateAsync(step.AssignedToId.Value,
+                    "تم تعيينك على خطوة جديدة",
+                    $"{step.NameAr} - في مشروع {project.NameAr}",
+                    "StepAssigned", $"/Steps/Details/{step.Id}", "bi-person-plus");
+            }
+
             return (true, step.ProjectId, null, warning);
         }
 
@@ -226,6 +238,8 @@ namespace OperationalPlanMS.Services
             var step = await _db.Steps.Include(s => s.Project).ThenInclude(p => p.Steps.Where(st => !st.IsDeleted))
                 .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
             if (step == null) return (false, "الخطوة غير موجودة", null);
+
+            var oldAssignedToId = step.AssignedToId; // حفظ المنفذ القديم
 
             var remainingWeight = 100 - step.Project.Steps.Where(s => s.Id != id).Sum(s => s.Weight);
             if (model.Weight > remainingWeight)
@@ -264,6 +278,16 @@ namespace OperationalPlanMS.Services
             UpdateStepDelayedStatus(step);
             await _db.SaveChangesAsync();
             await _audit.LogAsync("Step", step.Id, step.NameAr, "Update", modifiedById, $"خطوة #{step.StepNumber}");
+
+            // إشعار للمنفذ الجديد إذا تغيّر
+            if (step.AssignedToId.HasValue && step.AssignedToId != oldAssignedToId && step.AssignedToId.Value != modifiedById)
+            {
+                await _notify.CreateAsync(step.AssignedToId.Value,
+                    "تم تعيينك على خطوة",
+                    $"{step.NameAr} - في مشروع {step.Project.NameAr}",
+                    "StepAssigned", $"/Steps/Details/{step.Id}", "bi-person-plus");
+            }
+
             return (true, null, warning);
         }
 
@@ -391,6 +415,16 @@ namespace OperationalPlanMS.Services
 
             await _db.SaveChangesAsync();
             await _audit.LogAsync("Step", id, step.NameAr, "Approve", approverId, approverNotes);
+
+            // إشعار للمنفذ
+            if (step.AssignedToId.HasValue)
+            {
+                await _notify.CreateAsync(step.AssignedToId.Value,
+                    "تم اعتماد خطوتك",
+                    $"{step.NameAr} - تم التأكيد بنجاح",
+                    "StepApproved", $"/Steps/Details/{id}", "bi-check-circle");
+            }
+
             await UpdateProjectProgressAsync(step.ProjectId);
             return (true, null);
         }
@@ -418,6 +452,16 @@ namespace OperationalPlanMS.Services
 
             await _db.SaveChangesAsync();
             await _audit.LogAsync("Step", id, step.NameAr, "Reject", rejecterId, rejectionReason);
+
+            // إشعار للمنفذ
+            if (step.AssignedToId.HasValue)
+            {
+                await _notify.CreateAsync(step.AssignedToId.Value,
+                    "تم رفض خطوتك",
+                    $"{step.NameAr} - السبب: {rejectionReason}",
+                    "StepRejected", $"/Steps/Details/{id}", "bi-x-circle");
+            }
+
             return (true, null);
         }
 
@@ -471,16 +515,21 @@ namespace OperationalPlanMS.Services
             var project = step.Project ?? _db.Projects.Include(p => p.Initiative).FirstOrDefault(p => p.Id == step.ProjectId);
             if (project == null) return false;
 
-            // Check role-based access first
-            var hasRoleAccess = userRole switch
-            {
-                UserRole.Supervisor => project.Initiative?.SupervisorId == userId,
-                UserRole.User => project.ProjectManagerId == userId,
-                UserRole.StepUser => step.AssignedToId == userId,
-                _ => false
-            };
+            // منفذ الخطوة
+            if (step.AssignedToId == userId) return true;
 
-            if (hasRoleAccess) return true;
+            // مدير المشروع
+            if (project.ProjectManagerId == userId) return true;
+
+            // مساعد مدير المشروع
+            if (!string.IsNullOrEmpty(project.DeputyManagerEmpNumber))
+            {
+                var deputyUser = _db.Users.FirstOrDefault(u => u.ADUsername == project.DeputyManagerEmpNumber && u.IsActive);
+                if (deputyUser?.Id == userId) return true;
+            }
+
+            // مشرف المبادرة
+            if (project.Initiative?.SupervisorId == userId) return true;
 
             // Fallback: check InitiativeAccess
             return _db.InitiativeAccess.Any(a =>
