@@ -28,13 +28,14 @@ namespace OperationalPlanMS.Controllers
             var userRoleStr = User.FindFirst(ClaimTypes.Role)?.Value;
             var roleNameAr = User.FindFirst("RoleNameAr")?.Value;
             var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
+            var employeeRank = User.FindFirst("EmployeeRank")?.Value;
             int.TryParse(userIdStr, out int userId);
             Enum.TryParse<UserRole>(userRoleStr, out UserRole userRole);
 
             ViewBag.UserName = userName;
             ViewBag.UserRole = userRole;
             ViewBag.RoleNameAr = roleNameAr;
+            ViewBag.EmployeeRank = employeeRank;
 
             try
             {

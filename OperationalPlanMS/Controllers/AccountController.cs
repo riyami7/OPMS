@@ -160,6 +160,7 @@ namespace OperationalPlanMS.Controllers
                 new Claim("RoleNameAr", user.Role?.NameAr ?? ""),
                 new Claim("RoleNameEn", user.Role?.NameEn ?? ""),
                 new Claim("IsStepApprover", user.IsStepApprover.ToString()),
+                new Claim("EmployeeRank", user.EmployeeRank ?? ""),
             };
 
             if (user.ExternalUnitId.HasValue)
