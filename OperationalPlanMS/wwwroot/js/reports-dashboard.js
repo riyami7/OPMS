@@ -186,7 +186,7 @@
     function populateFilterLevel1() {
         var s = document.getElementById('filterLevel1');
         s.innerHTML = '<option value="">-- جميع الوحدات --</option>';
-        allUnits.filter(function (u) { return !u.parentId || u.parentId === 0; }).forEach(function (u) {
+        allUnits.filter(function (u) { return u.code == '00001' && (!u.parentId || u.parentId === 0); }).forEach(function (u) {
             var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; s.appendChild(o);
         });
     }

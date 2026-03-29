@@ -348,7 +348,7 @@
         // ملء المستوى الأول للـ Modal
         function populateAddLevel1() {
             const select = document.getElementById('addLevel1');
-            const roots = allUnits.filter(u => !u.parentId || u.parentId === 0);
+            const roots = allUnits.filter(u =>  u.code=='00001'&& ( !u.parentId || u.parentId === 0));
             select.innerHTML = '<option value="">-- المستوى الأول --</option>';
             roots.forEach(unit => {
                 select.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;

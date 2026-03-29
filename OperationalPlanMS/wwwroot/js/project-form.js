@@ -118,7 +118,7 @@
 
     function populateLevel1() {
         const level1 = document.getElementById('ExternalLevel1');
-        const rootUnits = allUnitsCache.filter(u => !u.parentId || u.parentId === 0);
+        const rootUnits = allUnitsCache.filter(u => u.code == '00001' && (!u.parentId || u.parentId === 0));
 
         level1.innerHTML = '<option value="">-- اختر --</option>';
         rootUnits.forEach(u => {
@@ -410,7 +410,7 @@
 
     function populateSupportingLevel1() {
         const select = document.getElementById('supportingLevel1');
-        const rootUnits = allUnitsCache.filter(u => !u.parentId || u.parentId === 0);
+        const rootUnits = allUnitsCache.filter(u => u.code == '00001' && (!u.parentId || u.parentId === 0));
         select.innerHTML = '<option value="">-- اختر --</option>';
         rootUnits.forEach(u => {
             select.innerHTML += `<option value="${u.id}" data-name="${u.name}">${u.name}</option>`;

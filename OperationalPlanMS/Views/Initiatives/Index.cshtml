@@ -228,7 +228,7 @@
         function populateFilterLevel1() {
             var s = document.getElementById('filterLevel1');
             s.innerHTML = '<option value="">-- الكل --</option>';
-            allUnits.filter(u => !u.parentId || u.parentId === 0).forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; s.appendChild(o); });
+            allUnits.filter(u =>  u.code=='00001'&& ( !u.parentId || u.parentId === 0)).forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; s.appendChild(o); });
         }
         function fillSelect(selectEl, items, placeholder) {
             selectEl.innerHTML = '<option value="">' + placeholder + '</option>';

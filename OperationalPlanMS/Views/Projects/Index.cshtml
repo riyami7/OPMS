@@ -201,7 +201,7 @@
         function populateFilterLevel1() {
             var s = document.getElementById('filterLevel1');
             s.innerHTML = '<option value="">-- جميع الوحدات --</option>';
-            allUnits.filter(u => !u.parentId || u.parentId === 0).forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; s.appendChild(o); });
+            allUnits.filter(u => u.code=='00001'&& ( !u.parentId || u.parentId === 0)).forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; s.appendChild(o); });
         }
         function fillSelect(el, items, ph) { el.innerHTML = '<option value="">' + ph + '</option>'; items.forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; el.appendChild(o); }); }
         function onLevel1Change() {
