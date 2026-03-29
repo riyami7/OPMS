@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using OperationalPlanMS.Models;
 using OperationalPlanMS.Models.Entities;
 using OperationalPlanMS.Services;
@@ -15,7 +15,7 @@ namespace OperationalPlanMS.Tests.Services
         public ProjectServiceTests()
         {
             _db = TestDbHelper.CreateContext();
-            _service = new ProjectService(_db, TestDbHelper.CreateLogger<ProjectService>());
+            _service = new ProjectService(_db, TestDbHelper.CreateLogger<ProjectService>(), TestDbHelper.CreateAuditService());
             SeedAsync().GetAwaiter().GetResult();
         }
 
@@ -89,7 +89,7 @@ namespace OperationalPlanMS.Tests.Services
         {
             var (success, error) = await _service.SoftDeleteAsync(999, modifiedById: 3);
             success.Should().BeFalse();
-            error.Should().Contain("غير موجود");
+            error.Should().Contain("??? ?????");
         }
 
         [Fact]
@@ -158,7 +158,7 @@ namespace OperationalPlanMS.Tests.Services
         public async Task AddNoteAsync_Valid_Succeeds()
         {
             var project = await TestDbHelper.SeedProjectAsync(_db, _initiative.Id);
-            var (success, error) = await _service.AddNoteAsync(project.Id, "ملاحظة مشروع", 3);
+            var (success, error) = await _service.AddNoteAsync(project.Id, "?????? ?????", 3);
             success.Should().BeTrue();
             _db.ProgressUpdates.Count(p => p.ProjectId == project.Id).Should().Be(1);
         }
@@ -174,7 +174,7 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task AddNoteAsync_NonExistingProject_Fails()
         {
-            var (success, error) = await _service.AddNoteAsync(999, "ملاحظة", 3);
+            var (success, error) = await _service.AddNoteAsync(999, "??????", 3);
             success.Should().BeFalse();
         }
 
@@ -182,18 +182,18 @@ namespace OperationalPlanMS.Tests.Services
         public async Task EditNoteAsync_Valid_Succeeds()
         {
             var project = await TestDbHelper.SeedProjectAsync(_db, _initiative.Id);
-            await _service.AddNoteAsync(project.Id, "أصلية", 3);
+            await _service.AddNoteAsync(project.Id, "?????", 3);
             var note = _db.ProgressUpdates.First(p => p.ProjectId == project.Id);
-            var (success, _) = await _service.EditNoteAsync(note.Id, project.Id, "محدّثة");
+            var (success, _) = await _service.EditNoteAsync(note.Id, project.Id, "??????");
             success.Should().BeTrue();
-            _db.ProgressUpdates.Find(note.Id)!.NotesAr.Should().Be("محدّثة");
+            _db.ProgressUpdates.Find(note.Id)!.NotesAr.Should().Be("??????");
         }
 
         [Fact]
         public async Task DeleteNoteAsync_Valid_Succeeds()
         {
             var project = await TestDbHelper.SeedProjectAsync(_db, _initiative.Id);
-            await _service.AddNoteAsync(project.Id, "للحذف", 3);
+            await _service.AddNoteAsync(project.Id, "?????", 3);
             var note = _db.ProgressUpdates.First();
             var (success, _) = await _service.DeleteNoteAsync(note.Id, project.Id);
             success.Should().BeTrue();
@@ -230,8 +230,8 @@ namespace OperationalPlanMS.Tests.Services
         public async Task GetSupportingEntitiesAsync_ReturnsActiveOnly()
         {
             _db.SupportingEntities.AddRange(
-                new SupportingEntity { NameAr = "جهة فعّالة", NameEn = "Active", IsActive = true },
-                new SupportingEntity { NameAr = "جهة معطّلة", NameEn = "Inactive", IsActive = false }
+                new SupportingEntity { NameAr = "??? ??????", NameEn = "Active", IsActive = true },
+                new SupportingEntity { NameAr = "??? ??????", NameEn = "Inactive", IsActive = false }
             );
             await _db.SaveChangesAsync();
             var result = await _service.GetSupportingEntitiesAsync();

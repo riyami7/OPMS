@@ -40,11 +40,13 @@ namespace OperationalPlanMS.Services
     {
         private readonly AppDbContext _db;
         private readonly ILogger<InitiativeService> _logger;
+        private readonly IAuditService _audit;
 
-        public InitiativeService(AppDbContext db, ILogger<InitiativeService> logger)
+        public InitiativeService(AppDbContext db, ILogger<InitiativeService> logger, IAuditService audit)
         {
             _db = db;
             _logger = logger;
+            _audit = audit;
         }
 
         #region القراءة
@@ -189,6 +191,7 @@ namespace OperationalPlanMS.Services
             await _db.SaveChangesAsync();
 
             _logger.LogInformation("تم إنشاء مبادرة: {Code} بواسطة UserId: {UserId}", initiative.Code, createdById);
+            await _audit.LogAsync("Initiative", initiative.Id, initiative.NameAr, "Create", createdById, $"كود: {initiative.Code}");
 
             return (true, initiative.Id, null);
         }
@@ -211,6 +214,7 @@ namespace OperationalPlanMS.Services
             await _db.SaveChangesAsync();
 
             _logger.LogInformation("تم تحديث مبادرة: {Code}", initiative.Code);
+            await _audit.LogAsync("Initiative", initiative.Id, initiative.NameAr, "Update", modifiedById, $"كود: {initiative.Code}");
 
             return (true, null);
         }
@@ -230,6 +234,7 @@ namespace OperationalPlanMS.Services
             await _db.SaveChangesAsync();
 
             _logger.LogInformation("تم حذف مبادرة: {Code} بواسطة UserId: {UserId}", initiative.Code, modifiedById);
+            await _audit.LogAsync("Initiative", initiative.Id, initiative.NameAr, "Delete", modifiedById, $"كود: {initiative.Code}");
 
             return (true, null);
         }

@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using OperationalPlanMS.Services;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Models;
 using OperationalPlanMS.Models.Entities;
@@ -18,6 +19,8 @@ namespace OperationalPlanMS.Tests.Helpers
             return new AppDbContext(options);
         }
 
+        public static IAuditService CreateAuditService() => new Mock<IAuditService>().Object;
+
         public static ILogger<T> CreateLogger<T>()
         {
             return new Mock<ILogger<T>>().Object;
@@ -28,11 +31,11 @@ namespace OperationalPlanMS.Tests.Helpers
             if (!db.Roles.Any())
             {
                 db.Roles.AddRange(
-                    new Role { Id = 1, Code = "admin", NameAr = "مدير النظام", NameEn = "Admin" },
-                    new Role { Id = 2, Code = "executive", NameAr = "تنفيذي", NameEn = "Executive" },
-                    new Role { Id = 3, Code = "supervisor", NameAr = "مشرف", NameEn = "Supervisor" },
-                    new Role { Id = 4, Code = "user", NameAr = "مدير مشروع", NameEn = "User" },
-                    new Role { Id = 7, Code = "stepuser", NameAr = "منفذ خطوة", NameEn = "Step User" }
+                    new Role { Id = 1, Code = "admin", NameAr = "???? ??????", NameEn = "Admin" },
+                    new Role { Id = 2, Code = "executive", NameAr = "??????", NameEn = "Executive" },
+                    new Role { Id = 3, Code = "supervisor", NameAr = "????", NameEn = "Supervisor" },
+                    new Role { Id = 4, Code = "user", NameAr = "???? ?????", NameEn = "User" },
+                    new Role { Id = 7, Code = "stepuser", NameAr = "???? ????", NameEn = "Step User" }
                 );
                 await db.SaveChangesAsync();
             }
@@ -40,11 +43,11 @@ namespace OperationalPlanMS.Tests.Helpers
             if (!db.Users.Any())
             {
                 db.Users.AddRange(
-                    new User { Id = 1, ADUsername = "C1-0001", FullNameAr = "أحمد المشرف", FullNameEn = "Ahmed Supervisor", RoleId = 3, IsActive = true },
-                    new User { Id = 2, ADUsername = "C1-0002", FullNameAr = "سالم المدير", FullNameEn = "Salem Manager", RoleId = 4, IsActive = true },
-                    new User { Id = 3, ADUsername = "C1-0003", FullNameAr = "محمد الإداري", FullNameEn = "Mohammed Admin", RoleId = 1, IsActive = true },
-                    new User { Id = 4, ADUsername = "C1-0004", FullNameAr = "يوسف المنفذ", FullNameEn = "Yousef StepUser", RoleId = 7, IsActive = true },
-                    new User { Id = 5, ADUsername = "C1-0005", FullNameAr = "خالد معطل", FullNameEn = "Khaled Inactive", RoleId = 4, IsActive = false }
+                    new User { Id = 1, ADUsername = "C1-0001", FullNameAr = "???? ??????", FullNameEn = "Ahmed Supervisor", RoleId = 3, IsActive = true },
+                    new User { Id = 2, ADUsername = "C1-0002", FullNameAr = "???? ??????", FullNameEn = "Salem Manager", RoleId = 4, IsActive = true },
+                    new User { Id = 3, ADUsername = "C1-0003", FullNameAr = "???? ???????", FullNameEn = "Mohammed Admin", RoleId = 1, IsActive = true },
+                    new User { Id = 4, ADUsername = "C1-0004", FullNameAr = "???? ??????", FullNameEn = "Yousef StepUser", RoleId = 7, IsActive = true },
+                    new User { Id = 5, ADUsername = "C1-0005", FullNameAr = "???? ????", FullNameEn = "Khaled Inactive", RoleId = 4, IsActive = false }
                 );
                 await db.SaveChangesAsync();
             }
@@ -64,7 +67,7 @@ namespace OperationalPlanMS.Tests.Helpers
         {
             var initiative = new Initiative
             {
-                Code = code, NameAr = "مبادرة تجريبية", NameEn = "Test Initiative",
+                Code = code, NameAr = "?????? ???????", NameEn = "Test Initiative",
                 FiscalYearId = 1, SupervisorId = supervisorId, CreatedById = 3, CreatedAt = DateTime.Now,
                 Status = Status.InProgress, Priority = Priority.Medium,
                 PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(6)
@@ -78,7 +81,7 @@ namespace OperationalPlanMS.Tests.Helpers
         {
             var project = new Project
             {
-                Code = code, NameAr = "مشروع تجريبي", NameEn = "Test Project",
+                Code = code, NameAr = "????? ??????", NameEn = "Test Project",
                 InitiativeId = initiativeId, ProjectManagerId = managerId, CreatedById = 3, CreatedAt = DateTime.Now,
                 Status = Status.InProgress, Priority = Priority.Medium,
                 PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(3)
@@ -95,7 +98,7 @@ namespace OperationalPlanMS.Tests.Helpers
         {
             var step = new Step
             {
-                StepNumber = stepNumber, NameAr = $"خطوة تجريبية {stepNumber}", NameEn = $"Test Step {stepNumber}",
+                StepNumber = stepNumber, NameAr = $"???? ??????? {stepNumber}", NameEn = $"Test Step {stepNumber}",
                 ProjectId = projectId, Weight = weight, ProgressPercentage = progress, Status = status,
                 AssignedToId = assignedToId, CreatedById = 3, CreatedAt = DateTime.Now,
                 PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddDays(30)

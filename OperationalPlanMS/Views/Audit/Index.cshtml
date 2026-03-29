@@ -1,0 +1,174 @@
+@model List<OperationalPlanMS.Models.Entities.AuditLog>
+@using OperationalPlanMS.Models
+@{
+    ViewData["Title"] = "سجل التدقيق";
+    var currentPage = (int)(ViewBag.CurrentPage ?? 1);
+    var totalPages = (int)(ViewBag.TotalPages ?? 1);
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var selEntity = ViewBag.EntityType as string ?? "";
+    var selAction = ViewBag.Action as string ?? "";
+}
+
+<div class="page-header">
+    <div class="page-header-title">
+        <h4 class="mb-0"><i class="bi bi-shield-check me-2"></i>سجل التدقيق</h4>
+        <small class="text-muted">تتبع جميع العمليات على المبادرات والمشاريع والخطوات</small>
+    </div>
+</div>
+
+<!-- فلاتر -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small">نوع الكيان</label>
+                <select name="entityType" id="filterEntityType" class="form-select form-select-sm">
+                    <option value="">الكل</option>
+                    <option value="Initiative">مبادرة</option>
+                    <option value="Project">مشروع</option>
+                    <option value="Step">خطوة</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">العملية</label>
+                <select name="actionFilter" id="filterAction" class="form-select form-select-sm">
+                    <option value="">الكل</option>
+                    <option value="Create">إنشاء</option>
+                    <option value="Update">تعديل</option>
+                    <option value="Delete">حذف</option>
+                    <option value="ChangeStatus">تغيير حالة</option>
+                    <option value="Approve">اعتماد</option>
+                    <option value="Reject">رفض</option>
+                    <option value="UpdateProgress">تحديث تقدم</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">المستخدم</label>
+                <select name="userId" class="form-select form-select-sm" asp-items="@(ViewBag.Users as SelectList)">
+                    <option value="">الكل</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">من تاريخ</label>
+                <input type="date" name="fromDate" value="@(((DateTime?)ViewBag.FromDate)?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">إلى تاريخ</label>
+                <input type="date" name="toDate" value="@(((DateTime?)ViewBag.ToDate)?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100"><i class="bi bi-funnel me-1"></i>تصفية</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- النتائج -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul me-1"></i>السجلات</span>
+        <span class="badge bg-secondary">@totalCount سجل</span>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" style="font-size:.88rem;">
+                    <thead>
+                        <tr>
+                            <th style="width:160px;">التاريخ</th>
+                            <th style="width:130px;">المستخدم</th>
+                            <th style="width:90px;">العملية</th>
+                            <th style="width:80px;">الكيان</th>
+                            <th>التفاصيل</th>
+                            <th style="width:120px;">القيم</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <small class="text-muted">@log.CreatedAt.ToString("yyyy-MM-dd")</small><br />
+                                    <small class="text-muted">@log.CreatedAt.ToString("HH:mm:ss")</small>
+                                </td>
+                                <td>
+                                    <span class="fw-bold" style="font-size:.82rem;">@log.User?.FullNameAr</span>
+                                </td>
+                                <td>
+                                    <span class="badge @log.ActionBadgeClass" style="font-size:.75rem;">@log.ActionDisplayAr</span>
+                                </td>
+                                <td>
+                                    <i class="bi @log.EntityIcon me-1"></i>
+                                    <small>@log.EntityTypeDisplayAr</small>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(log.EntityName))
+                                    {
+                                        <strong style="font-size:.85rem;">@log.EntityName</strong>
+                            
+                                        <br />
+                                    }
+                                    @if (!string.IsNullOrEmpty(log.Details))
+                                    {
+                                        <small class="text-muted">@log.Details</small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(log.OldValue) && !string.IsNullOrEmpty(log.NewValue))
+                                    {
+                                        <small class="text-danger">@log.OldValue</small>
+                                        <i class="bi bi-arrow-left-short"></i>
+                                        <small class="text-success">@log.NewValue</small>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <nav class="d-flex justify-content-center py-3">
+                    <ul class="pagination pagination-sm mb-0">
+                        @if (currentPage > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="?page=@(currentPage - 1)&entityType=@selEntity&action=@selAction&userId=@ViewBag.UserId&fromDate=@(((DateTime?)ViewBag.FromDate)?.ToString("yyyy-MM-dd"))&toDate=@(((DateTime?)ViewBag.ToDate)?.ToString("yyyy-MM-dd"))">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        }
+                        @for (var i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                        {
+                            <li class="page-item @(i == currentPage ? "active" : "")">
+                                <a class="page-link" href="?page=@i&entityType=@selEntity&action=@selAction&userId=@ViewBag.UserId&fromDate=@(((DateTime?)ViewBag.FromDate)?.ToString("yyyy-MM-dd"))&toDate=@(((DateTime?)ViewBag.ToDate)?.ToString("yyyy-MM-dd"))">@i</a>
+                            </li>
+                        }
+                        @if (currentPage < totalPages)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="?page=@(currentPage + 1)&entityType=@selEntity&action=@selAction&userId=@ViewBag.UserId&fromDate=@(((DateTime?)ViewBag.FromDate)?.ToString("yyyy-MM-dd"))&toDate=@(((DateTime?)ViewBag.ToDate)?.ToString("yyyy-MM-dd"))">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
+        }
+        else
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox" style="font-size:3rem;"></i>
+                <p class="mt-2">لا توجد سجلات</p>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+    document.getElementById('filterEntityType').value = '@selEntity';
+    document.getElementById('filterAction').value = '@selAction';
+</script>

@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using OperationalPlanMS.Models;
 using OperationalPlanMS.Models.Entities;
 using OperationalPlanMS.Services;
@@ -14,7 +14,7 @@ namespace OperationalPlanMS.Tests.Services
         public InitiativeServiceTests()
         {
             _db = TestDbHelper.CreateContext();
-            _service = new InitiativeService(_db, TestDbHelper.CreateLogger<InitiativeService>());
+            _service = new InitiativeService(_db, TestDbHelper.CreateLogger<InitiativeService>(), TestDbHelper.CreateAuditService());
             TestDbHelper.SeedBasicDataAsync(_db).GetAwaiter().GetResult();
         }
 
@@ -86,7 +86,7 @@ namespace OperationalPlanMS.Tests.Services
         {
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
-                Code = "INI-2026-100", NameAr = "مبادرة جديدة", NameEn = "New Initiative",
+                Code = "INI-2026-100", NameAr = "?????? ?????", NameEn = "New Initiative",
                 FiscalYearId = 1, SupervisorId = 1,
 
             };
@@ -102,13 +102,13 @@ namespace OperationalPlanMS.Tests.Services
             await TestDbHelper.SeedInitiativeAsync(_db, code: "INI-2026-001");
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
-                Code = "INI-2026-001", NameAr = "مكررة", NameEn = "Duplicate",
+                Code = "INI-2026-001", NameAr = "?????", NameEn = "Duplicate",
                 FiscalYearId = 1, SupervisorId = 1,
 
             };
             var (success, id, error) = await _service.CreateAsync(model, createdById: 3);
             success.Should().BeFalse();
-            error.Should().Contain("مستخدم بالفعل");
+            error.Should().Contain("?????? ??????");
         }
 
         [Fact]
@@ -117,14 +117,14 @@ namespace OperationalPlanMS.Tests.Services
             var seeded = await TestDbHelper.SeedInitiativeAsync(_db);
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
-                Code = seeded.Code, NameAr = "مبادرة محدثة", NameEn = "Updated",
+                Code = seeded.Code, NameAr = "?????? ?????", NameEn = "Updated",
                 FiscalYearId = 1, SupervisorId = 1,
 
             };
             var (success, error) = await _service.UpdateAsync(seeded.Id, model, modifiedById: 3, UserRole.Admin, 3);
             success.Should().BeTrue();
             var updated = await _service.GetByIdAsync(seeded.Id);
-            updated!.NameAr.Should().Be("مبادرة محدثة");
+            updated!.NameAr.Should().Be("?????? ?????");
         }
 
         [Fact]
@@ -133,7 +133,7 @@ namespace OperationalPlanMS.Tests.Services
             var seeded = await TestDbHelper.SeedInitiativeAsync(_db, supervisorId: 1);
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
-                Code = seeded.Code, NameAr = "تعديل المشرف", NameEn = "Supervisor Edit",
+                Code = seeded.Code, NameAr = "????? ??????", NameEn = "Supervisor Edit",
                 FiscalYearId = 1, SupervisorId = 1,
 
             };
@@ -147,13 +147,13 @@ namespace OperationalPlanMS.Tests.Services
             var seeded = await TestDbHelper.SeedInitiativeAsync(_db, supervisorId: 1);
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
-                Code = seeded.Code, NameAr = "محاولة", NameEn = "Attempt",
+                Code = seeded.Code, NameAr = "??????", NameEn = "Attempt",
                 FiscalYearId = 1, SupervisorId = 1,
 
             };
             var (success, error) = await _service.UpdateAsync(seeded.Id, model, modifiedById: 99, UserRole.Supervisor, 99);
             success.Should().BeFalse();
-            error.Should().Contain("لا يمكنك");
+            error.Should().Contain("?? ?????");
         }
 
         [Fact]
@@ -167,7 +167,7 @@ namespace OperationalPlanMS.Tests.Services
             };
             var (success, error) = await _service.UpdateAsync(999, model, 3, UserRole.Admin, 3);
             success.Should().BeFalse();
-            error.Should().Contain("غير موجودة");
+            error.Should().Contain("??? ??????");
         }
 
         [Fact]
@@ -194,14 +194,14 @@ namespace OperationalPlanMS.Tests.Services
             var seeded = await TestDbHelper.SeedInitiativeAsync(_db, supervisorId: 1);
             var (success, error) = await _service.SoftDeleteAsync(seeded.Id, 99, UserRole.Supervisor, 99);
             success.Should().BeFalse();
-            error.Should().Contain("لا يمكنك");
+            error.Should().Contain("?? ?????");
         }
 
         [Fact]
         public async Task AddNoteAsync_Valid_Succeeds()
         {
             var seeded = await TestDbHelper.SeedInitiativeAsync(_db);
-            var (success, error) = await _service.AddNoteAsync(seeded.Id, "ملاحظة تجريبية", createdById: 3);
+            var (success, error) = await _service.AddNoteAsync(seeded.Id, "?????? ???????", createdById: 3);
             success.Should().BeTrue();
             _db.ProgressUpdates.Count(p => p.InitiativeId == seeded.Id).Should().Be(1);
         }
@@ -212,33 +212,33 @@ namespace OperationalPlanMS.Tests.Services
             var seeded = await TestDbHelper.SeedInitiativeAsync(_db);
             var (success, error) = await _service.AddNoteAsync(seeded.Id, "  ", createdById: 3);
             success.Should().BeFalse();
-            error.Should().Contain("مطلوبة");
+            error.Should().Contain("??????");
         }
 
         [Fact]
         public async Task AddNoteAsync_NonExistingInitiative_Fails()
         {
-            var (success, error) = await _service.AddNoteAsync(999, "ملاحظة", createdById: 3);
+            var (success, error) = await _service.AddNoteAsync(999, "??????", createdById: 3);
             success.Should().BeFalse();
-            error.Should().Contain("غير موجودة");
+            error.Should().Contain("??? ??????");
         }
 
         [Fact]
         public async Task EditNoteAsync_Valid_Succeeds()
         {
             var seeded = await TestDbHelper.SeedInitiativeAsync(_db);
-            await _service.AddNoteAsync(seeded.Id, "أصلية", 3);
+            await _service.AddNoteAsync(seeded.Id, "?????", 3);
             var note = _db.ProgressUpdates.First(p => p.InitiativeId == seeded.Id);
-            var (success, error) = await _service.EditNoteAsync(note.Id, seeded.Id, "معدّلة");
+            var (success, error) = await _service.EditNoteAsync(note.Id, seeded.Id, "??????");
             success.Should().BeTrue();
-            _db.ProgressUpdates.Find(note.Id)!.NotesAr.Should().Be("معدّلة");
+            _db.ProgressUpdates.Find(note.Id)!.NotesAr.Should().Be("??????");
         }
 
         [Fact]
         public async Task DeleteNoteAsync_Valid_RemovesFromDb()
         {
             var seeded = await TestDbHelper.SeedInitiativeAsync(_db);
-            await _service.AddNoteAsync(seeded.Id, "ملاحظة للحذف", 3);
+            await _service.AddNoteAsync(seeded.Id, "?????? ?????", 3);
             var note = _db.ProgressUpdates.First();
             var (success, error) = await _service.DeleteNoteAsync(note.Id, seeded.Id);
             success.Should().BeTrue();

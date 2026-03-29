@@ -45,11 +45,13 @@ namespace OperationalPlanMS.Services
     {
         private readonly AppDbContext _db;
         private readonly ILogger<StepService> _logger;
+        private readonly IAuditService _audit;
 
-        public StepService(AppDbContext db, ILogger<StepService> logger)
+        public StepService(AppDbContext db, ILogger<StepService> logger, IAuditService audit)
         {
             _db = db;
             _logger = logger;
+            _audit = audit;
         }
 
         #region القراءة
@@ -215,6 +217,7 @@ namespace OperationalPlanMS.Services
             await UpdateProjectProgressAsync(project.Id);
 
             _logger.LogInformation("تم إنشاء خطوة: {StepNumber} في مشروع {ProjectId}", step.StepNumber, step.ProjectId);
+            await _audit.LogAsync("Step", step.Id, step.NameAr, "Create", createdById, $"خطوة #{step.StepNumber} في مشروع #{step.ProjectId}");
             return (true, step.ProjectId, null, warning);
         }
 
@@ -260,6 +263,7 @@ namespace OperationalPlanMS.Services
             step.LastModifiedAt = DateTime.Now;
             UpdateStepDelayedStatus(step);
             await _db.SaveChangesAsync();
+            await _audit.LogAsync("Step", step.Id, step.NameAr, "Update", modifiedById, $"خطوة #{step.StepNumber}");
             return (true, null, warning);
         }
 
@@ -276,6 +280,7 @@ namespace OperationalPlanMS.Services
             step.LastModifiedById = modifiedById;
             step.LastModifiedAt = DateTime.Now;
             await _db.SaveChangesAsync();
+            await _audit.LogAsync("Step", step.Id, step.NameAr, "Delete", modifiedById, $"خطوة #{step.StepNumber}");
             await UpdateProjectProgressAsync(projectId);
             return (true, projectId, null);
         }
@@ -303,6 +308,7 @@ namespace OperationalPlanMS.Services
             if (progress > 0) { step.Status = StepStatus.InProgress; step.ActualStartDate ??= DateTime.Today; }
             UpdateStepDelayedStatus(step);
             await _db.SaveChangesAsync();
+            await _audit.LogAsync("Step", id, step.NameAr, "UpdateProgress", userId, $"{step.ProgressPercentage}%");
             return (true, null);
         }
 
@@ -384,6 +390,7 @@ namespace OperationalPlanMS.Services
             });
 
             await _db.SaveChangesAsync();
+            await _audit.LogAsync("Step", id, step.NameAr, "Approve", approverId, approverNotes);
             await UpdateProjectProgressAsync(step.ProjectId);
             return (true, null);
         }
@@ -410,6 +417,7 @@ namespace OperationalPlanMS.Services
             });
 
             await _db.SaveChangesAsync();
+            await _audit.LogAsync("Step", id, step.NameAr, "Reject", rejecterId, rejectionReason);
             return (true, null);
         }
 

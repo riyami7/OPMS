@@ -53,11 +53,13 @@ namespace OperationalPlanMS.Services
     {
         private readonly AppDbContext _db;
         private readonly ILogger<ProjectService> _logger;
+        private readonly IAuditService _audit;
 
-        public ProjectService(AppDbContext db, ILogger<ProjectService> logger)
+        public ProjectService(AppDbContext db, ILogger<ProjectService> logger, IAuditService audit)
         {
             _db = db;
             _logger = logger;
+            _audit = audit;
         }
 
         #region القراءة
@@ -269,6 +271,7 @@ namespace OperationalPlanMS.Services
 
             await SaveRelatedDataAsync(project.Id, model);
             _logger.LogInformation("تم إنشاء مشروع: {Code}", project.Code);
+            await _audit.LogAsync("Project", project.Id, project.NameAr, "Create", createdById, $"كود: {project.Code}");
             return (true, project.InitiativeId, null, warning);
         }
 
@@ -314,6 +317,7 @@ namespace OperationalPlanMS.Services
 
             await SaveRelatedDataAsync(project.Id, model);
             _logger.LogInformation("تم تحديث مشروع: {Code}", project.Code);
+            await _audit.LogAsync("Project", project.Id, project.NameAr, "Update", modifiedById, $"كود: {project.Code}");
             return (true, null, warning);
         }
 
@@ -326,6 +330,7 @@ namespace OperationalPlanMS.Services
             project.LastModifiedAt = DateTime.Now;
             await _db.SaveChangesAsync();
             _logger.LogInformation("تم حذف مشروع: {Code}", project.Code);
+            await _audit.LogAsync("Project", project.Id, project.NameAr, "Delete", modifiedById, $"كود: {project.Code}");
             return (true, null);
         }
 
@@ -396,6 +401,8 @@ namespace OperationalPlanMS.Services
             project.LastModifiedAt = DateTime.Now;
 
             await _db.SaveChangesAsync();
+            await _audit.LogAsync("Project", projectId, project.NameAr, "ChangeStatus", changedById,
+                $"{statusChange.OldStatus} → {newStatus}", statusChange.OldStatus.ToString(), newStatus.ToString());
             return (true, null);
         }
 

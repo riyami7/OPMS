@@ -175,6 +175,13 @@
                         <li class="nav-section">النظام</li>
 
                         <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Audit" ? "active" : "")" href="/Audit">
+                                <i class="bi bi-shield-check"></i>
+                                <span>سجل التدقيق</span>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" ? "active" : "")" href="/Admin">
                                 <i class="bi bi-gear"></i>
                                 <span>إعدادات النظام</span>
