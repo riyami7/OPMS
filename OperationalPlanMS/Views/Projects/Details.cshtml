@@ -123,6 +123,10 @@
                 @if (!string.IsNullOrEmpty(Model.Project.ProjectManagerName))
                 {
                     <div style="font-size:.9rem; font-weight:700; color:var(--text-dark); line-height:1.3;">@Model.Project.ProjectManagerRank @Model.Project.ProjectManagerName</div>
+                    @if (Model.Project.ProjectManager?.EmployeePosition != null)
+                    {
+                        <div class="text-muted small"><i class="bi bi-briefcase me-1"></i>@Model.Project.ProjectManager.EmployeePosition</div>
+                    }
                     <small class="text-muted">@Model.Project.ProjectManagerEmpNumber</small>
                 }
                 else if (Model.Project.ProjectManager != null)
@@ -135,10 +139,17 @@
                 }
                 <div class="text-muted mt-1" style="font-size:.8rem;">مدير المشروع</div>
 
+                @{
+                    var deputyUser = ViewBag.DeputyUser as OperationalPlanMS.Models.Entities.User;
+                }
                 @if (!string.IsNullOrEmpty(Model.Project.DeputyManagerName))
                 {
                     <hr class="my-2" style="opacity:.2;">
                     <div style="font-size:.82rem; font-weight:600; color:var(--text-dark); line-height:1.3;">@Model.Project.DeputyManagerRank @Model.Project.DeputyManagerName</div>
+                    @if (deputyUser?.EmployeePosition != null)
+                    {
+                        <div class="text-muted small"><i class="bi bi-briefcase me-1"></i>@deputyUser.EmployeePosition</div>
+                    }
                     <small class="text-muted">@Model.Project.DeputyManagerEmpNumber</small>
                     <div class="text-muted mt-1" style="font-size:.75rem;">مساعد مدير المشروع</div>
                 }

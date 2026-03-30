@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using OperationalPlanMS.Data;
 using OperationalPlanMS.Models;
 using OperationalPlanMS.Models.ViewModels;
 using OperationalPlanMS.Services;
@@ -10,10 +12,12 @@ namespace OperationalPlanMS.Controllers
     public class ProjectsController : BaseController
     {
         private readonly IProjectService _projectService;
+        private readonly AppDbContext _db;
 
-        public ProjectsController(IProjectService projectService)
+        public ProjectsController(IProjectService projectService, AppDbContext db)
         {
             _projectService = projectService;
+            _db = db;
         }
 
         // GET: /Projects
@@ -69,6 +73,13 @@ namespace OperationalPlanMS.Controllers
             ViewBag.CanEdit = CanEditProjects() || CanEditInitiativeContent(viewModel.Project.InitiativeId);
             ViewBag.UserRole = userRole;
             ViewBag.CurrentUserId = userId;
+
+            // Deputy Manager user for position display
+            if (!string.IsNullOrEmpty(viewModel.Project.DeputyManagerEmpNumber))
+            {
+                ViewBag.DeputyUser = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == viewModel.Project.DeputyManagerEmpNumber && u.IsActive);
+            }
+
             return View(viewModel);
         }
 
