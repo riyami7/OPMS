@@ -31,6 +31,7 @@ namespace OperationalPlanMS.Models.ViewModels
         // إحصائيات الخطوات
         public int CompletedSteps { get; set; }
         public int InProgressSteps { get; set; }
+        public int DelayedSteps { get; set; }
 
         // الميزانية
         public decimal TotalBudget { get; set; }
@@ -44,6 +45,9 @@ namespace OperationalPlanMS.Models.ViewModels
         public List<Step> MySteps { get; set; } = new();
         public List<Initiative> OverdueInitiatives { get; set; } = new();
         public List<Project> OverdueProjects { get; set; } = new();
+        public List<Step> OverdueSteps { get; set; } = new();
+        public List<Step> MyUpcomingDeadlines { get; set; } = new();
+        public List<Notification> RecentNotifications { get; set; } = new();
         public List<Initiative> UpcomingDeadlines { get; set; } = new();
 
         // توزيع الحالات (للرسم البياني)
