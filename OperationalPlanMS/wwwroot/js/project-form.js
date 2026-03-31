@@ -40,171 +40,42 @@
     //  DOMContentLoaded
     // ================================================================
     document.addEventListener('DOMContentLoaded', async function () {
-        await loadOrganizationalUnits();
+        await initOrgTreePicker();
         renderSupportingEntities();
         checkMultiYear();
     });
 
     // ================================================================
-    //  الهيكل التنظيمي — Organizational Structure
+    //  الهيكل التنظيمي — Tree Picker
     // ================================================================
-    async function loadOrganizationalUnits() {
+    async function initOrgTreePicker() {
+        // تحميل الوحدات للـ supporting entities
         try {
             const response = await fetch('/api/OrganizationApi/units/all');
             if (response.ok) {
                 allUnitsCache = await response.json();
-
-                if (allUnitsCache.length === 0) {
-                    document.getElementById('ExternalLevel1').innerHTML =
-                        '<option value="">-- لا توجد بيانات، يرجى المزامنة --</option>';
-                    return;
-                }
-
-                populateLevel1();
-
-                if (savedExternalUnitId) {
-                    await restoreSelection(savedExternalUnitId);
-                }
-            } else {
-                console.error('Failed to load units');
-                document.getElementById('ExternalLevel1').innerHTML =
-                    '<option value="">-- فشل تحميل البيانات --</option>';
+                populateSupportingLevel1();
             }
-        } catch (error) {
-            console.error('Error loading units:', error);
-            document.getElementById('ExternalLevel1').innerHTML =
-                '<option value="">-- خطأ في الاتصال --</option>';
-        }
-    }
-
-    async function restoreSelection(unitId) {
-        const unit = allUnitsCache.find(u => u.id == unitId);
-        if (!unit) return;
-
-        const path = [];
-        let current = unit;
-        while (current) {
-            path.unshift(current);
-            current = current.parentId ? allUnitsCache.find(u => u.id == current.parentId) : null;
+        } catch (e) {
+            console.error('Error loading units:', e);
         }
 
-        if (path.length >= 1) {
-            document.getElementById('ExternalLevel1').value = path[0].id;
-            loadLevel2(path[0].id);
-        }
-        if (path.length >= 2) {
-            setTimeout(() => {
-                document.getElementById('ExternalLevel2').value = path[1].id;
-                loadLevel3(path[1].id);
-            }, 100);
-        }
-        if (path.length >= 3) {
-            setTimeout(() => {
-                document.getElementById('ExternalLevel3').value = path[2].id;
-                updateSelectedUnit();
-            }, 200);
-        }
-
-        // تحميل الأهداف الفرعية مع القيم المحفوظة
-        if (savedSubObjectiveIds.length > 0) {
-            setTimeout(() => {
-                const unitId = document.getElementById('ExternalUnitId').value;
-                if (unitId) {
-                    loadSubObjectives(unitId, savedSubObjectiveIds);
-                }
-            }, 300);
-        }
-    }
-
-    function populateLevel1() {
-        const level1 = document.getElementById('ExternalLevel1');
-        const rootUnits = allUnitsCache.filter(u => u.code == '00001' && (!u.parentId || u.parentId === 0));
-
-        level1.innerHTML = '<option value="">-- اختر --</option>';
-        rootUnits.forEach(u => {
-            level1.innerHTML += `<option value="${u.id}" data-name="${u.name}">${u.name}</option>`;
+        // تهيئة شجرة الوحدات
+        await OrgTreePicker.init({
+            containerId: 'orgTreeContainer',
+            hiddenInputId: 'ExternalUnitId',
+            hiddenNameId: 'ExternalUnitName',
+            selectedId: savedExternalUnitId || '',
+            rootCode: '00001',
+            onSelect: function(id, name) {
+                loadSubObjectives(id, savedSubObjectiveIds.length > 0 ? savedSubObjectiveIds : []);
+            }
         });
 
-        populateSupportingLevel1();
-    }
-
-    document.getElementById('ExternalLevel1')?.addEventListener('change', function () {
-        const level2 = document.getElementById('ExternalLevel2');
-        const level3 = document.getElementById('ExternalLevel3');
-        level2.innerHTML = '<option value="">-- اختر --</option>';
-        level2.disabled = true;
-        level3.innerHTML = '<option value="">-- اختر --</option>';
-        level3.disabled = true;
-
-        if (this.value) {
-            loadLevel2(this.value);
+        // تحميل الأهداف الفرعية إذا فيه وحدة محفوظة
+        if (savedExternalUnitId) {
+            loadSubObjectives(savedExternalUnitId, savedSubObjectiveIds);
         }
-        updateSelectedUnit();
-    });
-
-    function loadLevel2(parentId) {
-        const level2 = document.getElementById('ExternalLevel2');
-        const children = allUnitsCache.filter(u => u.parentId == parentId);
-
-        if (children.length > 0) {
-            level2.innerHTML = '<option value="">-- اختر --</option>';
-            children.forEach(u => {
-                level2.innerHTML += `<option value="${u.id}" data-name="${u.name}">${u.name}</option>`;
-            });
-            level2.disabled = false;
-        }
-    }
-
-    document.getElementById('ExternalLevel2')?.addEventListener('change', function () {
-        const level3 = document.getElementById('ExternalLevel3');
-        level3.innerHTML = '<option value="">-- اختر --</option>';
-        level3.disabled = true;
-
-        if (this.value) {
-            loadLevel3(this.value);
-        }
-        updateSelectedUnit();
-    });
-
-    function loadLevel3(parentId) {
-        const level3 = document.getElementById('ExternalLevel3');
-        const children = allUnitsCache.filter(u => u.parentId == parentId);
-
-        if (children.length > 0) {
-            level3.innerHTML = '<option value="">-- اختر --</option>';
-            children.forEach(u => {
-                level3.innerHTML += `<option value="${u.id}" data-name="${u.name}">${u.name}</option>`;
-            });
-            level3.disabled = false;
-        }
-    }
-
-    document.getElementById('ExternalLevel3')?.addEventListener('change', function () {
-        updateSelectedUnit();
-    });
-
-    function updateSelectedUnit() {
-        const level3 = document.getElementById('ExternalLevel3');
-        const level2 = document.getElementById('ExternalLevel2');
-        const level1 = document.getElementById('ExternalLevel1');
-
-        let selectedId = '';
-        let selectedName = '';
-
-        if (level3.value) {
-            selectedId = level3.value;
-            selectedName = level3.options[level3.selectedIndex]?.dataset.name || '';
-        } else if (level2.value) {
-            selectedId = level2.value;
-            selectedName = level2.options[level2.selectedIndex]?.dataset.name || '';
-        } else if (level1.value) {
-            selectedId = level1.value;
-            selectedName = level1.options[level1.selectedIndex]?.dataset.name || '';
-        }
-
-        document.getElementById('ExternalUnitId').value = selectedId;
-        document.getElementById('ExternalUnitName').value = selectedName;
-        loadSubObjectives(selectedId);
     }
 
     async function loadSubObjectives(unitId, selectedValues) {

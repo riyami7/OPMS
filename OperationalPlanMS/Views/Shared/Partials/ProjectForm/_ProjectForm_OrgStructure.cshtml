@@ -6,30 +6,15 @@
         <i class="bi bi-diagram-3 me-2"></i>الهيكل التنظيمي والمسؤولية
     </div>
     <div class="card-body">
+        <!-- شجرة الوحدات التنظيمية -->
         <div class="row">
-            <div class="col-md-4 mb-3">
-                <label class="form-label">المستوى الأول <span class="text-danger">*</span></label>
-                <select id="ExternalLevel1" class="form-select">
-                    <option value="">-- جاري التحميل --</option>
-                </select>
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">المستوى الثاني</label>
-                <select id="ExternalLevel2" class="form-select" disabled>
-                    <option value="">-- اختر المستوى الأول --</option>
-                </select>
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">المستوى الثالث</label>
-                <select id="ExternalLevel3" class="form-select" disabled>
-                    <option value="">-- اختر المستوى الثاني --</option>
-                </select>
+            <div class="col-12 mb-3">
+                <label class="form-label">الوحدة التنظيمية <span class="text-danger">*</span></label>
+                <div id="orgTreeContainer"></div>
+                <input type="hidden" asp-for="ExternalUnitId" id="ExternalUnitId" />
+                <input type="hidden" asp-for="ExternalUnitName" id="ExternalUnitName" />
             </div>
         </div>
-
-        <!-- Hidden fields للحفظ -->
-        <input type="hidden" asp-for="ExternalUnitId" id="ExternalUnitId" />
-        <input type="hidden" asp-for="ExternalUnitName" id="ExternalUnitName" />
 
         <hr>
 
@@ -62,7 +47,7 @@
                 </div>
             </div>
 
-            <!-- مساعد مدير المشروع (جديد - اختياري) -->
+            <!-- مساعد مدير المشروع -->
             <div class="col-md-6 mb-3">
                 <label class="form-label"><i class="bi bi-person me-1"></i>مساعد مدير المشروع <small class="text-muted">(اختياري)</small></label>
                 <div class="position-relative">

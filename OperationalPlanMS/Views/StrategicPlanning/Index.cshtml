@@ -578,23 +578,7 @@
                     <!-- الهيكل التنظيمي من API -->
                     <div class="mb-3">
                         <label class="form-label"><i class="bi bi-diagram-3 me-1"></i>الوحدة التنظيمية <span class="text-danger">*</span></label>
-                        <div class="row g-2">
-                            <div class="col-md-4">
-                                <select id="addSubLevel1" class="form-select cascade-select">
-                                    <option value="">-- المستوى الأول --</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <select id="addSubLevel2" class="form-select cascade-select" disabled>
-                                    <option value="">-- المستوى الثاني --</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <select id="addSubLevel3" class="form-select cascade-select" disabled>
-                                    <option value="">-- المستوى الثالث --</option>
-                                </select>
-                            </div>
-                        </div>
+                        <div id="addSubOrgTree"></div>
                         <input type="hidden" name="ExternalUnitId" id="addExternalUnitId" />
                         <input type="hidden" name="ExternalUnitName" id="addExternalUnitName" />
                     </div>
@@ -719,98 +703,26 @@
                 if (response.ok) {
                     const data = await response.json();
                     allUnits = data.items || data;
-                    populateAddSubLevel1();
+                    
                 }
             } catch (error) {
                 console.error('Error loading units:', error);
             }
         }
 
-        // ملء المستوى الأول للـ Modal
-        function populateAddSubLevel1() {
-            const select = document.getElementById('addSubLevel1');
-            const roots = allUnits.filter(u => u.code=='00001'&& ( !u.parentId || u.parentId === 0));
-            select.innerHTML = '<option value="">-- المستوى الأول --</option>';
-            roots.forEach(unit => {
-                select.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+        // شجرة الوحدات للـ Modal
+        function initAddSubOrgTree() {
+            OrgTreePicker.init({
+                containerId: 'addSubOrgTree',
+                hiddenInputId: 'addExternalUnitId',
+                hiddenNameId: 'addExternalUnitName',
+                rootCode: '00001'
             });
         }
-
-        // عند اختيار المستوى الأول
-        document.getElementById('addSubLevel1').addEventListener('change', function() {
-            const parentId = this.value;
-            const level2 = document.getElementById('addSubLevel2');
-            const level3 = document.getElementById('addSubLevel3');
-
-            level2.innerHTML = '<option value="">-- المستوى الثاني --</option>';
-            level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
-            level2.disabled = true;
-            level3.disabled = true;
-
-            if (parentId) {
-                const children = allUnits.filter(u => u.parentId === parentId);
-                if (children.length > 0) {
-                    children.forEach(unit => {
-                        level2.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
-                    });
-                    level2.disabled = false;
-                }
-                updateAddSubSelectedUnit();
-            } else {
-                clearAddSubSelectedUnit();
-            }
+        // تهيئة عند فتح الـ Modal
+        document.getElementById('addSubObjectiveModal')?.addEventListener('shown.bs.modal', function() {
+            if (!document.querySelector('#addSubOrgTree .otp-trigger')) initAddSubOrgTree();
         });
-
-        // عند اختيار المستوى الثاني
-        document.getElementById('addSubLevel2').addEventListener('change', function() {
-            const parentId = this.value;
-            const level3 = document.getElementById('addSubLevel3');
-
-            level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
-            level3.disabled = true;
-
-            if (parentId) {
-                const children = allUnits.filter(u => u.parentId === parentId);
-                if (children.length > 0) {
-                    children.forEach(unit => {
-                        level3.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
-                    });
-                    level3.disabled = false;
-                }
-                updateAddSubSelectedUnit();
-            }
-        });
-
-        // عند اختيار المستوى الثالث
-        document.getElementById('addSubLevel3').addEventListener('change', function() {
-            updateAddSubSelectedUnit();
-        });
-
-        // تحديث الوحدة المختارة
-        function updateAddSubSelectedUnit() {
-            const level3 = document.getElementById('addSubLevel3');
-            const level2 = document.getElementById('addSubLevel2');
-            const level1 = document.getElementById('addSubLevel1');
-
-            let selectedId = level3.value || level2.value || level1.value;
-            let selectedText = '';
-
-            if (level3.value) {
-                selectedText = level3.options[level3.selectedIndex].text;
-            } else if (level2.value) {
-                selectedText = level2.options[level2.selectedIndex].text;
-            } else if (level1.value) {
-                selectedText = level1.options[level1.selectedIndex].text;
-            }
-
-            document.getElementById('addExternalUnitId').value = selectedId;
-            document.getElementById('addExternalUnitName').value = selectedText;
-        }
-
-        function clearAddSubSelectedUnit() {
-            document.getElementById('addExternalUnitId').value = '';
-            document.getElementById('addExternalUnitName').value = '';
-        }
 
         // تأكيد الحذف
         function confirmDelete(type, id, name) {

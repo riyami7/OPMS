@@ -244,23 +244,7 @@
                     <!-- الهيكل التنظيمي من API -->
                     <div class="mb-3">
                         <label class="form-label"><i class="bi bi-diagram-3 me-1"></i>الوحدة التنظيمية <span class="text-danger">*</span></label>
-                        <div class="row g-2">
-                            <div class="col-md-4">
-                                <select id="addLevel1" class="form-select cascade-select">
-                                    <option value="">-- المستوى الأول --</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <select id="addLevel2" class="form-select cascade-select" disabled>
-                                    <option value="">-- المستوى الثاني --</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <select id="addLevel3" class="form-select cascade-select" disabled>
-                                    <option value="">-- المستوى الثالث --</option>
-                                </select>
-                            </div>
-                        </div>
+                        <div id="addVMOrgTree"></div>
                         <input type="hidden" name="ExternalUnitId" id="addExternalUnitId" />
                         <input type="hidden" name="ExternalUnitName" id="addExternalUnitName" />
                     </div>
@@ -328,108 +312,13 @@
 
         // تحميل الوحدات عند فتح الصفحة
         document.addEventListener('DOMContentLoaded', function() {
-            loadOrganizationalUnits();
-        });
-
-        // تحميل كل الوحدات من API
-        async function loadOrganizationalUnits() {
-            try {
-                const response = await fetch('/api/OrganizationApi/units/all');
-                if (response.ok) {
-                    const data = await response.json();
-                    allUnits = data.items || data;
-                    populateAddLevel1();
-                }
-            } catch (error) {
-                console.error('Error loading units:', error);
-            }
-        }
-
-        // ملء المستوى الأول للـ Modal
-        function populateAddLevel1() {
-            const select = document.getElementById('addLevel1');
-            const roots = allUnits.filter(u =>  u.code=='00001'&& ( !u.parentId || u.parentId === 0));
-            select.innerHTML = '<option value="">-- المستوى الأول --</option>';
-            roots.forEach(unit => {
-                select.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
+            OrgTreePicker.init({
+                containerId: 'addVMOrgTree',
+                hiddenInputId: 'addExternalUnitId',
+                hiddenNameId: 'addExternalUnitName',
+                rootCode: '00001'
             });
-        }
-
-        // عند اختيار المستوى الأول
-        document.getElementById('addLevel1').addEventListener('change', function() {
-            const parentId = this.value;
-            const level2 = document.getElementById('addLevel2');
-            const level3 = document.getElementById('addLevel3');
-
-            level2.innerHTML = '<option value="">-- المستوى الثاني --</option>';
-            level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
-            level2.disabled = true;
-            level3.disabled = true;
-
-            if (parentId) {
-                const children = allUnits.filter(u => u.parentId === parentId);
-                if (children.length > 0) {
-                    children.forEach(unit => {
-                        level2.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
-                    });
-                    level2.disabled = false;
-                }
-                updateAddSelectedUnit();
-            } else {
-                clearAddSelectedUnit();
-            }
         });
-
-        // عند اختيار المستوى الثاني
-        document.getElementById('addLevel2').addEventListener('change', function() {
-            const parentId = this.value;
-            const level3 = document.getElementById('addLevel3');
-
-            level3.innerHTML = '<option value="">-- المستوى الثالث --</option>';
-            level3.disabled = true;
-
-            if (parentId) {
-                const children = allUnits.filter(u => u.parentId === parentId);
-                if (children.length > 0) {
-                    children.forEach(unit => {
-                        level3.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
-                    });
-                    level3.disabled = false;
-                }
-                updateAddSelectedUnit();
-            }
-        });
-
-        // عند اختيار المستوى الثالث
-        document.getElementById('addLevel3').addEventListener('change', function() {
-            updateAddSelectedUnit();
-        });
-
-        // تحديث الوحدة المختارة
-        function updateAddSelectedUnit() {
-            const level3 = document.getElementById('addLevel3');
-            const level2 = document.getElementById('addLevel2');
-            const level1 = document.getElementById('addLevel1');
-
-            let selectedId = level3.value || level2.value || level1.value;
-            let selectedText = '';
-
-            if (level3.value) {
-                selectedText = level3.options[level3.selectedIndex].text;
-            } else if (level2.value) {
-                selectedText = level2.options[level2.selectedIndex].text;
-            } else if (level1.value) {
-                selectedText = level1.options[level1.selectedIndex].text;
-            }
-
-            document.getElementById('addExternalUnitId').value = selectedId;
-            document.getElementById('addExternalUnitName').value = selectedText;
-        }
-
-        function clearAddSelectedUnit() {
-            document.getElementById('addExternalUnitId').value = '';
-            document.getElementById('addExternalUnitName').value = '';
-        }
 
         // تأكيد الحذف
         function deleteUnitSettings(id, name) {

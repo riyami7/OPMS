@@ -67,6 +67,7 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/org-tree-picker.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/chat-bubble.css" />
 </head>
 <body>
@@ -110,7 +111,7 @@
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Initiatives" ? "active" : "")" href="/Initiatives">
                                 <i class="bi bi-lightning-charge"></i>
-                                <span>@(isAdmin || isExecutive ? "المبادرات" : "مبادراتي")</span>
+                                <span>@(isAdmin || isExecutive ? "الوحدات التنظيمية" : "الوحدات التنظيمية")</span>
                             </a>
                         </li>
                     }
@@ -321,6 +322,7 @@
 
     <!-- Safe DOM Helpers — XSS Prevention -->
     <script src="~/js/safe-dom.js"></script>
+    <script src="~/js/org-tree-picker.js"></script>
 
     <!-- Notifications -->
     <script>

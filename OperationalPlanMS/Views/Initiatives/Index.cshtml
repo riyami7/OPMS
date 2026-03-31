@@ -40,29 +40,15 @@
                         <input type="text" class="form-control" asp-for="SearchTerm" placeholder="الاسم أو الكود..." />
                     </div>
                 </div>
-                <div class="col-md-2">
+             @*    <div class="col-md-2">
                     <label class="form-label">السنة المالية</label>
                     <select class="form-select" asp-for="FiscalYearId" asp-items="Model.FiscalYears">
                         <option value="">-- الكل --</option>
                     </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">المستوى الأول</label>
-                    <select class="form-select" id="filterLevel1" name="Level1Id">
-                        <option value="">-- جاري التحميل --</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">المستوى الثاني</label>
-                    <select class="form-select" id="filterLevel2" name="Level2Id" disabled>
-                        <option value="">-- اختر الأول --</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">المستوى الثالث</label>
-                    <select class="form-select" id="filterLevel3" name="Level3Id" disabled>
-                        <option value="">-- اختر الثاني --</option>
-                    </select>
+                </div> *@
+                <div class="col-md-4">
+                    <label class="form-label">الوحدة التنظيمية</label>
+                    <div id="filterOrgTree"></div>
                 </div>
                 <input type="hidden" id="ExternalUnitId" name="ExternalUnitId" value="@ViewBag.ExternalUnitId" />
                 <div class="col-md-1 d-flex align-items-end gap-2">
@@ -89,9 +75,9 @@
                 <thead>
                     <tr>
                         <th style="width:100px;">الكود</th>
-                        <th>المبادرة</th>
+                        @* <th>المبادرة</th> *@
                         <th>الوحدة التنظيمية</th>
-                        <th>المشرف</th>
+                        <th>المدير</th>
                         <th style="width:90px;" class="text-center">المشاريع</th>
                         <th style="width:150px;">التواريخ</th>
                         <th style="width:100px;">الإجراءات</th>
@@ -109,17 +95,19 @@
                             var supervisorEmpNumber = item.SupervisorEmpNumber ?? "";
                             <tr>
                                 <td><code class="text-primary fw-bold">@item.Code</code></td>
-                                <td>
+                              @*   <td>
                                     <a href="/Initiatives/Details/@item.Id" class="fw-bold text-decoration-none text-dark">@item.NameAr</a>
                                     @if (!string.IsNullOrEmpty(item.NameEn))
                                     {
                                         <br />
                                         <small class="text-muted">@item.NameEn</small>
          }
-                                </td>
+                                </td> *@
+                              
                                 <td>
-                                    <span><i class="bi bi-building me-1 text-muted"></i>@unitName</span>
+                                    <a href="/Initiatives/Details/@item.Id" class="fw-bold text-decoration-none text-dark">   <span><i class="bi bi-building me-1 text-muted"></i>@unitName</span>  </a>
                                 </td>
+                              
                                 <td>
                                     <div class="d-flex align-items-start gap-2">
                                         <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
@@ -131,6 +119,10 @@
                                             @if (!string.IsNullOrEmpty(supervisorRank))
                                             {
                                                 <small class="text-muted d-block">@supervisorRank</small>
+                                            }
+                                            @if (item.Supervisor?.EmployeePosition != null)
+                                            {
+                                                <small class="text-muted d-block"><i class="bi bi-briefcase me-1"></i>@item.Supervisor.EmployeePosition</small>
                                             }
                                             @if (!string.IsNullOrEmpty(supervisorEmpNumber))
                                             {
@@ -212,51 +204,13 @@
 
 @section Scripts {
     <script>
-        var allUnits = [], selectedExternalUnitId = '@(ViewBag.ExternalUnitId ?? "")';
         document.addEventListener('DOMContentLoaded', function () {
-            loadOrganizationalUnits();
-            document.getElementById('filterLevel1').addEventListener('change', onLevel1Change);
-            document.getElementById('filterLevel2').addEventListener('change', onLevel2Change);
-            document.getElementById('filterLevel3').addEventListener('change', onLevel3Change);
+            OrgTreePicker.init({
+                containerId: 'filterOrgTree',
+                hiddenInputId: 'ExternalUnitId',
+                selectedId: '@(ViewBag.ExternalUnitId ?? "")',
+                rootCode: '00001'
+            });
         });
-        function loadOrganizationalUnits() {
-            fetch('/api/OrganizationApi/units/all')
-                .then(r => r.ok ? r.json() : Promise.reject())
-                .then(data => { allUnits = data; populateFilterLevel1(); if (selectedExternalUnitId) restoreFilterSelection(selectedExternalUnitId); })
-                .catch(() => document.getElementById('filterLevel1').innerHTML = '<option value="">-- فشل التحميل --</option>');
-        }
-        function populateFilterLevel1() {
-            var s = document.getElementById('filterLevel1');
-            s.innerHTML = '<option value="">-- الكل --</option>';
-            allUnits.filter(u =>  u.code=='00001'&& ( !u.parentId || u.parentId === 0)).forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; s.appendChild(o); });
-        }
-        function fillSelect(selectEl, items, placeholder) {
-            selectEl.innerHTML = '<option value="">' + placeholder + '</option>';
-            items.forEach(u => { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; selectEl.appendChild(o); });
-        }
-        function onLevel1Change() {
-            var id = this.value, l2 = document.getElementById('filterLevel2'), l3 = document.getElementById('filterLevel3');
-            l2.disabled = true; l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; l3.disabled = true;
-            if (id) { var ch = allUnits.filter(u => u.parentId === id); fillSelect(l2, ch, ch.length ? '-- اختر --' : '-- لا توجد فروع --'); l2.disabled = !ch.length; updateSelectedUnit(id); }
-            else { l2.innerHTML = '<option value="">-- اختر الأول --</option>'; document.getElementById('ExternalUnitId').value = ''; }
-        }
-        function onLevel2Change() {
-            var id = this.value, l3 = document.getElementById('filterLevel3');
-            l3.disabled = true;
-            if (id) { var ch = allUnits.filter(u => u.parentId === id); fillSelect(l3, ch, ch.length ? '-- اختر --' : '-- لا توجد أقسام --'); l3.disabled = !ch.length; updateSelectedUnit(id); }
-            else { l3.innerHTML = '<option value="">-- اختر الثاني --</option>'; var l1v = document.getElementById('filterLevel1').value; if (l1v) updateSelectedUnit(l1v); else document.getElementById('ExternalUnitId').value = ''; }
-        }
-        function onLevel3Change() { var id = this.value; if (id) updateSelectedUnit(id); else { var l2v = document.getElementById('filterLevel2').value; if (l2v) updateSelectedUnit(l2v); } }
-        function updateSelectedUnit(id) { document.getElementById('ExternalUnitId').value = id; }
-        function restoreFilterSelection(unitId) {
-            var unit = allUnits.find(u => u.id === unitId); if (!unit) return;
-            var hierarchy = [], current = unit;
-            while (current) { hierarchy.unshift(current); var pid = current.parentId; current = allUnits.find(u => u.id === pid); }
-            document.getElementById('filterLevel1').value = hierarchy[0].id;
-            onLevel1Change.call(document.getElementById('filterLevel1'));
-            setTimeout(() => {
-                if (hierarchy.length >= 2) { document.getElementById('filterLevel2').value = hierarchy[1].id; onLevel2Change.call(document.getElementById('filterLevel2')); setTimeout(() => { if (hierarchy.length >= 3) { document.getElementById('filterLevel3').value = hierarchy[2].id; updateSelectedUnit(hierarchy[2].id); } }, 100); }
-            }, 100);
-        }
     </script>
 }

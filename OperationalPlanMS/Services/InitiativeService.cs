@@ -215,6 +215,12 @@ namespace OperationalPlanMS.Services
             };
             model.UpdateEntity(initiative);
 
+            if (!string.IsNullOrEmpty(model.SupervisorEmpNumber))
+            {
+                var supervisor = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == model.SupervisorEmpNumber && u.IsActive);
+                if (supervisor != null) initiative.SupervisorId = supervisor.Id;
+            }
+
             _db.Initiatives.Add(initiative);
             await _db.SaveChangesAsync();
 
@@ -237,6 +243,13 @@ namespace OperationalPlanMS.Services
                 return (false, "هذا الكود مستخدم بالفعل");
 
             model.UpdateEntity(initiative);
+
+            if (!string.IsNullOrEmpty(model.SupervisorEmpNumber))
+            {
+                var supervisor = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == model.SupervisorEmpNumber && u.IsActive);
+                if (supervisor != null) initiative.SupervisorId = supervisor.Id;
+            }
+
             initiative.LastModifiedById = modifiedById;
             initiative.LastModifiedAt = DateTime.Now;
             await _db.SaveChangesAsync();

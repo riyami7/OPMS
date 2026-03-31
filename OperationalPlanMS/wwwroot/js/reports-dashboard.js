@@ -22,11 +22,13 @@
     //  Init
     // ================================================================
     document.addEventListener('DOMContentLoaded', function () {
-        loadOrganizationalUnits();
+        OrgTreePicker.init({
+            containerId: 'filterOrgTree',
+            hiddenInputId: 'ExternalUnitId',
+            selectedId: selectedExternalUnitId,
+            rootCode: '00001'
+        });
         loadCharts();
-        document.getElementById('filterLevel1').addEventListener('change', onLevel1Change);
-        document.getElementById('filterLevel2').addEventListener('change', onLevel2Change);
-        document.getElementById('filterLevel3').addEventListener('change', onLevel3Change);
     });
 
     // ================================================================
@@ -168,117 +170,8 @@
     }
 
     // ================================================================
-    //  Unit Filter (3-level cascade)
+    //  Unit Filter — handled by OrgTreePicker
     // ================================================================
-    function loadOrganizationalUnits() {
-        fetch('/api/OrganizationApi/units/all')
-            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
-            .then(function (data) {
-                allUnits = data;
-                populateFilterLevel1();
-                if (selectedExternalUnitId) { restoreFilterSelection(selectedExternalUnitId); }
-            })
-            .catch(function () {
-                document.getElementById('filterLevel1').innerHTML = '<option value="">-- فشل التحميل --</option>';
-            });
-    }
-
-    function populateFilterLevel1() {
-        var s = document.getElementById('filterLevel1');
-        s.innerHTML = '<option value="">-- جميع الوحدات --</option>';
-        allUnits.filter(function (u) { return u.code == '00001' && (!u.parentId || u.parentId === 0); }).forEach(function (u) {
-            var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; s.appendChild(o);
-        });
-    }
-
-    function fillSelect(el, items, ph) {
-        el.innerHTML = '<option value="">' + ph + '</option>';
-        items.forEach(function (u) {
-            var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; el.appendChild(o);
-        });
-    }
-
-    function onLevel1Change() {
-        var id = this.value;
-        var l2 = document.getElementById('filterLevel2');
-        var l3 = document.getElementById('filterLevel3');
-        l2.disabled = true;
-        l3.innerHTML = '<option value="">-- اختر الثاني --</option>';
-        l3.disabled = true;
-        if (id) {
-            var ch = allUnits.filter(function (u) { return u.parentId === id; });
-            fillSelect(l2, ch, ch.length ? '-- اختر --' : '-- لا توجد فروع --');
-            l2.disabled = !ch.length;
-            updateSelectedUnit(id);
-        } else {
-            l2.innerHTML = '<option value="">-- اختر الأول --</option>';
-            document.getElementById('ExternalUnitId').value = '';
-            updateUnitDisplay('');
-        }
-    }
-
-    function onLevel2Change() {
-        var id = this.value;
-        var l3 = document.getElementById('filterLevel3');
-        l3.disabled = true;
-        if (id) {
-            var ch = allUnits.filter(function (u) { return u.parentId === id; });
-            fillSelect(l3, ch, ch.length ? '-- اختر --' : '-- لا توجد أقسام --');
-            l3.disabled = !ch.length;
-            updateSelectedUnit(id);
-        } else {
-            l3.innerHTML = '<option value="">-- اختر الثاني --</option>';
-            var l1v = document.getElementById('filterLevel1').value;
-            if (l1v) { updateSelectedUnit(l1v); }
-        }
-    }
-
-    function onLevel3Change() {
-        var id = this.value;
-        if (id) { updateSelectedUnit(id); }
-        else {
-            var l2v = document.getElementById('filterLevel2').value;
-            if (l2v) { updateSelectedUnit(l2v); }
-        }
-    }
-
-    function updateSelectedUnit(id) {
-        document.getElementById('ExternalUnitId').value = id;
-        var u = allUnits.find(function (x) { return x.id === id; });
-        if (u) { updateUnitDisplay(u.name); }
-    }
-
-    function updateUnitDisplay(n) {
-        var d = document.getElementById('selectedUnitDisplay');
-        d.innerHTML = n
-            ? '<span class="badge badge-approved" style="font-size:.82rem;padding:6px 12px;"><i class="bi bi-building me-1"></i>' + n + '</span>'
-            : '';
-    }
-
-    function restoreFilterSelection(unitId) {
-        var unit = allUnits.find(function (u) { return u.id === unitId; });
-        if (!unit) return;
-        var hierarchy = [], current = unit;
-        while (current) {
-            hierarchy.unshift(current);
-            var pid = current.parentId;
-            current = allUnits.find(function (u) { return u.id === pid; });
-        }
-        document.getElementById('filterLevel1').value = hierarchy[0].id;
-        onLevel1Change.call(document.getElementById('filterLevel1'));
-        setTimeout(function () {
-            if (hierarchy.length >= 2) {
-                document.getElementById('filterLevel2').value = hierarchy[1].id;
-                onLevel2Change.call(document.getElementById('filterLevel2'));
-                setTimeout(function () {
-                    if (hierarchy.length >= 3) {
-                        document.getElementById('filterLevel3').value = hierarchy[2].id;
-                        updateSelectedUnit(hierarchy[2].id);
-                    }
-                }, 100);
-            }
-        }, 100);
-    }
 
     // ================================================================
     //  Drill-Down modals

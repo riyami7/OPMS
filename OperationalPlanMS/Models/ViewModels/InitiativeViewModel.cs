@@ -126,7 +126,7 @@ namespace OperationalPlanMS.Models.ViewModels
             entity.SupervisorEmpNumber = SupervisorEmpNumber;
             entity.SupervisorName = SupervisorName;
             entity.SupervisorRank = SupervisorRank;
-            entity.SupervisorId = !string.IsNullOrEmpty(SupervisorEmpNumber) ? null : SupervisorId;
+            entity.SupervisorId = SupervisorId;
             entity.Status = Status.InProgress;
             entity.Priority = Priority.Medium;
             entity.PlannedStartDate = ActualStartDate ?? DateTime.Today;

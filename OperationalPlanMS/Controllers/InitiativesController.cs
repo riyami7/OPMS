@@ -51,7 +51,7 @@ namespace OperationalPlanMS.Controllers
 
             if (externalUnitId.HasValue)
                 ViewBag.SelectedUnitName = await _initiativeService.GetUnitNameAsync(externalUnitId.Value);
-
+            ViewBag.ExternalUnitId = externalUnitId;
             return View(viewModel);
         }
 

@@ -355,6 +355,11 @@
                 document.getElementById('inputADUsername').value = emp.empNumber || '';
                 document.getElementById('inputFullNameAr').value = emp.name || '';
                 document.getElementById('inputFullNameEn').value = emp.name || '';
+                        // تعبئة البريد الإلكتروني تلقائياً
+        var emailField = document.querySelector('[name="Email"]');
+        if (emailField && emp.empNumber) {
+            emailField.value = emp.empNumber + '@@domain.com';
+        }
 
                 // الحقول المخفية
                 document.getElementById('hiddenEmployeeRank').value = emp.rank || '';
@@ -374,6 +379,8 @@
                 document.getElementById('inputADUsername').value = '';
                 document.getElementById('inputFullNameAr').value = '';
                 document.getElementById('inputFullNameEn').value = '';
+                        var emailField = document.querySelector('[name="Email"]');
+        if (emailField) emailField.value = '';
 
                 document.getElementById('hiddenEmployeeRank').value = '';
                 document.getElementById('hiddenEmployeePosition').value = '';
