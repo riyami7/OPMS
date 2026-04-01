@@ -54,7 +54,7 @@
             const response = await fetch('/api/OrganizationApi/units/all');
             if (response.ok) {
                 allUnitsCache = await response.json();
-                populateSupportingLevel1();
+
             }
         } catch (e) {
             console.error('Error loading units:', e);
@@ -271,76 +271,37 @@
     // ================================================================
     //  الجهات المساندة — Supporting Entities (ممثلين متعددين)
     // ================================================================
+    var _supportingTreeReady = false;
+
     window.showAddSupportingEntity = function () {
         document.getElementById('addSupportingEntitySection').style.display = 'block';
+        if (!_supportingTreeReady) {
+            OrgTreePicker.init({
+                containerId: 'supportingOrgTree',
+                hiddenInputId: '_supportingUnitId',
+                hiddenNameId: '_supportingUnitName',
+                rootCode: '00001'
+            });
+            // أضف hidden inputs مؤقتة
+            if (!document.getElementById('_supportingUnitId')) {
+                var h1 = document.createElement('input'); h1.type = 'hidden'; h1.id = '_supportingUnitId';
+                var h2 = document.createElement('input'); h2.type = 'hidden'; h2.id = '_supportingUnitName';
+                document.getElementById('addSupportingEntitySection').appendChild(h1);
+                document.getElementById('addSupportingEntitySection').appendChild(h2);
+            }
+            _supportingTreeReady = true;
+        }
     };
 
     window.cancelAddSupportingEntity = function () {
         document.getElementById('addSupportingEntitySection').style.display = 'none';
     };
 
-    function populateSupportingLevel1() {
-        const select = document.getElementById('supportingLevel1');
-        const rootUnits = allUnitsCache.filter(u => u.code == '00001' && (!u.parentId || u.parentId === 0));
-        select.innerHTML = '<option value="">-- اختر --</option>';
-        rootUnits.forEach(u => {
-            select.innerHTML += `<option value="${u.id}" data-name="${u.name}">${u.name}</option>`;
-        });
-    }
-
-    window.loadSupportingLevel2 = function () {
-        const level1 = document.getElementById('supportingLevel1');
-        const level2 = document.getElementById('supportingLevel2');
-        const level3 = document.getElementById('supportingLevel3');
-        level2.innerHTML = '<option value="">-- اختر --</option>';
-        level2.disabled = true;
-        level3.innerHTML = '<option value="">-- اختر --</option>';
-        level3.disabled = true;
-
-        if (level1.value) {
-            const children = allUnitsCache.filter(u => u.parentId == level1.value);
-            if (children.length > 0) {
-                children.forEach(u => {
-                    level2.innerHTML += `<option value="${u.id}" data-name="${u.name}">${u.name}</option>`;
-                });
-                level2.disabled = false;
-            }
-        }
-    };
-
-    window.loadSupportingLevel3 = function () {
-        const level2 = document.getElementById('supportingLevel2');
-        const level3 = document.getElementById('supportingLevel3');
-        level3.innerHTML = '<option value="">-- اختر --</option>';
-        level3.disabled = true;
-
-        if (level2.value) {
-            const children = allUnitsCache.filter(u => u.parentId == level2.value);
-            if (children.length > 0) {
-                children.forEach(u => {
-                    level3.innerHTML += `<option value="${u.id}" data-name="${u.name}">${u.name}</option>`;
-                });
-                level3.disabled = false;
-            }
-        }
-    };
-
     window.addSupportingEntity = function () {
-        const level3 = document.getElementById('supportingLevel3');
-        const level2 = document.getElementById('supportingLevel2');
-        const level1 = document.getElementById('supportingLevel1');
+        var unitId = document.getElementById('_supportingUnitId')?.value;
+        var unitName = document.getElementById('_supportingUnitName')?.value;
 
-        let unitId, unitName;
-        if (level3.value) {
-            unitId = level3.value;
-            unitName = level3.options[level3.selectedIndex]?.dataset.name || '';
-        } else if (level2.value) {
-            unitId = level2.value;
-            unitName = level2.options[level2.selectedIndex]?.dataset.name || '';
-        } else if (level1.value) {
-            unitId = level1.value;
-            unitName = level1.options[level1.selectedIndex]?.dataset.name || '';
-        } else {
+        if (!unitId) {
             alert('يرجى اختيار جهة');
             return;
         }
@@ -357,6 +318,8 @@
         });
 
         renderSupportingEntities();
+        // مسح الاختيار
+        OrgTreePicker._clear('supportingOrgTree');
         window.cancelAddSupportingEntity();
     };
 
