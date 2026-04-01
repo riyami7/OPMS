@@ -92,26 +92,79 @@
                 </div>
             </div>
 
-            <!-- Dates - التواريخ الفعلية فقط -->
+            <!-- Dates - التواريخ -->
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="bi bi-calendar me-2"></i>التواريخ الفعلية
+                    <i class="bi bi-calendar me-2"></i>التواريخ
                 </div>
                 <div class="card-body">
+                    <h6 class="text-primary mb-3"><i class="bi bi-calendar-check me-1"></i>التواريخ المتوقعة <span class="text-danger">*</span></h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="PlannedStartDate" class="form-label"></label>
+                            <input asp-for="PlannedStartDate" type="date" class="form-control" />
+                            <span asp-validation-for="PlannedStartDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="PlannedEndDate" class="form-label"></label>
+                            <input asp-for="PlannedEndDate" type="date" class="form-control" />
+                            <span asp-validation-for="PlannedEndDate" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="bi bi-calendar2-event me-1"></i>التواريخ الفعلية <small>(اختياري)</small></h6>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label asp-for="ActualStartDate" class="form-label"></label>
                             <input asp-for="ActualStartDate" type="date" class="form-control" />
-                            <small class="text-muted">تاريخ بدء العمل على الخطوة</small>
                         </div>
                         <div class="col-md-6">
                             <label asp-for="ActualEndDate" class="form-label"></label>
                             <input asp-for="ActualEndDate" type="date" class="form-control" />
-                            <small class="text-muted">تاريخ الانتهاء المتوقع (للتنبيه بالتأخير)</small>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- مؤشرات الأداء KPIs -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-graph-up me-2"></i>مؤشرات الأداء</span>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="addKPI()">
+                        <i class="bi bi-plus"></i> إضافة مؤشر
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="kpiContainer"></div>
+                    <div id="noKPIs" class="text-muted text-center py-3">
+                        <i class="bi bi-graph-up me-1"></i>لم يتم إضافة مؤشرات أداء
+                    </div>
+                </div>
+            </div>
+
+            <!-- الجهات المساندة -->
+            @if (Model.AvailableSupportingUnits.Any())
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="bi bi-building me-2"></i>الجهات المساندة
+                    </div>
+                    <div class="card-body">
+                        @foreach (var unit in Model.AvailableSupportingUnits)
+                        {
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox"
+                                       name="SelectedSupportingUnitIds" value="@unit.ProjectSupportingUnitId"
+                                       id="su_@unit.ProjectSupportingUnitId"
+                                       @(unit.IsSelected ? "checked" : "") />
+                                <label class="form-check-label" for="su_@unit.ProjectSupportingUnitId">
+                                    <i class="bi bi-building me-1 text-info"></i>@unit.UnitName
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
         </div>
 
         <!-- Side Panel -->
@@ -420,5 +473,50 @@
             renderTeamMembers();
         }
         window.addTeamMember = addTeamMember;
+
+        // ========== مؤشرات الأداء KPIs ==========
+        var kpiList = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.KPIIndicators ?? new List<string>()));
+
+        function renderKPIs() {
+            var container = document.getElementById('kpiContainer');
+            var noKPIs = document.getElementById('noKPIs');
+            if (kpiList.length === 0) {
+                container.innerHTML = '';
+                noKPIs.style.display = 'block';
+                return;
+            }
+            noKPIs.style.display = 'none';
+            var html = '';
+            for (var i = 0; i < kpiList.length; i++) {
+                html += '<div class="input-group mb-2">' +
+                    '<span class="input-group-text"><i class="bi bi-graph-up"></i></span>' +
+                    '<input type="text" name="KPIIndicators[' + i + ']" value="' + (kpiList[i] || '').replace(/"/g, '&quot;') + '" class="form-control" placeholder="مؤشر الأداء..." onchange="updateKPI(' + i + ', this.value)" />' +
+                    '<button type="button" class="btn btn-outline-danger" onclick="removeKPI(' + i + ')"><i class="bi bi-trash"></i></button>' +
+                    '</div>';
+            }
+            container.innerHTML = html;
+        }
+
+        function addKPI() {
+            kpiList.push('');
+            renderKPIs();
+            var inputs = document.querySelectorAll('#kpiContainer input[type="text"]');
+            if (inputs.length > 0) inputs[inputs.length - 1].focus();
+        }
+
+        function updateKPI(index, value) {
+            kpiList[index] = value;
+        }
+
+        function removeKPI(index) {
+            kpiList.splice(index, 1);
+            renderKPIs();
+        }
+
+        window.addKPI = addKPI;
+        window.updateKPI = updateKPI;
+        window.removeKPI = removeKPI;
+
+        renderKPIs();
     </script>
 }

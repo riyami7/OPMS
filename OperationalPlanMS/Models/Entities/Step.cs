@@ -16,9 +16,8 @@ namespace OperationalPlanMS.Models.Entities
         [StringLength(200)]
         public string NameAr { get; set; } = string.Empty;
 
-        [Required]
         [StringLength(200)]
-        public string NameEn { get; set; } = string.Empty;
+        public string? NameEn { get; set; }
 
         public string? DescriptionAr { get; set; }
 
@@ -167,6 +166,12 @@ namespace OperationalPlanMS.Models.Entities
         /// فريق عمل الخطوة (متعددين)
         /// </summary>
         public virtual ICollection<StepTeamMember> TeamMembers { get; set; } = new List<StepTeamMember>();
+
+        /// <summary>مؤشرات الأداء</summary>
+        public virtual ICollection<StepKPI> KPIs { get; set; } = new List<StepKPI>();
+
+        /// <summary>الجهات المساندة (من جهات المشروع)</summary>
+        public virtual ICollection<StepSupportingUnit> StepSupportingUnits { get; set; } = new List<StepSupportingUnit>();
 
         // ========== Computed Properties ==========
 

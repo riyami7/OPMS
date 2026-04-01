@@ -40,6 +40,8 @@ namespace OperationalPlanMS.Data
         public DbSet<ProjectSubObjective> ProjectSubObjectives { get; set; }
         public DbSet<SupportingUnitRepresentative> SupportingUnitRepresentatives { get; set; }
         public DbSet<StepTeamMember> StepTeamMembers { get; set; }
+        public DbSet<StepKPI> StepKPIs { get; set; }
+        public DbSet<StepSupportingUnit> StepSupportingUnits { get; set; }
         public DbSet<ProjectStatusChange> ProjectStatusChanges { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Notification> Notifications { get; set; }
@@ -474,6 +476,31 @@ namespace OperationalPlanMS.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => new { e.StepId, e.EmpNumber }).IsUnique();
+            });
+
+            // StepKPI (مؤشرات أداء الخطوة)
+            modelBuilder.Entity<StepKPI>(entity =>
+            {
+                entity.HasOne(e => e.Step)
+                    .WithMany(s => s.KPIs)
+                    .HasForeignKey(e => e.StepId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // StepSupportingUnit (الجهات المساندة للخطوة)
+            modelBuilder.Entity<StepSupportingUnit>(entity =>
+            {
+                entity.HasOne(e => e.Step)
+                    .WithMany(s => s.StepSupportingUnits)
+                    .HasForeignKey(e => e.StepId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.ProjectSupportingUnit)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProjectSupportingUnitId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasIndex(e => new { e.StepId, e.ProjectSupportingUnitId }).IsUnique();
             });
 
             // ProjectStatusChange (سجل تغيير الحالة)

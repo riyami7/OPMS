@@ -40,10 +40,9 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "الاسم بالعربية")]
         public string NameAr { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "الاسم بالإنجليزية مطلوب")]
         [StringLength(200)]
         [Display(Name = "الاسم بالإنجليزية")]
-        public string NameEn { get; set; } = string.Empty;
+        public string? NameEn { get; set; }
 
         [Display(Name = "الوصف بالعربية")]
         public string? DescriptionAr { get; set; }
@@ -51,7 +50,18 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "الوصف بالإنجليزية")]
         public string? DescriptionEn { get; set; }
 
-        // ======= التواريخ الفعلية فقط =======
+        // ======= التواريخ المتوقعة (إجبارية) =======
+        [Required(ErrorMessage = "تاريخ البداية المتوقعة مطلوب")]
+        [DataType(DataType.Date)]
+        [Display(Name = "تاريخ البداية المتوقعة")]
+        public DateTime PlannedStartDate { get; set; } = DateTime.Today;
+
+        [Required(ErrorMessage = "تاريخ النهاية المتوقعة مطلوب")]
+        [DataType(DataType.Date)]
+        [Display(Name = "تاريخ النهاية المتوقعة")]
+        public DateTime PlannedEndDate { get; set; } = DateTime.Today.AddDays(30);
+
+        // ======= التواريخ الفعلية (اختيارية) =======
         [DataType(DataType.Date)]
         [Display(Name = "تاريخ البداية الفعلي")]
         public DateTime? ActualStartDate { get; set; }
@@ -59,6 +69,17 @@ namespace OperationalPlanMS.Models.ViewModels
         [DataType(DataType.Date)]
         [Display(Name = "تاريخ النهاية الفعلي")]
         public DateTime? ActualEndDate { get; set; }
+
+        // ======= مؤشرات الأداء =======
+        [Display(Name = "مؤشرات الأداء")]
+        public List<string> KPIIndicators { get; set; } = new();
+
+        // ======= الجهات المساندة =======
+        [Display(Name = "الجهات المساندة")]
+        public List<int> SelectedSupportingUnitIds { get; set; } = new();
+
+        /// <summary>قائمة جهات المشروع المساندة (للعرض)</summary>
+        public List<SupportingUnitOption> AvailableSupportingUnits { get; set; } = new();
 
         // ======= الوزن ونسبة الإنجاز =======
         [Required(ErrorMessage = "الوزن مطلوب")]
@@ -133,6 +154,8 @@ namespace OperationalPlanMS.Models.ViewModels
                 NameEn = entity.NameEn,
                 DescriptionAr = entity.DescriptionAr,
                 DescriptionEn = entity.DescriptionEn,
+                PlannedStartDate = entity.PlannedStartDate,
+                PlannedEndDate = entity.PlannedEndDate,
                 ActualStartDate = entity.ActualStartDate,
                 ActualEndDate = entity.ActualEndDate,
                 Weight = entity.Weight,
@@ -142,6 +165,14 @@ namespace OperationalPlanMS.Models.ViewModels
                 AssignedToId = entity.AssignedToId,
                 DependsOnStepId = entity.DependsOnStepId,
                 ProjectName = entity.Project?.NameAr,
+                // مؤشرات الأداء
+                KPIIndicators = entity.KPIs != null
+                    ? entity.KPIs.OrderBy(k => k.OrderIndex).Select(k => k.Indicator).ToList()
+                    : new List<string>(),
+                // الجهات المساندة
+                SelectedSupportingUnitIds = entity.StepSupportingUnits != null
+                    ? entity.StepSupportingUnits.Select(s => s.ProjectSupportingUnitId).ToList()
+                    : new List<int>(),
                 // ========== الحقول الجديدة ==========
                 AssignedToEmpNumber = entity.AssignedToEmpNumber,
                 AssignedToName = entity.AssignedToName,
@@ -169,6 +200,8 @@ namespace OperationalPlanMS.Models.ViewModels
             entity.NameEn = NameEn;
             entity.DescriptionAr = DescriptionAr;
             entity.DescriptionEn = DescriptionEn;
+            entity.PlannedStartDate = PlannedStartDate;
+            entity.PlannedEndDate = PlannedEndDate;
             entity.ActualStartDate = ActualStartDate;
             entity.ActualEndDate = ActualEndDate;
             entity.Weight = Weight;
@@ -285,5 +318,15 @@ namespace OperationalPlanMS.Models.ViewModels
         public string FullName => !string.IsNullOrEmpty(Rank)
             ? $"{Rank} {Name}".Trim()
             : Name;
+    }
+
+    /// <summary>
+    /// خيار جهة مساندة (للعرض في checkbox)
+    /// </summary>
+    public class SupportingUnitOption
+    {
+        public int ProjectSupportingUnitId { get; set; }
+        public string UnitName { get; set; } = string.Empty;
+        public bool IsSelected { get; set; }
     }
 }

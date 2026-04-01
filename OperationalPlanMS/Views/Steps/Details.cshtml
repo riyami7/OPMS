@@ -264,18 +264,26 @@
                     <div class="card-header"><i class="bi bi-calendar me-2"></i>التواريخ</div>
                     <div class="card-body py-2">
                         <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <td class="text-muted small">البداية المتوقعة</td>
+                                <td class="text-end small">@Model.Step.PlannedStartDate.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small">النهاية المتوقعة</td>
+                                <td class="text-end small">@Model.Step.PlannedEndDate.ToString("yyyy-MM-dd")</td>
+                            </tr>
                             @if (Model.Step.ActualStartDate.HasValue)
                             {
                                 <tr>
-                                    <td class="text-muted small">البداية</td>
-                                    <td class="text-end small">@Model.Step.ActualStartDate.Value.ToString("yyyy-MM-dd")</td>
+                                    <td class="text-muted small">البداية الفعلية</td>
+                                    <td class="text-end small text-success">@Model.Step.ActualStartDate.Value.ToString("yyyy-MM-dd")</td>
                                 </tr>
                             }
                             @if (Model.Step.ActualEndDate.HasValue)
                             {
                                 <tr>
-                                    <td class="text-muted small">النهاية المتوقعة</td>
-                                    <td class="text-end small @(Model.IsDelayed ? "text-danger fw-bold" : "")">
+                                    <td class="text-muted small">النهاية الفعلية</td>
+                                    <td class="text-end small @(Model.IsDelayed ? "text-danger fw-bold" : "text-success")">
                                         @Model.Step.ActualEndDate.Value.ToString("yyyy-MM-dd")
                                         @if (Model.IsDelayed)
                                         {
@@ -284,13 +292,45 @@
                                     </td>
                                 </tr>
                             }
-                            @if (!Model.Step.ActualStartDate.HasValue && !Model.Step.ActualEndDate.HasValue)
-                            {
-                                <tr><td colspan="2" class="text-center text-muted small">لم تُحدد التواريخ</td></tr>
-                            }
                         </table>
                     </div>
                 </div>
+
+                <!-- مؤشرات الأداء -->
+                @if (Model.Step.KPIs?.Any() == true)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header"><i class="bi bi-graph-up me-2"></i>مؤشرات الأداء</div>
+                        <div class="card-body py-2">
+                            <ul class="list-unstyled mb-0">
+                                @foreach (var kpi in Model.Step.KPIs.OrderBy(k => k.OrderIndex))
+                                {
+                                    <li class="py-1 border-bottom">
+                                        <i class="bi bi-check2 text-primary me-1"></i>
+                                        <span class="small">@kpi.Indicator</span>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                }
+
+                <!-- الجهات المساندة -->
+                @if (Model.Step.StepSupportingUnits?.Any() == true)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header"><i class="bi bi-building me-2"></i>الجهات المساندة</div>
+                        <div class="card-body py-2">
+                            @foreach (var su in Model.Step.StepSupportingUnits)
+                            {
+                                <div class="py-1 border-bottom small">
+                                    <i class="bi bi-building text-info me-1"></i>@(su.ProjectSupportingUnit?.ExternalUnitName ?? "-")
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
                 <div class="card">
                     <div class="card-body py-2">
                         <small class="text-muted d-block">

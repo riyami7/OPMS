@@ -110,6 +110,8 @@ namespace OperationalPlanMS.Services
                 .Include(s => s.DependsOnStep).Include(s => s.ApprovedBy)
                 .Include(s => s.Attachments).ThenInclude(a => a.UploadedBy)
                 .Include(s => s.TeamMembers)
+                .Include(s => s.KPIs)
+                .Include(s => s.StepSupportingUnits).ThenInclude(su => su.ProjectSupportingUnit)
                 .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
             if (step == null) return null;
 
@@ -137,6 +139,7 @@ namespace OperationalPlanMS.Services
         {
             var project = await _db.Projects.Include(p => p.Initiative)
                 .Include(p => p.Steps.Where(s => !s.IsDeleted))
+                .Include(p => p.SupportingUnits)
                 .FirstOrDefaultAsync(p => p.Id == projectId && !p.IsDeleted);
             if (project == null) return (null, 0, 0, null, null);
 
@@ -148,7 +151,13 @@ namespace OperationalPlanMS.Services
                 ProjectId = projectId,
                 ProjectName = project.NameAr,
                 Weight = remainingWeight > 0 ? Math.Min(remainingWeight, 10) : 10,
-                StepNumber = project.Steps.Any() ? project.Steps.Max(s => s.StepNumber) + 1 : 1
+                StepNumber = project.Steps.Any() ? project.Steps.Max(s => s.StepNumber) + 1 : 1,
+                AvailableSupportingUnits = project.SupportingUnits.Select(su => new SupportingUnitOption
+                {
+                    ProjectSupportingUnitId = su.Id,
+                    UnitName = su.ExternalUnitName ?? "",
+                    IsSelected = false
+                }).ToList()
             };
             await PopulateFormDropdownsAsync(viewModel);
             return (viewModel, usedWeight, remainingWeight, project.NameAr, project.Initiative?.NameAr);
@@ -158,11 +167,21 @@ namespace OperationalPlanMS.Services
         {
             var step = await _db.Steps.Include(s => s.Project).ThenInclude(p => p.Initiative)
                 .Include(s => s.Project).ThenInclude(p => p.Steps.Where(st => !st.IsDeleted))
+                .Include(s => s.Project).ThenInclude(p => p.SupportingUnits)
                 .Include(s => s.TeamMembers)
+                .Include(s => s.KPIs)
+                .Include(s => s.StepSupportingUnits)
                 .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
             if (step == null) return (null, 0, 0, null, null);
 
             var viewModel = StepFormViewModel.FromEntity(step);
+            // تعبئة الجهات المساندة المتاحة مع تحديد المختارة
+            viewModel.AvailableSupportingUnits = step.Project.SupportingUnits.Select(su => new SupportingUnitOption
+            {
+                ProjectSupportingUnitId = su.Id,
+                UnitName = su.ExternalUnitName ?? "",
+                IsSelected = viewModel.SelectedSupportingUnitIds.Contains(su.Id)
+            }).ToList();
             await PopulateFormDropdownsAsync(viewModel);
             var usedWeight = step.Project.Steps.Where(s => s.Id != id).Sum(s => s.Weight);
             return (viewModel, usedWeight, 100 - usedWeight, step.Project?.NameAr, step.Project?.Initiative?.NameAr);
@@ -216,6 +235,37 @@ namespace OperationalPlanMS.Services
                 }
             }
 
+            // حفظ مؤشرات الأداء
+            if (model.KPIIndicators?.Any() == true)
+            {
+                var kpis = model.KPIIndicators
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .Select((k, i) => new StepKPI
+                    {
+                        StepId = step.Id,
+                        Indicator = k.Trim(),
+                        OrderIndex = i,
+                        CreatedAt = DateTime.Now
+                    }).ToList();
+                if (kpis.Any())
+                {
+                    _db.StepKPIs.AddRange(kpis);
+                    await _db.SaveChangesAsync();
+                }
+            }
+
+            // حفظ الجهات المساندة
+            if (model.SelectedSupportingUnitIds?.Any() == true)
+            {
+                var stepUnits = model.SelectedSupportingUnitIds.Select(id => new StepSupportingUnit
+                {
+                    StepId = step.Id,
+                    ProjectSupportingUnitId = id
+                }).ToList();
+                _db.StepSupportingUnits.AddRange(stepUnits);
+                await _db.SaveChangesAsync();
+            }
+
             await UpdateProjectProgressAsync(project.Id);
 
             _logger.LogInformation("تم إنشاء خطوة: {StepNumber} في مشروع {ProjectId}", step.StepNumber, step.ProjectId);
@@ -264,6 +314,29 @@ namespace OperationalPlanMS.Services
                         Rank = m.Rank, Role = m.Role, OrderIndex = i, CreatedAt = DateTime.Now
                     }).ToList();
                 if (members.Any()) _db.StepTeamMembers.AddRange(members);
+            }
+
+            // حذف وإعادة إضافة مؤشرات الأداء
+            _db.StepKPIs.RemoveRange(await _db.StepKPIs.Where(k => k.StepId == id).ToListAsync());
+            if (model.KPIIndicators?.Any() == true)
+            {
+                var kpis = model.KPIIndicators
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .Select((k, i) => new StepKPI
+                    {
+                        StepId = id, Indicator = k.Trim(), OrderIndex = i, CreatedAt = DateTime.Now
+                    }).ToList();
+                if (kpis.Any()) _db.StepKPIs.AddRange(kpis);
+            }
+
+            // حذف وإعادة إضافة الجهات المساندة
+            _db.StepSupportingUnits.RemoveRange(await _db.StepSupportingUnits.Where(s => s.StepId == id).ToListAsync());
+            if (model.SelectedSupportingUnitIds?.Any() == true)
+            {
+                _db.StepSupportingUnits.AddRange(model.SelectedSupportingUnitIds.Select(uid => new StepSupportingUnit
+                {
+                    StepId = id, ProjectSupportingUnitId = uid
+                }));
             }
 
             // إذا النسبة أقل من 100 وكانت مؤكدة/مرفوضة — أعد الحالة لـ None
