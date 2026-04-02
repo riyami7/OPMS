@@ -118,7 +118,7 @@
                 <p class="text-muted small mb-2">نسبة الإنجاز</p>
                 <div class="progress" style="height: 4px;">
                     <div class="progress-bar @(isApproved ? "bg-success" : Model.IsDelayed ? "bg-danger" : isPendingApproval ? "bg-warning" : "bg-primary")"
-                         style="width: @((int).Step.ProgressPercentage)%"></div>
+                         style="width: @((int)Model.Step.ProgressPercentage)%"></div>
                 </div>
             </div>
         </div>
