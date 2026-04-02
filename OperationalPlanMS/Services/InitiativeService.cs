@@ -41,12 +41,14 @@ namespace OperationalPlanMS.Services
         private readonly AppDbContext _db;
         private readonly ILogger<InitiativeService> _logger;
         private readonly IAuditService _audit;
+        private readonly IUserService _userService;
 
-        public InitiativeService(AppDbContext db, ILogger<InitiativeService> logger, IAuditService audit)
+        public InitiativeService(AppDbContext db, ILogger<InitiativeService> logger, IAuditService audit, IUserService userService)
         {
             _db = db;
             _logger = logger;
             _audit = audit;
+            _userService = userService;
         }
 
         #region القراءة
@@ -215,11 +217,9 @@ namespace OperationalPlanMS.Services
             };
             model.UpdateEntity(initiative);
 
-            if (!string.IsNullOrEmpty(model.SupervisorEmpNumber))
-            {
-                var supervisor = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == model.SupervisorEmpNumber && u.IsActive);
-                if (supervisor != null) initiative.SupervisorId = supervisor.Id;
-            }
+            // ربط المشرف — ينشئه تلقائياً إذا ما موجود
+            initiative.SupervisorId = await _userService.EnsureUserExistsAsync(
+                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor");
 
             _db.Initiatives.Add(initiative);
             await _db.SaveChangesAsync();
@@ -244,11 +244,9 @@ namespace OperationalPlanMS.Services
 
             model.UpdateEntity(initiative);
 
-            if (!string.IsNullOrEmpty(model.SupervisorEmpNumber))
-            {
-                var supervisor = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == model.SupervisorEmpNumber && u.IsActive);
-                if (supervisor != null) initiative.SupervisorId = supervisor.Id;
-            }
+            // ربط المشرف — ينشئه تلقائياً إذا ما موجود
+            initiative.SupervisorId = await _userService.EnsureUserExistsAsync(
+                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor");
 
             initiative.LastModifiedById = modifiedById;
             initiative.LastModifiedAt = DateTime.Now;

@@ -47,13 +47,15 @@ namespace OperationalPlanMS.Services
         private readonly ILogger<StepService> _logger;
         private readonly IAuditService _audit;
         private readonly INotificationService _notify;
+        private readonly IUserService _userService;
 
-        public StepService(AppDbContext db, ILogger<StepService> logger, IAuditService audit, INotificationService notify)
+        public StepService(AppDbContext db, ILogger<StepService> logger, IAuditService audit, INotificationService notify, IUserService userService)
         {
             _db = db;
             _logger = logger;
             _audit = audit;
             _notify = notify;
+            _userService = userService;
         }
 
         #region القراءة
@@ -204,7 +206,7 @@ namespace OperationalPlanMS.Services
                 Status = StepStatus.NotStarted, ApprovalStatus = ApprovalStatus.None
             };
             model.UpdateEntity(step);
-            step.AssignedToId = await ResolveUserIdAsync(model.AssignedToEmpNumber);
+            step.AssignedToId = await ResolveUserIdAsync(model.AssignedToEmpNumber, model.AssignedToName, model.AssignedToRank);
 
             string? warning = null;
             if (!string.IsNullOrWhiteSpace(model.AssignedToEmpNumber) && step.AssignedToId == null)
@@ -296,7 +298,7 @@ namespace OperationalPlanMS.Services
                 return (false, $"الوزن المتبقي للمشروع هو {remainingWeight}% فقط", null);
 
             model.UpdateEntity(step);
-            step.AssignedToId = await ResolveUserIdAsync(model.AssignedToEmpNumber);
+            step.AssignedToId = await ResolveUserIdAsync(model.AssignedToEmpNumber, model.AssignedToName, model.AssignedToRank);
 
             string? warning = null;
             if (!string.IsNullOrWhiteSpace(model.AssignedToEmpNumber) && step.AssignedToId == null)
@@ -665,11 +667,9 @@ namespace OperationalPlanMS.Services
             await _db.SaveChangesAsync();
         }
 
-        private async Task<int?> ResolveUserIdAsync(string? empNumber)
+        private async Task<int?> ResolveUserIdAsync(string? empNumber, string? name = null, string? rank = null)
         {
-            if (string.IsNullOrWhiteSpace(empNumber)) return null;
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == empNumber && u.IsActive);
-            return user?.Id;
+            return await _userService.EnsureUserExistsAsync(empNumber, name, rank, "Step User");
         }
 
         private async Task PopulateFilterDropdownsAsync(StepListViewModel model, UserRole userRole, int userId)

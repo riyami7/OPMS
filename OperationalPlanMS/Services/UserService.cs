@@ -22,6 +22,11 @@ namespace OperationalPlanMS.Services
         Task<bool> IsUsernameTakenAsync(string username, int? excludeId = null);
         Task PopulateDropdownsAsync(UserFormViewModel model);
         Task SyncUserAssignmentsAsync(int userId, string empNumber);
+
+        /// <summary>
+        /// يتحقق إذا الموظف موجود في Users — إذا لا ينشئه تلقائياً بدور User
+        /// </summary>
+        Task<int?> EnsureUserExistsAsync(string? empNumber, string? name, string? rank, string? assignRole = null);
     }
 
     /// <summary>
@@ -186,6 +191,47 @@ namespace OperationalPlanMS.Services
         public async Task PopulateDropdownsAsync(UserFormViewModel model)
         {
             model.Roles = new SelectList(await _db.Roles.ToListAsync(), "Id", "NameAr", model.RoleId);
+        }
+
+        /// <inheritdoc/>
+        public async Task<int?> EnsureUserExistsAsync(string? empNumber, string? name, string? rank, string? assignRole = null)
+        {
+            if (string.IsNullOrWhiteSpace(empNumber)) return null;
+
+            // تحقق إذا موجود
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == empNumber);
+            if (user != null)
+            {
+                // تحديث البيانات إذا تغيرت
+                if (!string.IsNullOrEmpty(name) && user.FullNameAr != name) user.FullNameAr = name;
+                if (!string.IsNullOrEmpty(rank) && user.EmployeeRank != rank) user.EmployeeRank = rank;
+                if (!user.IsActive) user.IsActive = true;
+                await _db.SaveChangesAsync();
+                return user.Id;
+            }
+
+            // إنشاء مستخدم جديد
+            var defaultRole = !string.IsNullOrEmpty(assignRole)
+                ? await _db.Roles.FirstOrDefaultAsync(r => r.NameEn == assignRole)
+                  ?? await _db.Roles.OrderByDescending(r => r.Id).FirstAsync()
+                : await _db.Roles.OrderByDescending(r => r.Id).FirstAsync();
+
+            user = new User
+            {
+                ADUsername = empNumber,
+                FullNameAr = name ?? empNumber,
+                FullNameEn = name ?? empNumber,
+                Email = empNumber + "@domain.com",
+                RoleId = defaultRole.Id,
+                EmployeeRank = rank,
+                IsActive = true,
+                CreatedAt = DateTime.Now
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("تم إنشاء مستخدم تلقائياً: {EmpNumber} - {Name}", empNumber, name);
+            return user.Id;
         }
 
         public async Task SyncUserAssignmentsAsync(int userId, string empNumber)

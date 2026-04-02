@@ -55,13 +55,15 @@ namespace OperationalPlanMS.Services
         private readonly ILogger<ProjectService> _logger;
         private readonly IAuditService _audit;
         private readonly INotificationService _notify;
+        private readonly IUserService _userService;
 
-        public ProjectService(AppDbContext db, ILogger<ProjectService> logger, IAuditService audit, INotificationService notify)
+        public ProjectService(AppDbContext db, ILogger<ProjectService> logger, IAuditService audit, INotificationService notify, IUserService userService)
         {
             _db = db;
             _logger = logger;
             _audit = audit;
             _notify = notify;
+            _userService = userService;
         }
 
         #region القراءة
@@ -275,7 +277,7 @@ namespace OperationalPlanMS.Services
 
             var project = new Project { CreatedById = createdById, CreatedAt = DateTime.Now, ProgressPercentage = 0 };
             model.UpdateEntity(project);
-            project.ProjectManagerId = await ResolveProjectManagerIdAsync(model.ProjectManagerEmpNumber);
+            project.ProjectManagerId = await ResolveProjectManagerIdAsync(model.ProjectManagerEmpNumber, model.ProjectManagerName, model.ProjectManagerRank);
 
             string? warning = null;
             if (!string.IsNullOrWhiteSpace(model.ProjectManagerEmpNumber) && project.ProjectManagerId == null)
@@ -300,7 +302,7 @@ namespace OperationalPlanMS.Services
             // إشعار لمساعد مدير المشروع
             if (!string.IsNullOrWhiteSpace(project.DeputyManagerEmpNumber))
             {
-                var deputyId = await ResolveProjectManagerIdAsync(project.DeputyManagerEmpNumber);
+                var deputyId = await ResolveProjectManagerIdAsync(project.DeputyManagerEmpNumber, project.DeputyManagerName, project.DeputyManagerRank);
                 if (deputyId.HasValue && deputyId.Value != createdById && deputyId != project.ProjectManagerId)
                 {
                     await _notify.CreateAsync(deputyId.Value,
@@ -329,7 +331,7 @@ namespace OperationalPlanMS.Services
                 return (false, "رقم المشروع مستخدم بالفعل", null);
 
             model.UpdateEntity(project);
-            project.ProjectManagerId = await ResolveProjectManagerIdAsync(model.ProjectManagerEmpNumber);
+            project.ProjectManagerId = await ResolveProjectManagerIdAsync(model.ProjectManagerEmpNumber, model.ProjectManagerName, model.ProjectManagerRank);
 
             string? warning = null;
             if (!string.IsNullOrWhiteSpace(model.ProjectManagerEmpNumber) && project.ProjectManagerId == null)
@@ -372,7 +374,7 @@ namespace OperationalPlanMS.Services
             // إشعار لمساعد مدير المشروع إذا تغيّر
             if (!string.IsNullOrWhiteSpace(project.DeputyManagerEmpNumber))
             {
-                var deputyId = await ResolveProjectManagerIdAsync(project.DeputyManagerEmpNumber);
+                var deputyId = await ResolveProjectManagerIdAsync(project.DeputyManagerEmpNumber, project.DeputyManagerName, project.DeputyManagerRank);
                 if (deputyId.HasValue && deputyId.Value != modifiedById && deputyId != project.ProjectManagerId)
                 {
                     if (oldDeputyEmpNumber != project.DeputyManagerEmpNumber)
@@ -622,11 +624,9 @@ namespace OperationalPlanMS.Services
 
         #region Private Helpers
 
-        private async Task<int?> ResolveProjectManagerIdAsync(string? empNumber)
+        private async Task<int?> ResolveProjectManagerIdAsync(string? empNumber, string? name = null, string? rank = null)
         {
-            if (string.IsNullOrWhiteSpace(empNumber)) return null;
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.ADUsername == empNumber && u.IsActive);
-            return user?.Id;
+            return await _userService.EnsureUserExistsAsync(empNumber, name, rank, "Project Manager");
         }
 
         private decimal CalculateProjectProgress(Project project)

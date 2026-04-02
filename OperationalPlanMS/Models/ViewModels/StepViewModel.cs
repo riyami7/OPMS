@@ -216,9 +216,7 @@ namespace OperationalPlanMS.Models.ViewModels
             entity.AssignedToName = AssignedToName;
             entity.AssignedToRank = AssignedToRank;
 
-            // قيم افتراضية للحقول القديمة (للتوافق مع DB)
-            entity.PlannedStartDate = ActualStartDate ?? DateTime.Today;
-            entity.PlannedEndDate = ActualEndDate ?? DateTime.Today.AddDays(7);
+         
 
             // تحديث الحالة تلقائياً
             entity.Status = entity.CalculatedStatus;

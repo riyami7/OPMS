@@ -83,56 +83,52 @@
     }
 </div>
 
-<!-- Progress + Quick Actions Row -->
+<!-- Progress + Quick Actions -->
 <div class="row mb-4">
-    @if (Model.TotalInitiatives > 0)
-    {
-        <div class="col-md-6 col-lg-4 mb-3">
-            <div class="card dashboard-card h-100">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-3">تقدم المبادرات</h6>
-                    <div class="position-relative d-inline-block mb-3">
-                        <svg class="progress-ring" viewBox="0 0 36 36">
-                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e9ecef" stroke-width="3" />
-                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--primary-mid)" stroke-width="3" stroke-dasharray="@Model.AverageInitiativeProgress, 100" />
-                        </svg>
-                        <div class="position-absolute top-50 start-50 translate-middle">
-                            <span class="h4 mb-0">@Model.AverageInitiativeProgress.ToString("0")%</span>
+    <div class="col-md-6 col-lg-8 mb-3">
+        <div class="card dashboard-card h-100">
+            <div class="card-body">
+                <h6 class="text-muted mb-3"><i class="bi bi-bar-chart me-2"></i>تقدم المشاريع</h6>
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <div class="position-relative d-inline-block">
+                            <svg class="progress-ring" viewBox="0 0 36 36" style="width:120px;height:120px;">
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e9ecef" stroke-width="3" />
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#11998e" stroke-width="3" stroke-dasharray="@Model.AverageProjectProgress, 100" />
+                            </svg>
+                            <div class="position-absolute top-50 start-50 translate-middle">
+                                <span class="h4 mb-0">@Model.AverageProjectProgress.ToString("0")%</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="row text-center small">
-                        <div class="col-4"><div class="text-success fw-bold">@Model.CompletedInitiatives</div><div class="text-muted">مكتملة</div></div>
-                        <div class="col-4"><div class="text-primary fw-bold">@Model.InProgressInitiatives</div><div class="text-muted">جارية</div></div>
-                        <div class="col-4"><div class="text-danger fw-bold">@Model.DelayedInitiatives</div><div class="text-muted">متأخرة</div></div>
+                    <div class="col">
+                        <div class="row text-center g-3">
+                            <div class="col-4">
+                                <div class="p-2 rounded" style="background:rgba(25,135,84,0.08);">
+                                    <div class="h5 text-success mb-0">@Model.CompletedProjects</div>
+                                    <small class="text-muted">مكتملة</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 rounded" style="background:rgba(13,110,253,0.08);">
+                                    <div class="h5 text-primary mb-0">@Model.InProgressProjects</div>
+                                    <small class="text-muted">جارية</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 rounded" style="background:rgba(220,53,69,0.08);">
+                                    <div class="h5 text-danger mb-0">@Model.DelayedProjects</div>
+                                    <small class="text-muted">متأخرة</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    }
-
-    <div class="@(Model.TotalInitiatives > 0 ? "col-md-6 col-lg-4" : "col-md-6") mb-3">
-        <div class="card dashboard-card h-100">
-            <div class="card-body text-center">
-                <h6 class="text-muted mb-3">تقدم المشاريع</h6>
-                <div class="position-relative d-inline-block mb-3">
-                    <svg class="progress-ring" viewBox="0 0 36 36">
-                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e9ecef" stroke-width="3" />
-                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#11998e" stroke-width="3" stroke-dasharray="@Model.AverageProjectProgress, 100" />
-                    </svg>
-                    <div class="position-absolute top-50 start-50 translate-middle">
-                        <span class="h4 mb-0">@Model.AverageProjectProgress.ToString("0")%</span>
-                    </div>
-                </div>
-                <div class="row text-center small">
-                    <div class="col-4"><div class="text-success fw-bold">@Model.CompletedProjects</div><div class="text-muted">مكتملة</div></div>
-                    <div class="col-4"><div class="text-primary fw-bold">@Model.InProgressProjects</div><div class="text-muted">جارية</div></div>
-                    <div class="col-4"><div class="text-danger fw-bold">@Model.DelayedProjects</div><div class="text-muted">متأخرة</div></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="@(Model.TotalInitiatives > 0 ? "col-md-12 col-lg-4" : "col-md-6") mb-3">
+    <div class="col-md-6 col-lg-4 mb-3">
         <div class="card dashboard-card h-100">
             <div class="card-header bg-transparent border-0">
                 <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>إجراءات سريعة</h6>
@@ -165,7 +161,7 @@
     </div>
 </div>
 
-<!-- Upcoming Deadlines + Overdue Steps (non-admin) -->
+<!-- Overdue + Upcoming Deadlines -->
 @if (!isAdminOrExec && (Model.MyUpcomingDeadlines.Any() || Model.OverdueSteps.Any()))
 {
     <div class="row mb-4">
@@ -274,7 +270,7 @@
     </div>
 }
 
-<!-- My Steps (non-admin) -->
+<!-- My Steps -->
 @if (!isAdminOrExec && Model.MySteps.Any())
 {
     <div class="row mb-4">
@@ -327,54 +323,11 @@
     </div>
 }
 
-<!-- Data Tables: Initiatives + Projects -->
-<div class="row">
-    @if (Model.RecentInitiatives.Any())
-    {
-        <div class="@(Model.RecentProjects.Any() ? "col-lg-6" : "col-12") mb-4">
-            <div class="card dashboard-card">
-                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><i class="bi bi-lightning-charge me-2 text-primary"></i>@(isAdminOrExec ? "آخر المبادرات" : "مبادراتي")</h6>
-                    <a href="/Initiatives" class="btn btn-sm btn-outline-primary">عرض الكل</a>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light"><tr><th>المبادرة</th><th>المشاريع</th><th>التقدم</th></tr></thead>
-                            <tbody>
-                                @foreach (var item in Model.RecentInitiatives)
-                                {
-                                    var projectsCount = item.Projects?.Count(p => !p.IsDeleted) ?? 0;
-                                    var completedProjects = item.Projects?.Count(p => !p.IsDeleted && p.ProgressPercentage >= 100) ?? 0;
-                                    var avgProgress = projectsCount > 0 ? Math.Round(item.Projects.Where(p => !p.IsDeleted).Average(p => p.ProgressPercentage), 0) : 0;
-                                    var statusClass = completedProjects == projectsCount && projectsCount > 0 ? "success" : avgProgress > 0 ? "primary" : "secondary";
-                                    <tr>
-                                        <td>
-                                            <a href="/Initiatives/Details/@item.Id" class="text-decoration-none">
-                                                <div class="fw-semibold">@item.NameAr</div>
-                                                <small class="text-muted">@item.Code</small>
-                                            </a>
-                                        </td>
-                                        <td><span class="badge bg-success">@completedProjects</span> / @projectsCount</td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="progress flex-grow-1 me-2" style="height:6px;width:60px;"><div class="progress-bar bg-@statusClass" style="width:@avgProgress%"></div></div>
-                                                <small>@avgProgress%</small>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
-    @if (Model.RecentProjects.Any())
-    {
-        <div class="@(Model.RecentInitiatives.Any() ? "col-lg-6" : "col-12") mb-4">
+<!-- Recent Projects (full width) -->
+@if (Model.RecentProjects.Any())
+{
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="card dashboard-card">
                 <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="bi bi-folder me-2 text-success"></i>@(isAdminOrExec ? "آخر المشاريع" : "مشاريعي")</h6>
@@ -383,13 +336,15 @@
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
-                            <thead class="table-light"><tr><th>المشروع</th><th>المبادرة</th><th>التقدم</th></tr></thead>
+                            <thead class="table-light"><tr><th>المشروع</th><th>المبادرة</th><th>الحالة</th><th>التقدم</th></tr></thead>
                             <tbody>
                                 @foreach (var item in Model.RecentProjects)
                                 {
                                     var isDelayed = item.PlannedEndDate < DateTime.Today && item.Status != Status.Completed;
                                     var progressColor = item.ProgressPercentage >= 100 ? "success" : isDelayed ? "danger" : item.ProgressPercentage >= 50 ? "primary" : item.ProgressPercentage > 0 ? "warning" : "secondary";
-                                    <tr class="@(isDelayed ? "table-warning" : "")">
+                                    var statusText = item.Status == Status.Completed ? "مكتمل" : isDelayed ? "متأخر" : item.ProgressPercentage > 0 ? "جاري" : "لم يبدأ";
+                                    var statusBg = item.Status == Status.Completed ? "success" : isDelayed ? "danger" : item.ProgressPercentage > 0 ? "primary" : "secondary";
+                                    <tr>
                                         <td>
                                             <a href="/Projects/Details/@item.Id" class="text-decoration-none">
                                                 <div class="fw-semibold">@item.NameAr</div>
@@ -397,10 +352,11 @@
                                             </a>
                                         </td>
                                         <td><small class="text-muted">@item.Initiative?.NameAr</small></td>
+                                        <td><span class="badge bg-@statusBg">@statusText</span></td>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <div class="progress flex-grow-1 me-2" style="height:6px;width:60px;"><div class="progress-bar bg-@progressColor" style="width:@item.ProgressPercentage%"></div></div>
-                                                <small>@item.ProgressPercentage%</small>
+                                                <div class="progress flex-grow-1 me-2" style="height:6px;width:80px;"><div class="progress-bar bg-@progressColor" style="width:@item.ProgressPercentage%"></div></div>
+                                                <small class="fw-bold">@item.ProgressPercentage%</small>
                                                 @if (isDelayed) { <i class="bi bi-exclamation-triangle text-danger ms-1"></i> }
                                             </div>
                                         </td>
@@ -412,8 +368,8 @@
                 </div>
             </div>
         </div>
-    }
-</div>
+    </div>
+}
 
 <!-- Recent Notifications -->
 @if (Model.RecentNotifications.Any())
@@ -453,7 +409,7 @@
 }
 
 <!-- No Data -->
-@if (!Model.RecentInitiatives.Any() && !Model.RecentProjects.Any() && !Model.MySteps.Any())
+@if (!Model.RecentProjects.Any() && !Model.MySteps.Any())
 {
     <div class="row">
         <div class="col-12">
