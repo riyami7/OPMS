@@ -24,8 +24,8 @@ namespace OperationalPlanMS.Tests.Services
         public GuidConversionTests()
         {
             _db = TestDbHelper.CreateContext();
-            _initiativeService = new InitiativeService(_db, TestDbHelper.CreateLogger<InitiativeService>(), TestDbHelper.CreateAuditService());
-            _projectService = new ProjectService(_db, TestDbHelper.CreateLogger<ProjectService>(), TestDbHelper.CreateAuditService(), TestDbHelper.CreateNotificationService());
+            _initiativeService = new InitiativeService(_db, TestDbHelper.CreateLogger<InitiativeService>(), TestDbHelper.CreateAuditService(), TestDbHelper.CreateUserService());
+            _projectService = new ProjectService(_db, TestDbHelper.CreateLogger<ProjectService>(), TestDbHelper.CreateAuditService(), TestDbHelper.CreateNotificationService(), TestDbHelper.CreateUserService());
             SeedAsync().GetAwaiter().GetResult();
         }
 

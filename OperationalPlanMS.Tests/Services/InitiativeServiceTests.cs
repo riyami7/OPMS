@@ -14,7 +14,7 @@ namespace OperationalPlanMS.Tests.Services
         public InitiativeServiceTests()
         {
             _db = TestDbHelper.CreateContext();
-            _service = new InitiativeService(_db, TestDbHelper.CreateLogger<InitiativeService>(), TestDbHelper.CreateAuditService());
+            _service = new InitiativeService(_db, TestDbHelper.CreateLogger<InitiativeService>(), TestDbHelper.CreateAuditService(), TestDbHelper.CreateUserService());
             TestDbHelper.SeedBasicDataAsync(_db).GetAwaiter().GetResult();
         }
 

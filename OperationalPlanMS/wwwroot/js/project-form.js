@@ -273,8 +273,22 @@
     // ================================================================
     var _supportingTreeReady = false;
 
+    window.toggleSupportingType = function (type) {
+        document.getElementById('supportingOrgSection').style.display = type === 'org' ? 'block' : 'none';
+        document.getElementById('supportingFreeSection').style.display = type === 'free' ? 'block' : 'none';
+        document.getElementById('btnTypeOrg').classList.toggle('active', type === 'org');
+        document.getElementById('btnTypeFree').classList.toggle('active', type === 'free');
+        // حفظ النوع المختار
+        window._supportingAddType = type;
+    };
+
     window.showAddSupportingEntity = function () {
         document.getElementById('addSupportingEntitySection').style.display = 'block';
+        // إعادة تعيين النوع للهيكل التنظيمي
+        window._supportingAddType = 'org';
+        window.toggleSupportingType('org');
+        document.getElementById('supportingFreeText').value = '';
+
         if (!_supportingTreeReady) {
             OrgTreePicker.init({
                 containerId: 'supportingOrgTree',
@@ -282,7 +296,6 @@
                 hiddenNameId: '_supportingUnitName',
                 rootCode: '00001'
             });
-            // أضف hidden inputs مؤقتة
             if (!document.getElementById('_supportingUnitId')) {
                 var h1 = document.createElement('input'); h1.type = 'hidden'; h1.id = '_supportingUnitId';
                 var h2 = document.createElement('input'); h2.type = 'hidden'; h2.id = '_supportingUnitName';
@@ -298,33 +311,48 @@
     };
 
     window.addSupportingEntity = function () {
-        var unitId = document.getElementById('_supportingUnitId')?.value;
-        var unitName = document.getElementById('_supportingUnitName')?.value;
+        var isFreeText = window._supportingAddType === 'free';
+        var unitId, unitName;
 
-        if (!unitId) {
-            alert('يرجى اختيار جهة');
-            return;
+        if (isFreeText) {
+            // نص حر
+            unitName = document.getElementById('supportingFreeText').value.trim();
+            if (!unitName) {
+                alert('يرجى كتابة اسم الجهة');
+                return;
+            }
+            unitId = 'free_' + Date.now(); // معرف مؤقت للنص الحر
+        } else {
+            // من الهيكل التنظيمي
+            unitId = document.getElementById('_supportingUnitId')?.value;
+            unitName = document.getElementById('_supportingUnitName')?.value;
+            if (!unitId) {
+                alert('يرجى اختيار جهة');
+                return;
+            }
         }
 
-        if (supportingEntities.find(e => e.externalUnitId == unitId)) {
+        // تحقق من التكرار
+        if (supportingEntities.find(e => e.unitName === unitName)) {
             alert('هذه الجهة مضافة مسبقاً');
             return;
         }
 
         supportingEntities.push({
-            externalUnitId: unitId,
+            externalUnitId: isFreeText ? '' : unitId,
             unitName: unitName,
+            isFreeText: isFreeText,
             representatives: []
         });
 
         renderSupportingEntities();
-        // مسح الاختيار
         OrgTreePicker._clear('supportingOrgTree');
+        document.getElementById('supportingFreeText').value = '';
         window.cancelAddSupportingEntity();
     };
 
-    window.removeSupportingEntity = function (unitId) {
-        supportingEntities = supportingEntities.filter(e => e.externalUnitId != unitId);
+    window.removeSupportingEntity = function (index) {
+        supportingEntities.splice(index, 1);
         renderSupportingEntities();
     };
 
@@ -355,7 +383,7 @@
                                 <span class="fw-bold">${rep.rank || ''} ${rep.name}</span>
                                 <small class="text-muted me-2">${rep.empNumber}</small>
                             </div>
-                            <span class="remove-btn" onclick="removeRep('${entity.externalUnitId}', ${repIndex})">
+                            <span class="remove-btn" onclick="removeRep(${entityIndex}, ${repIndex})">
                                 <i class="bi bi-x-circle"></i>
                             </span>
                         </div>
@@ -364,10 +392,10 @@
             `).join('');
 
             return `
-                <div class="supporting-entity-item" id="entity_${entity.externalUnitId}">
+                <div class="supporting-entity-item" id="entity_${entityIndex}">
                     <div class="entity-header">
-                        <span class="entity-name"><i class="bi bi-building me-1"></i>${entity.unitName}</span>
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupportingEntity('${entity.externalUnitId}')">
+                        <span class="entity-name"><i class="bi bi-building me-1"></i>${entity.unitName} ${entity.isFreeText ? '<small class="text-muted">(نص حر)</small>' : ''}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupportingEntity(${entityIndex})">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -376,14 +404,14 @@
                             <span>ممثلو الجهة (اختياري)</span>
                             <span class="badge bg-secondary">${entity.representatives.length}</span>
                         </label>
-                        <div id="repsContainer_${entity.externalUnitId}">
+                        <div id="repsContainer_${entityIndex}">
                             ${repsHtml}
                         </div>
                         <div class="rep-search-wrapper position-relative mt-1">
-                            <input type="text" id="repSearch_${entity.externalUnitId}" class="form-control form-control-sm"
+                            <input type="text" id="repSearch_${entityIndex}" class="form-control form-control-sm"
                                    placeholder="ابحث برقم أو اسم الموظف لإضافة ممثل..." 
-                                   oninput="searchEntityRep('${entity.externalUnitId}', this.value)" />
-                            <div id="repResults_${entity.externalUnitId}" class="search-dropdown"></div>
+                                   oninput="searchEntityRep('${entityIndex}', this.value)" />
+                            <div id="repResults_${entityIndex}" class="search-dropdown"></div>
                         </div>
                     </div>
                 </div>
@@ -412,9 +440,9 @@
     //  بحث وإضافة/حذف ممثلين
     // ================================================================
     let repSearchTimeout;
-    window.searchEntityRep = function (unitId, term) {
+    window.searchEntityRep = function (entityIndex, term) {
         clearTimeout(repSearchTimeout);
-        const resultsDiv = document.getElementById(`repResults_${unitId}`);
+        const resultsDiv = document.getElementById(`repResults_${entityIndex}`);
         if (term.length < 2) {
             resultsDiv.classList.remove('show');
             return;
@@ -425,7 +453,7 @@
                 const response = await fetch(`/api/OrganizationApi/employees/search?term=${encodeURIComponent(term)}`);
                 if (response.ok) {
                     const employees = await response.json();
-                    const entity = supportingEntities.find(e => e.externalUnitId == unitId);
+                    const entity = supportingEntities[entityIndex];
                     const existingEmpNumbers = entity ? entity.representatives.map(r => r.empNumber) : [];
 
                     resultsDiv.innerHTML = employees.length === 0
@@ -434,7 +462,7 @@
                             const isAdded = existingEmpNumbers.includes(emp.empNumber);
                             return `
                                 <div class="item ${isAdded ? 'disabled' : ''}" 
-                                     ${isAdded ? '' : `onclick="addRep(${unitId}, '${emp.empNumber}', '${emp.name}', '${emp.rank || ''}')"`}>
+                                     ${isAdded ? '' : `onclick="addRep(${entityIndex}, '${emp.empNumber}', '${emp.name}', '${emp.rank || ''}')"`}>
                                     <div class="emp-name">${emp.rank || ''} ${emp.name}</div>
                                     <div class="emp-info">${emp.empNumber}${isAdded ? ' <span class="text-success">✓ مضاف</span>' : ''}</div>
                                 </div>
@@ -448,8 +476,8 @@
         }, 300);
     };
 
-    window.addRep = function (unitId, empNumber, name, rank) {
-        const entity = supportingEntities.find(e => e.externalUnitId == unitId);
+    window.addRep = function (entityIndex, empNumber, name, rank) {
+        const entity = supportingEntities[entityIndex];
         if (!entity) return;
 
         // تحقق من عدم التكرار
@@ -461,16 +489,16 @@
         entity.representatives.push({ empNumber, name, rank });
         
         // مسح حقل البحث
-        const searchInput = document.getElementById(`repSearch_${unitId}`);
+        const searchInput = document.getElementById(`repSearch_${entityIndex}`);
         if (searchInput) searchInput.value = '';
-        const resultsDiv = document.getElementById(`repResults_${unitId}`);
+        const resultsDiv = document.getElementById(`repResults_${entityIndex}`);
         if (resultsDiv) resultsDiv.classList.remove('show');
 
         renderSupportingEntities();
     };
 
-    window.removeRep = function (unitId, repIndex) {
-        const entity = supportingEntities.find(e => e.externalUnitId == unitId);
+    window.removeRep = function (entityIndex, repIndex) {
+        const entity = supportingEntities[entityIndex];
         if (entity) {
             entity.representatives.splice(repIndex, 1);
             renderSupportingEntities();

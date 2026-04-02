@@ -23,6 +23,8 @@ namespace OperationalPlanMS.Tests.Helpers
 
         public static INotificationService CreateNotificationService() => new Mock<INotificationService>().Object;
 
+        public static IUserService CreateUserService() => new Mock<IUserService>().Object;
+
         public static ILogger<T> CreateLogger<T>()
         {
             return new Mock<ILogger<T>>().Object;

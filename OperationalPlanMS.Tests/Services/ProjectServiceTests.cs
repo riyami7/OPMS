@@ -15,7 +15,7 @@ namespace OperationalPlanMS.Tests.Services
         public ProjectServiceTests()
         {
             _db = TestDbHelper.CreateContext();
-            _service = new ProjectService(_db, TestDbHelper.CreateLogger<ProjectService>(), TestDbHelper.CreateAuditService(), TestDbHelper.CreateNotificationService());
+            _service = new ProjectService(_db, TestDbHelper.CreateLogger<ProjectService>(), TestDbHelper.CreateAuditService(), TestDbHelper.CreateNotificationService(), TestDbHelper.CreateUserService());
             SeedAsync().GetAwaiter().GetResult();
         }
 
