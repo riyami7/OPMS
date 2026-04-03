@@ -10,10 +10,12 @@ namespace OperationalPlanMS.Data
 
         public AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvider? tenantProvider = null) : base(options)
         {
-            if (tenantProvider != null && !tenantProvider.IsSuperAdmin)
-                _tenantId = tenantProvider.CurrentTenantId;
-            else
-                _tenantId = null; // SuperAdmin أو migrations — بدون فلتر
+            // CurrentTenantId يتكفل بكل شي:
+            // - مستخدم عادي: يرجع TenantId من Claims
+            // - SuperAdmin مع وحدة مختارة: يرجع الوحدة من Session
+            // - SuperAdmin يشوف الكل: يرجع null (بدون فلتر)
+            // - بدون provider (migrations/tests): null (بدون فلتر)
+            _tenantId = tenantProvider?.CurrentTenantId;
         }
 
         // DbSets

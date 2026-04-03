@@ -214,6 +214,34 @@
                 </div>
 
                 <div class="header-actions">
+                    <!-- Tenant Switcher — SuperAdmin فقط -->
+                    @if (isSuperAdmin)
+                    {
+                        <div class="dropdown me-3" id="tenantSwitcher">
+                            <button class="btn btn-sm dropdown-toggle" data-bs-toggle="dropdown"
+                                    style="background:var(--accent);color:white;border:none;font-size:.82rem;padding:4px 12px;border-radius:6px;">
+                                <i class="bi bi-building-gear me-1"></i>
+                                <span id="tenantSwitcherLabel">جميع الوحدات</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-start shadow" style="min-width:250px;" id="tenantDropdown">
+                                <li>
+                                    <form asp-controller="Admin" asp-action="SwitchTenant" method="post" class="d-inline w-100">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="tenantId" value="" />
+                                        <button type="submit" class="dropdown-item py-2" id="tenantAll">
+                                            <i class="bi bi-globe me-2 text-primary"></i>
+                                            <strong>جميع الوحدات</strong>
+                                        </button>
+                                    </form>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li class="text-center py-2 text-muted" id="tenantLoading">
+                                    <small>جاري التحميل...</small>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+
                     <!-- Notifications Bell -->
                     @if (User.Identity?.IsAuthenticated == true)
                     {
@@ -366,6 +394,65 @@
                 if (data.unreadCount > 0) { badge.textContent = data.unreadCount; badge.style.display = ''; }
             });
         }
+
+        // === Tenant Switcher ===
+        (function() {
+            var switcher = document.getElementById('tenantSwitcher');
+            if (!switcher) return;
+
+            var dropdown = document.getElementById('tenantDropdown');
+            var label = document.getElementById('tenantSwitcherLabel');
+            var loading = document.getElementById('tenantLoading');
+            var loaded = false;
+
+            switcher.addEventListener('show.bs.dropdown', function() {
+                if (loaded) return;
+                fetch('/Admin/GetTenants')
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (loading) loading.remove();
+                        var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+                        data.tenants.forEach(function(t) {
+                            var li = document.createElement('li');
+                            var isSelected = data.selectedId === t.id;
+                            li.innerHTML =
+                                '<form action="/Admin/SwitchTenant" method="post" class="d-inline w-100">' +
+                                '<input type="hidden" name="__RequestVerificationToken" value="' + token + '">' +
+                                '<input type="hidden" name="tenantId" value="' + t.id + '">' +
+                                '<button type="submit" class="dropdown-item py-2' + (isSelected ? ' active' : '') + '">' +
+                                '<i class="bi bi-building me-2"></i>' + t.name +
+                                (isSelected ? ' <i class="bi bi-check-lg text-success float-start"></i>' : '') +
+                                '</button></form>';
+                            dropdown.appendChild(li);
+                        });
+
+                        // تحديث Label
+                        if (data.selectedId) {
+                            var selected = data.tenants.find(function(t) { return t.id === data.selectedId; });
+                            if (selected) label.textContent = selected.name;
+                        }
+
+                        // تحديث زر "جميع الوحدات"
+                        if (!data.selectedId) {
+                            var allBtn = document.getElementById('tenantAll');
+                            if (allBtn) allBtn.classList.add('active');
+                        }
+
+                        loaded = true;
+                    });
+            });
+
+            // تحديث Label عند أول تحميل (بدون فتح dropdown)
+            fetch('/Admin/GetTenants')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.selectedId) {
+                        var selected = data.tenants.find(function(t) { return t.id === data.selectedId; });
+                        if (selected) label.textContent = selected.name;
+                    }
+                });
+        })();
     </script>
 
     <!-- المساعد الذكي (يتضمن التحقق من الصلاحيات والإعداد) -->

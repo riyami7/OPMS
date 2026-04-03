@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Models;
+using OperationalPlanMS.Services.Tenant;
 
 namespace OperationalPlanMS.Controllers
 {
@@ -43,6 +44,51 @@ namespace OperationalPlanMS.Controllers
             ViewBag.ApiBaseUrl = _configuration["ExternalApi:BaseUrl"] ?? "غير محدد";
             ViewBag.ApiTenantId = _configuration["ExternalApi:TenantId"] ?? "1";
             return View();
+        }
+
+        // ========== Tenant Switcher — SuperAdmin فقط ==========
+
+        /// <summary>
+        /// GET /Admin/GetTenants — قائمة الوحدات الجذرية
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetTenants()
+        {
+            if (!IsSuperAdmin()) return Forbid();
+
+            var tenants = await _db.ExternalOrganizationalUnits
+                .Where(u => u.ParentId == null && u.IsActive)
+                .Select(u => new { u.Id, Name = u.ArabicName })
+                .OrderBy(u => u.Name)
+                .ToListAsync();
+
+            var selectedId = HttpContext.Session.GetString(TenantProvider.SessionKey);
+
+            return Json(new { tenants, selectedId = selectedId ?? "" });
+        }
+
+        /// <summary>
+        /// POST /Admin/SwitchTenant — تبديل الوحدة المختارة
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult SwitchTenant(string? tenantId)
+        {
+            if (!IsSuperAdmin()) return Forbid();
+
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                // "جميع الوحدات"
+                HttpContext.Session.Remove(TenantProvider.SessionKey);
+            }
+            else
+            {
+                HttpContext.Session.SetString(TenantProvider.SessionKey, tenantId);
+            }
+
+            // رجوع للصفحة السابقة
+            var referer = Request.Headers["Referer"].ToString();
+            return !string.IsNullOrEmpty(referer) ? Redirect(referer) : RedirectToAction("Index", "Home");
         }
 
         #region Backward Compatibility Redirects

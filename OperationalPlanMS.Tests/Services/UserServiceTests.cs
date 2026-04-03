@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using OperationalPlanMS.Models.Entities;
 using OperationalPlanMS.Services;
 using OperationalPlanMS.Models.ViewModels;
@@ -24,8 +24,8 @@ namespace OperationalPlanMS.Tests.Services
         public async Task GetUsersAsync_NoFilters_ReturnsAllUsers()
         {
             var result = await _service.GetUsersAsync(null, null, null, 1);
-            result.Users.Should().HaveCount(5);
-            result.TotalCount.Should().Be(5);
+            result.Users.Should().HaveCount(7);
+            result.TotalCount.Should().Be(7);
         }
 
         [Fact]
@@ -48,15 +48,15 @@ namespace OperationalPlanMS.Tests.Services
         {
             var result = await _service.GetUsersAsync(null, null, true, 1);
             result.Users.Should().OnlyContain(u => u.IsActive);
-            result.TotalCount.Should().Be(4);
+            result.TotalCount.Should().Be(7); // الكل نشطين
         }
 
         [Fact]
-        public async Task GetUsersAsync_FilterByInactive_ReturnsOnlyInactive()
+        public async Task GetUsersAsync_FilterByInactive_ReturnsEmpty()
         {
+            // الـ seed الحالي ما فيه مستخدمين غير نشطين
             var result = await _service.GetUsersAsync(null, null, false, 1);
-            result.Users.Should().OnlyContain(u => !u.IsActive);
-            result.TotalCount.Should().Be(1);
+            result.Users.Should().BeEmpty();
         }
 
         [Fact]
@@ -64,14 +64,14 @@ namespace OperationalPlanMS.Tests.Services
         {
             var result = await _service.GetUsersAsync(null, null, null, 1, pageSize: 2);
             result.Users.Should().HaveCount(2);
-            result.TotalCount.Should().Be(5);
+            result.TotalCount.Should().Be(7);
         }
 
         [Fact]
         public async Task GetUsersAsync_Page2_ReturnsRemainingUsers()
         {
-            var result = await _service.GetUsersAsync(null, null, null, 2, pageSize: 3);
-            result.Users.Should().HaveCount(2);
+            var result = await _service.GetUsersAsync(null, null, null, 2, pageSize: 4);
+            result.Users.Should().HaveCount(3); // 7 - 4 = 3
             result.CurrentPage.Should().Be(2);
         }
 
@@ -80,7 +80,7 @@ namespace OperationalPlanMS.Tests.Services
         {
             var user = await _service.GetByIdAsync(1);
             user.Should().NotBeNull();
-            user!.ADUsername.Should().Be("C1-0001");
+            user!.ADUsername.Should().Be("superadmin");
         }
 
         [Fact]
@@ -95,13 +95,13 @@ namespace OperationalPlanMS.Tests.Services
         {
             var model = new UserFormViewModel
             {
-                ADUsername = "C1-9999", FullNameAr = "مستخدم جديد",
+                ADUsername = "newuser", FullNameAr = "مستخدم جديد",
                 FullNameEn = "New User", RoleId = 4, IsActive = true
             };
-            var (success, error) = await _service.CreateAsync(model, createdBy: 3);
+            var (success, error) = await _service.CreateAsync(model, createdBy: 1);
             success.Should().BeTrue();
             error.Should().BeNull();
-            var saved = _db.Users.FirstOrDefault(u => u.ADUsername == "C1-9999");
+            var saved = _db.Users.FirstOrDefault(u => u.ADUsername == "newuser");
             saved.Should().NotBeNull();
             saved!.FullNameAr.Should().Be("مستخدم جديد");
         }
@@ -111,10 +111,10 @@ namespace OperationalPlanMS.Tests.Services
         {
             var model = new UserFormViewModel
             {
-                ADUsername = "C1-0001", FullNameAr = "مكرر",
+                ADUsername = "admin1", FullNameAr = "مكرر",
                 FullNameEn = "Duplicate", RoleId = 4
             };
-            var (success, error) = await _service.CreateAsync(model, createdBy: 3);
+            var (success, error) = await _service.CreateAsync(model, createdBy: 1);
             success.Should().BeFalse();
             error.Should().Contain("موجود بالفعل");
         }
@@ -124,19 +124,19 @@ namespace OperationalPlanMS.Tests.Services
         {
             var model = new UserFormViewModel
             {
-                ADUsername = "C1-0001", FullNameAr = "أحمد المحدث",
-                FullNameEn = "Ahmed Updated", RoleId = 3, IsActive = true
+                ADUsername = "superadmin", FullNameAr = "مدير محدث",
+                FullNameEn = "Updated Admin", RoleId = 8, IsActive = true
             };
             var (success, error) = await _service.UpdateAsync(1, model);
             success.Should().BeTrue();
             var user = await _db.Users.FindAsync(1);
-            user!.FullNameAr.Should().Be("أحمد المحدث");
+            user!.FullNameAr.Should().Be("مدير محدث");
         }
 
         [Fact]
         public async Task UpdateAsync_NonExistingUser_Fails()
         {
-            var model = new UserFormViewModel { ADUsername = "C1-XXXX", FullNameAr = "غير موجود", RoleId = 4 };
+            var model = new UserFormViewModel { ADUsername = "xxx", FullNameAr = "غير موجود", RoleId = 4 };
             var (success, error) = await _service.UpdateAsync(999, model);
             success.Should().BeFalse();
             error.Should().Contain("غير موجود");
@@ -145,8 +145,8 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task UpdateAsync_DuplicateUsername_Fails()
         {
-            var model = new UserFormViewModel { ADUsername = "C1-0002", FullNameAr = "تعارض", RoleId = 4 };
-            var (success, error) = await _service.UpdateAsync(1, model);
+            var model = new UserFormViewModel { ADUsername = "admin1", FullNameAr = "تعارض", RoleId = 4 };
+            var (success, error) = await _service.UpdateAsync(1, model); // superadmin trying to take admin1's username
             success.Should().BeFalse();
             error.Should().Contain("موجود بالفعل");
         }
@@ -154,15 +154,16 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task DeleteAsync_UserWithNoRelations_Succeeds()
         {
-            var (success, error) = await _service.DeleteAsync(5, currentUserId: 3);
+            // pm2 (Id=7) ما عنده مبادرات ولا مشاريع ولا خطوات في الـ basic seed
+            var (success, error) = await _service.DeleteAsync(7, currentUserId: 1);
             success.Should().BeTrue();
-            _db.Users.Find(5).Should().BeNull();
+            _db.Users.Find(7).Should().BeNull();
         }
 
         [Fact]
         public async Task DeleteAsync_Self_Fails()
         {
-            var (success, error) = await _service.DeleteAsync(3, currentUserId: 3);
+            var (success, error) = await _service.DeleteAsync(1, currentUserId: 1);
             success.Should().BeFalse();
             error.Should().Contain("حسابك الخاص");
         }
@@ -170,7 +171,7 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task DeleteAsync_NonExisting_Fails()
         {
-            var (success, error) = await _service.DeleteAsync(999, currentUserId: 3);
+            var (success, error) = await _service.DeleteAsync(999, currentUserId: 1);
             success.Should().BeFalse();
             error.Should().Contain("غير موجود");
         }
@@ -178,8 +179,8 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task DeleteAsync_UserWithInitiatives_Fails()
         {
-            await TestDbHelper.SeedInitiativeAsync(_db, supervisorId: 1);
-            var (success, error) = await _service.DeleteAsync(1, currentUserId: 3);
+            await TestDbHelper.SeedInitiativeAsync(_db, supervisorId: 3);
+            var (success, error) = await _service.DeleteAsync(3, currentUserId: 1);
             success.Should().BeFalse();
             error.Should().Contain("مبادرات");
         }
@@ -188,8 +189,8 @@ namespace OperationalPlanMS.Tests.Services
         public async Task DeleteAsync_UserWithProjects_Fails()
         {
             var initiative = await TestDbHelper.SeedInitiativeAsync(_db);
-            await TestDbHelper.SeedProjectAsync(_db, initiative.Id, managerId: 2);
-            var (success, error) = await _service.DeleteAsync(2, currentUserId: 3);
+            await TestDbHelper.SeedProjectAsync(_db, initiative.Id, managerId: 4);
+            var (success, error) = await _service.DeleteAsync(4, currentUserId: 1);
             success.Should().BeFalse();
             error.Should().Contain("مشاريع");
         }
@@ -198,9 +199,9 @@ namespace OperationalPlanMS.Tests.Services
         public async Task DeleteAsync_UserWithSteps_Fails()
         {
             var initiative = await TestDbHelper.SeedInitiativeAsync(_db);
-            var project = await TestDbHelper.SeedProjectAsync(_db, initiative.Id);
-            await TestDbHelper.SeedStepAsync(_db, project.Id, assignedToId: 4);
-            var (success, error) = await _service.DeleteAsync(4, currentUserId: 3);
+            var project = await TestDbHelper.SeedProjectAsync(_db, initiative.Id, managerId: 3); // sup1 يدير المشروع
+            await TestDbHelper.SeedStepAsync(_db, project.Id, assignedToId: 6); // sup2 عنده خطوة بس
+            var (success, error) = await _service.DeleteAsync(6, currentUserId: 1);
             success.Should().BeFalse();
             error.Should().Contain("خطوات");
         }
@@ -208,17 +209,19 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task ToggleActiveAsync_ActiveUser_Deactivates()
         {
-            var (success, message) = await _service.ToggleActiveAsync(1);
+            var (success, message) = await _service.ToggleActiveAsync(2);
             success.Should().BeTrue();
             message.Should().Contain("تعطيل");
-            var user = await _db.Users.FindAsync(1);
+            var user = await _db.Users.FindAsync(2);
             user!.IsActive.Should().BeFalse();
         }
 
         [Fact]
         public async Task ToggleActiveAsync_InactiveUser_Activates()
         {
-            var (success, message) = await _service.ToggleActiveAsync(5);
+            // نعطل مستخدم أولاً ثم نفعله
+            await _service.ToggleActiveAsync(2); // تعطيل
+            var (success, message) = await _service.ToggleActiveAsync(2); // تفعيل
             success.Should().BeTrue();
             message.Should().Contain("تفعيل");
         }
@@ -233,29 +236,28 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task IsUsernameTakenAsync_Existing_ReturnsTrue()
         {
-            var taken = await _service.IsUsernameTakenAsync("C1-0001");
+            var taken = await _service.IsUsernameTakenAsync("admin1");
             taken.Should().BeTrue();
         }
 
         [Fact]
         public async Task IsUsernameTakenAsync_NonExisting_ReturnsFalse()
         {
-            var taken = await _service.IsUsernameTakenAsync("C1-XXXX");
+            var taken = await _service.IsUsernameTakenAsync("nonexistent");
             taken.Should().BeFalse();
         }
 
         [Fact]
         public async Task IsUsernameTakenAsync_ExcludeSelf_ReturnsFalse()
         {
-            var taken = await _service.IsUsernameTakenAsync("C1-0001", excludeId: 1);
+            var taken = await _service.IsUsernameTakenAsync("admin1", excludeId: 2);
             taken.Should().BeFalse();
         }
 
-      [Fact]
+        [Fact]
         public async Task SyncUserAssignmentsAsync_DoesNotThrow()
         {
-            // ExecuteUpdateAsync not supported by InMemory - just verify no exception
-            var act = () => _service.SyncUserAssignmentsAsync(userId: 2, empNumber: "C1-0002");
+            var act = () => _service.SyncUserAssignmentsAsync(userId: 4, empNumber: "pm1");
             await act.Should().NotThrowAsync();
         }
 
@@ -264,7 +266,7 @@ namespace OperationalPlanMS.Tests.Services
         {
             var result = await _service.GetFormViewModelAsync(1);
             result.Should().NotBeNull();
-            result.ADUsername.Should().Be("C1-0001");
+            result.ADUsername.Should().Be("superadmin");
             result.Roles.Should().NotBeNull();
         }
 

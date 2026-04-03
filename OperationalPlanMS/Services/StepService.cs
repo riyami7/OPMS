@@ -70,7 +70,7 @@ namespace OperationalPlanMS.Services
                 .Include(s => s.AssignedTo).AsQueryable();
 
             // Multi-Tenancy: فلتر الخطوات حسب الـ tenant
-            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            if (_tenantProvider.CurrentTenantId.HasValue)
             {
                 var tenantId = _tenantProvider.CurrentTenantId.Value;
                 query = query.Where(s => s.Project.Initiative.TenantId == tenantId);
@@ -114,7 +114,7 @@ namespace OperationalPlanMS.Services
                 .AsQueryable();
 
             // Multi-Tenancy: فلتر حسب الـ tenant
-            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            if (_tenantProvider.CurrentTenantId.HasValue)
             {
                 var tenantId = _tenantProvider.CurrentTenantId.Value;
                 query = query.Where(s => s.Project.Initiative.TenantId == tenantId);

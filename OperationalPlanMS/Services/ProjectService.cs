@@ -80,7 +80,7 @@ namespace OperationalPlanMS.Services
                 .Include(p => p.Steps.Where(s => !s.IsDeleted)).AsQueryable();
 
             // Multi-Tenancy: فلتر المشاريع حسب الـ tenant
-            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            if (_tenantProvider.CurrentTenantId.HasValue)
             {
                 var tenantId = _tenantProvider.CurrentTenantId.Value;
                 query = query.Where(p => p.Initiative.TenantId == tenantId);

@@ -51,7 +51,7 @@ namespace OperationalPlanMS.Services
             var query = _db.Users.Include(u => u.Role).AsQueryable();
 
             // Multi-Tenancy: TenantAdmin يشوف فقط مستخدمين وحدته
-            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            if (_tenantProvider.CurrentTenantId.HasValue)
             {
                 query = query.Where(u => u.TenantId == _tenantProvider.CurrentTenantId);
             }
@@ -120,7 +120,7 @@ namespace OperationalPlanMS.Services
             model.UpdateEntity(entity);
 
             // Multi-Tenancy: تعيين TenantId تلقائياً من الـ admin الحالي
-            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            if (_tenantProvider.CurrentTenantId.HasValue)
             {
                 entity.TenantId = _tenantProvider.CurrentTenantId;
             }

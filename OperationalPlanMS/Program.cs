@@ -132,6 +132,15 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<OperationalPlanMS.Services.Tenant.ITenantProvider,
     OperationalPlanMS.Services.Tenant.TenantProvider>();
 
+// Session — لتخزين Tenant المختار للـ SuperAdmin
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(8);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 // User Management Service
 builder.Services.AddScoped<IUserService, UserService>();
 
@@ -208,6 +217,9 @@ app.UseRouting();
 
 // Rate Limiting
 app.UseRateLimiter();
+
+// Session — قبل Authentication
+app.UseSession();
 
 // Authentication & Authorization (order matters!)
 app.UseAuthentication();

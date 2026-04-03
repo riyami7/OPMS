@@ -30,28 +30,35 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public void CanAccess_Admin_AlwaysTrue()
         {
-            var project = new Project { InitiativeId = _initiative.Id, ProjectManagerId = 2 };
+            var project = new Project { InitiativeId = _initiative.Id, ProjectManagerId = 4 };
             _service.CanAccess(project, UserRole.Admin, 99).Should().BeTrue();
+        }
+
+        [Fact]
+        public void CanAccess_SuperAdmin_AlwaysTrue()
+        {
+            var project = new Project { InitiativeId = _initiative.Id, ProjectManagerId = 4 };
+            _service.CanAccess(project, UserRole.SuperAdmin, 99).Should().BeTrue();
         }
 
         [Fact]
         public void CanAccess_Executive_AlwaysTrue()
         {
-            var project = new Project { InitiativeId = _initiative.Id, ProjectManagerId = 2 };
+            var project = new Project { InitiativeId = _initiative.Id, ProjectManagerId = 4 };
             _service.CanAccess(project, UserRole.Executive, 99).Should().BeTrue();
         }
 
         [Fact]
         public void CanAccess_User_OwnProject_True()
         {
-            var project = new Project { InitiativeId = _initiative.Id, ProjectManagerId = 2 };
-            _service.CanAccess(project, UserRole.User, 2).Should().BeTrue();
+            var project = new Project { InitiativeId = _initiative.Id, ProjectManagerId = 4 };
+            _service.CanAccess(project, UserRole.User, 4).Should().BeTrue();
         }
 
         [Fact]
         public void CanAccess_User_OtherProject_False()
         {
-            var project = new Project { InitiativeId = _initiative.Id, ProjectManagerId = 2 };
+            var project = new Project { InitiativeId = _initiative.Id, ProjectManagerId = 4 };
             _service.CanAccess(project, UserRole.User, 99).Should().BeFalse();
         }
 
@@ -78,7 +85,7 @@ namespace OperationalPlanMS.Tests.Services
         public async Task SoftDeleteAsync_Existing_MarksDeleted()
         {
             var project = await TestDbHelper.SeedProjectAsync(_db, _initiative.Id);
-            var (success, error) = await _service.SoftDeleteAsync(project.Id, modifiedById: 3);
+            var (success, error) = await _service.SoftDeleteAsync(project.Id, modifiedById: 1);
             success.Should().BeTrue();
             var deleted = await _db.Projects.FindAsync(project.Id);
             deleted!.IsDeleted.Should().BeTrue();
@@ -87,9 +94,9 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task SoftDeleteAsync_NonExisting_Fails()
         {
-            var (success, error) = await _service.SoftDeleteAsync(999, modifiedById: 3);
+            var (success, error) = await _service.SoftDeleteAsync(999, modifiedById: 1);
             success.Should().BeFalse();
-            error.Should().Contain("??? ?????");
+            error.Should().Contain("غير موجود");
         }
 
         [Fact]
@@ -158,7 +165,7 @@ namespace OperationalPlanMS.Tests.Services
         public async Task AddNoteAsync_Valid_Succeeds()
         {
             var project = await TestDbHelper.SeedProjectAsync(_db, _initiative.Id);
-            var (success, error) = await _service.AddNoteAsync(project.Id, "?????? ?????", 3);
+            var (success, error) = await _service.AddNoteAsync(project.Id, "ملاحظة تجريبية", 1);
             success.Should().BeTrue();
             _db.ProgressUpdates.Count(p => p.ProjectId == project.Id).Should().Be(1);
         }
@@ -167,14 +174,14 @@ namespace OperationalPlanMS.Tests.Services
         public async Task AddNoteAsync_EmptyNote_Fails()
         {
             var project = await TestDbHelper.SeedProjectAsync(_db, _initiative.Id);
-            var (success, error) = await _service.AddNoteAsync(project.Id, "", 3);
+            var (success, error) = await _service.AddNoteAsync(project.Id, "", 1);
             success.Should().BeFalse();
         }
 
         [Fact]
         public async Task AddNoteAsync_NonExistingProject_Fails()
         {
-            var (success, error) = await _service.AddNoteAsync(999, "??????", 3);
+            var (success, error) = await _service.AddNoteAsync(999, "ملاحظة", 1);
             success.Should().BeFalse();
         }
 
@@ -182,18 +189,18 @@ namespace OperationalPlanMS.Tests.Services
         public async Task EditNoteAsync_Valid_Succeeds()
         {
             var project = await TestDbHelper.SeedProjectAsync(_db, _initiative.Id);
-            await _service.AddNoteAsync(project.Id, "?????", 3);
+            await _service.AddNoteAsync(project.Id, "أصلي", 1);
             var note = _db.ProgressUpdates.First(p => p.ProjectId == project.Id);
-            var (success, _) = await _service.EditNoteAsync(note.Id, project.Id, "??????");
+            var (success, _) = await _service.EditNoteAsync(note.Id, project.Id, "معدل");
             success.Should().BeTrue();
-            _db.ProgressUpdates.Find(note.Id)!.NotesAr.Should().Be("??????");
+            _db.ProgressUpdates.Find(note.Id)!.NotesAr.Should().Be("معدل");
         }
 
         [Fact]
         public async Task DeleteNoteAsync_Valid_Succeeds()
         {
             var project = await TestDbHelper.SeedProjectAsync(_db, _initiative.Id);
-            await _service.AddNoteAsync(project.Id, "?????", 3);
+            await _service.AddNoteAsync(project.Id, "للحذف", 1);
             var note = _db.ProgressUpdates.First();
             var (success, _) = await _service.DeleteNoteAsync(note.Id, project.Id);
             success.Should().BeTrue();
@@ -203,20 +210,20 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task GetListAsync_Admin_SeesAll()
         {
-            await TestDbHelper.SeedProjectAsync(_db, _initiative.Id, managerId: 2, code: "PRJ-2026-001");
-            await TestDbHelper.SeedProjectAsync(_db, _initiative.Id, managerId: 4, code: "PRJ-2026-002");
-            var result = await _service.GetListAsync(null, null, null, 1, 20, UserRole.Admin, 3);
+            await TestDbHelper.SeedProjectAsync(_db, _initiative.Id, managerId: 4, code: "PRJ-2026-001");
+            await TestDbHelper.SeedProjectAsync(_db, _initiative.Id, managerId: 7, code: "PRJ-2026-002");
+            var result = await _service.GetListAsync(null, null, null, 1, 20, UserRole.Admin, 1);
             result.Projects.Should().HaveCount(2);
         }
 
         [Fact]
         public async Task GetListAsync_User_SeesOnlyOwn()
         {
-            await TestDbHelper.SeedProjectAsync(_db, _initiative.Id, managerId: 2, code: "PRJ-2026-001");
-            await TestDbHelper.SeedProjectAsync(_db, _initiative.Id, managerId: 4, code: "PRJ-2026-002");
-            var result = await _service.GetListAsync(null, null, null, 1, 20, UserRole.User, 2);
+            await TestDbHelper.SeedProjectAsync(_db, _initiative.Id, managerId: 4, code: "PRJ-2026-001");
+            await TestDbHelper.SeedProjectAsync(_db, _initiative.Id, managerId: 7, code: "PRJ-2026-002");
+            var result = await _service.GetListAsync(null, null, null, 1, 20, UserRole.User, 4);
             result.Projects.Should().HaveCount(1);
-            result.Projects.First().ProjectManagerId.Should().Be(2);
+            result.Projects.First().ProjectManagerId.Should().Be(4);
         }
 
         [Fact]
@@ -230,8 +237,8 @@ namespace OperationalPlanMS.Tests.Services
         public async Task GetSupportingEntitiesAsync_ReturnsActiveOnly()
         {
             _db.SupportingEntities.AddRange(
-                new SupportingEntity { NameAr = "??? ??????", NameEn = "Active", IsActive = true },
-                new SupportingEntity { NameAr = "??? ??????", NameEn = "Inactive", IsActive = false }
+                new SupportingEntity { NameAr = "جهة نشطة", NameEn = "Active", IsActive = true },
+                new SupportingEntity { NameAr = "جهة معطلة", NameEn = "Inactive", IsActive = false }
             );
             await _db.SaveChangesAsync();
             var result = await _service.GetSupportingEntitiesAsync();

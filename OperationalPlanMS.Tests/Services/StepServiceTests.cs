@@ -37,6 +37,13 @@ namespace OperationalPlanMS.Tests.Services
         }
 
         [Fact]
+        public void CanAccessStep_SuperAdmin_AlwaysTrue()
+        {
+            var step = new Step { ProjectId = _project.Id, AssignedToId = 4 };
+            _service.CanAccessStep(step, UserRole.SuperAdmin, 99).Should().BeTrue();
+        }
+
+        [Fact]
         public void CanAccessStep_Executive_AlwaysTrue()
         {
             var step = new Step { ProjectId = _project.Id, AssignedToId = 4 };
@@ -66,7 +73,8 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public void CanEditProject_User_OwnProject_True()
         {
-            _service.CanEditProject(_project, UserRole.User, 2).Should().BeTrue();
+            // الـ seed ينشئ المشروع مع managerId=4 (pm1)
+            _service.CanEditProject(_project, UserRole.User, 4).Should().BeTrue();
         }
 
         [Fact]
@@ -98,7 +106,7 @@ namespace OperationalPlanMS.Tests.Services
         public async Task SoftDeleteAsync_Existing_MarksDeleted()
         {
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id);
-            var (success, projectId, error) = await _service.SoftDeleteAsync(step.Id, modifiedById: 3);
+            var (success, projectId, error) = await _service.SoftDeleteAsync(step.Id, modifiedById: 1);
             success.Should().BeTrue();
             projectId.Should().Be(_project.Id);
             var deleted = await _db.Steps.FindAsync(step.Id);
@@ -108,16 +116,16 @@ namespace OperationalPlanMS.Tests.Services
         [Fact]
         public async Task SoftDeleteAsync_NonExisting_Fails()
         {
-            var (success, projectId, error) = await _service.SoftDeleteAsync(999, 3);
+            var (success, projectId, error) = await _service.SoftDeleteAsync(999, 1);
             success.Should().BeFalse();
-            error.Should().Contain("??? ??????");
+            error.Should().Contain("غير موجودة");
         }
 
         [Fact]
         public async Task AddNoteAsync_Valid_Succeeds()
         {
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id);
-            var (success, error) = await _service.AddNoteAsync(step.Id, "?????? ????", 3);
+            var (success, error) = await _service.AddNoteAsync(step.Id, "ملاحظة تجريبية", 1);
             success.Should().BeTrue();
             _db.ProgressUpdates.Count(p => p.StepId == step.Id).Should().Be(1);
         }
@@ -126,15 +134,15 @@ namespace OperationalPlanMS.Tests.Services
         public async Task AddNoteAsync_Empty_Fails()
         {
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id);
-            var (success, error) = await _service.AddNoteAsync(step.Id, " ", 3);
+            var (success, error) = await _service.AddNoteAsync(step.Id, " ", 1);
             success.Should().BeFalse();
-            error.Should().Contain("??????");
+            error.Should().Contain("مطلوبة");
         }
 
         [Fact]
         public async Task AddNoteAsync_NonExistingStep_Fails()
         {
-            var (success, error) = await _service.AddNoteAsync(999, "??????", 3);
+            var (success, error) = await _service.AddNoteAsync(999, "ملاحظة", 1);
             success.Should().BeFalse();
         }
 
@@ -142,20 +150,20 @@ namespace OperationalPlanMS.Tests.Services
         public async Task EditNoteAsync_Valid_Succeeds()
         {
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id);
-            await _service.AddNoteAsync(step.Id, "?????", 3);
+            await _service.AddNoteAsync(step.Id, "أصلي", 1);
             var note = _db.ProgressUpdates.First(p => p.StepId == step.Id);
-            var (success, _) = await _service.EditNoteAsync(note.Id, step.Id, "??????");
+            var (success, _) = await _service.EditNoteAsync(note.Id, step.Id, "معدل");
             success.Should().BeTrue();
-            _db.ProgressUpdates.Find(note.Id)!.NotesAr.Should().Be("??????");
+            _db.ProgressUpdates.Find(note.Id)!.NotesAr.Should().Be("معدل");
         }
 
         [Fact]
         public async Task EditNoteAsync_WrongStep_Fails()
         {
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id);
-            await _service.AddNoteAsync(step.Id, "??????", 3);
+            await _service.AddNoteAsync(step.Id, "ملاحظة", 1);
             var note = _db.ProgressUpdates.First();
-            var (success, _) = await _service.EditNoteAsync(note.Id, stepId: 999, "?????");
+            var (success, _) = await _service.EditNoteAsync(note.Id, stepId: 999, "تعديل");
             success.Should().BeFalse();
         }
 
@@ -163,7 +171,7 @@ namespace OperationalPlanMS.Tests.Services
         public async Task DeleteNoteAsync_Valid_Succeeds()
         {
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id);
-            await _service.AddNoteAsync(step.Id, "??????", 3);
+            await _service.AddNoteAsync(step.Id, "للحذف", 1);
             var note = _db.ProgressUpdates.First();
             var (success, _) = await _service.DeleteNoteAsync(note.Id, step.Id);
             success.Should().BeTrue();
@@ -177,12 +185,12 @@ namespace OperationalPlanMS.Tests.Services
             step.ApprovalStatus = ApprovalStatus.Pending;
             step.Status = StepStatus.InProgress;
             await _db.SaveChangesAsync();
-            var (success, error) = await _service.ApproveStepAsync(step.Id, "?????", approverId: 3);
+            var (success, error) = await _service.ApproveStepAsync(step.Id, "موافق", approverId: 1);
             success.Should().BeTrue();
             var approved = await _db.Steps.FindAsync(step.Id);
             approved!.ApprovalStatus.Should().Be(ApprovalStatus.Approved);
             approved.Status.Should().Be(StepStatus.Completed);
-            approved.ApprovedById.Should().Be(3);
+            approved.ApprovedById.Should().Be(1);
         }
 
         [Fact]
@@ -191,9 +199,9 @@ namespace OperationalPlanMS.Tests.Services
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id);
             step.ApprovalStatus = ApprovalStatus.None;
             await _db.SaveChangesAsync();
-            var (success, error) = await _service.ApproveStepAsync(step.Id, null, 3);
+            var (success, error) = await _service.ApproveStepAsync(step.Id, null, 1);
             success.Should().BeFalse();
-            error.Should().Contain("???? ?????");
+            error.Should().Contain("ليست معلقة");
         }
 
         [Fact]
@@ -202,12 +210,12 @@ namespace OperationalPlanMS.Tests.Services
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id, weight: 50, progress: 100);
             step.ApprovalStatus = ApprovalStatus.Pending;
             await _db.SaveChangesAsync();
-            var (success, error) = await _service.RejectStepAsync(step.Id, "??? ?????", rejecterId: 3);
+            var (success, error) = await _service.RejectStepAsync(step.Id, "سبب الرفض", rejecterId: 1);
             success.Should().BeTrue();
             var rejected = await _db.Steps.FindAsync(step.Id);
             rejected!.ApprovalStatus.Should().Be(ApprovalStatus.Rejected);
             rejected.ProgressPercentage.Should().Be(99);
-            rejected.RejectionReason.Should().Be("??? ?????");
+            rejected.RejectionReason.Should().Be("سبب الرفض");
         }
 
         [Fact]
@@ -216,16 +224,16 @@ namespace OperationalPlanMS.Tests.Services
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id);
             step.ApprovalStatus = ApprovalStatus.Pending;
             await _db.SaveChangesAsync();
-            var (success, error) = await _service.RejectStepAsync(step.Id, "", 3);
+            var (success, error) = await _service.RejectStepAsync(step.Id, "", 1);
             success.Should().BeFalse();
-            error.Should().Contain("??? ?????");
+            error.Should().Contain("سبب الرفض");
         }
 
         [Fact]
         public async Task RejectStepAsync_NotPending_Fails()
         {
             var step = await TestDbHelper.SeedStepAsync(_db, _project.Id);
-            var (success, error) = await _service.RejectStepAsync(step.Id, "???", 3);
+            var (success, error) = await _service.RejectStepAsync(step.Id, "سبب", 1);
             success.Should().BeFalse();
         }
 
@@ -274,7 +282,7 @@ namespace OperationalPlanMS.Tests.Services
             viewModel.Should().NotBeNull();
             viewModel!.ProjectId.Should().Be(_project.Id);
             remainingWeight.Should().Be(100);
-            projectName.Should().Be("????? ??????");
+            projectName.Should().Be("مشروع اختباري");
         }
 
         [Fact]
