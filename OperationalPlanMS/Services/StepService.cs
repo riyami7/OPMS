@@ -4,6 +4,7 @@ using OperationalPlanMS.Data;
 using OperationalPlanMS.Models;
 using OperationalPlanMS.Models.Entities;
 using OperationalPlanMS.Models.ViewModels;
+using OperationalPlanMS.Services.Tenant;
 
 namespace OperationalPlanMS.Services
 {
@@ -48,14 +49,16 @@ namespace OperationalPlanMS.Services
         private readonly IAuditService _audit;
         private readonly INotificationService _notify;
         private readonly IUserService _userService;
+        private readonly ITenantProvider _tenantProvider;
 
-        public StepService(AppDbContext db, ILogger<StepService> logger, IAuditService audit, INotificationService notify, IUserService userService)
+        public StepService(AppDbContext db, ILogger<StepService> logger, IAuditService audit, INotificationService notify, IUserService userService, ITenantProvider tenantProvider)
         {
             _db = db;
             _logger = logger;
             _audit = audit;
             _notify = notify;
             _userService = userService;
+            _tenantProvider = tenantProvider;
         }
 
         #region القراءة
@@ -65,6 +68,13 @@ namespace OperationalPlanMS.Services
             var query = _db.Steps.Where(s => !s.IsDeleted)
                 .Include(s => s.Project).ThenInclude(p => p.Initiative)
                 .Include(s => s.AssignedTo).AsQueryable();
+
+            // Multi-Tenancy: فلتر الخطوات حسب الـ tenant
+            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            {
+                var tenantId = _tenantProvider.CurrentTenantId.Value;
+                query = query.Where(s => s.Project.Initiative.TenantId == tenantId);
+            }
 
             if (userRole == UserRole.Supervisor)
             {
@@ -98,10 +108,19 @@ namespace OperationalPlanMS.Services
 
         public async Task<List<Step>> GetPendingApprovalsAsync()
         {
-            return await _db.Steps.Where(s => !s.IsDeleted && s.ApprovalStatus == ApprovalStatus.Pending)
+            var query = _db.Steps.Where(s => !s.IsDeleted && s.ApprovalStatus == ApprovalStatus.Pending)
                 .Include(s => s.Project).ThenInclude(p => p.Initiative)
                 .Include(s => s.AssignedTo).Include(s => s.Attachments)
-                .OrderBy(s => s.SubmittedForApprovalAt).ToListAsync();
+                .AsQueryable();
+
+            // Multi-Tenancy: فلتر حسب الـ tenant
+            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            {
+                var tenantId = _tenantProvider.CurrentTenantId.Value;
+                query = query.Where(s => s.Project.Initiative.TenantId == tenantId);
+            }
+
+            return await query.OrderBy(s => s.SubmittedForApprovalAt).ToListAsync();
         }
 
         public async Task<StepDetailsViewModel?> GetDetailsAsync(int id)
@@ -586,7 +605,7 @@ namespace OperationalPlanMS.Services
 
         public bool CanAccessStep(Step step, UserRole userRole, int userId)
         {
-            if (userRole == UserRole.Admin || userRole == UserRole.Executive) return true;
+            if (userRole == UserRole.SuperAdmin || userRole == UserRole.Admin || userRole == UserRole.Executive) return true;
             var project = step.Project ?? _db.Projects.Include(p => p.Initiative).FirstOrDefault(p => p.Id == step.ProjectId);
             if (project == null) return false;
 
@@ -615,7 +634,7 @@ namespace OperationalPlanMS.Services
 
         public bool CanEditProject(Project project, UserRole userRole, int userId)
         {
-            if (userRole == UserRole.Admin) return true;
+            if (userRole == UserRole.Admin || userRole == UserRole.SuperAdmin) return true;
             if (userRole == UserRole.Supervisor)
             {
                 var initiative = project.Initiative ?? _db.Initiatives.FirstOrDefault(i => i.Id == project.InitiativeId);

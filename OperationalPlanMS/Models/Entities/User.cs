@@ -39,6 +39,16 @@ namespace OperationalPlanMS.Models.Entities
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public int? CreatedBy { get; set; }
 
+        #region Multi-Tenancy
+
+        /// <summary>
+        /// معرف الـ Tenant — الوحدة التنظيمية المستوى الأول (الجذر)
+        /// null = SuperAdmin (يشوف كل الـ tenants)
+        /// </summary>
+        public Guid? TenantId { get; set; }
+
+        #endregion
+
         #region Employee API Fields
 
         [StringLength(100)]

@@ -65,6 +65,13 @@ namespace OperationalPlanMS.Models.Entities
         [StringLength(300)]
         public string? ExternalUnitName { get; set; }
 
+        // ========== Multi-Tenancy ==========
+        /// <summary>
+        /// معرف الـ Tenant — الوحدة التنظيمية المستوى الأول (الجذر)
+        /// يُحسب تلقائياً من ExternalUnitId عند الإنشاء
+        /// </summary>
+        public Guid? TenantId { get; set; }
+
         // ========== المشرف من API ==========
         [StringLength(50)]
         public string? SupervisorEmpNumber { get; set; }

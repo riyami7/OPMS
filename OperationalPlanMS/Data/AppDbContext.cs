@@ -1,12 +1,19 @@
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Models.Entities;
+using OperationalPlanMS.Services.Tenant;
 
 namespace OperationalPlanMS.Data
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        private readonly Guid? _tenantId;
+
+        public AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvider? tenantProvider = null) : base(options)
         {
+            if (tenantProvider != null && !tenantProvider.IsSuperAdmin)
+                _tenantId = tenantProvider.CurrentTenantId;
+            else
+                _tenantId = null; // SuperAdmin أو migrations — بدون فلتر
         }
 
         // DbSets
@@ -81,6 +88,11 @@ namespace OperationalPlanMS.Data
             modelBuilder.Entity<Initiative>(entity =>
             {
                 entity.HasIndex(e => e.Code).IsUnique();
+
+                // ===== Global Query Filter — Multi-Tenancy =====
+                // SuperAdmin (_tenantId == null) يشوف الكل
+                // باقي المستخدمين يشوفون فقط بيانات وحدتهم
+                entity.HasQueryFilter(i => _tenantId == null || i.TenantId == _tenantId);
 
                 entity.HasOne(e => e.ExternalUnit)
                     .WithMany(e => e.Initiatives)

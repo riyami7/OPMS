@@ -34,9 +34,25 @@ namespace OperationalPlanMS.Controllers
         }
 
         /// <summary>
+        /// Get current TenantId from claims — null = SuperAdmin
+        /// </summary>
+        protected Guid? GetCurrentTenantId()
+        {
+            var tenantClaim = User.FindFirst("TenantId")?.Value;
+            if (Guid.TryParse(tenantClaim, out var tenantId))
+                return tenantId;
+            return null;
+        }
+
+        /// <summary>
+        /// Check if current user is SuperAdmin (system-wide)
+        /// </summary>
+        protected bool IsSuperAdmin() => GetCurrentUserRole() == UserRole.SuperAdmin;
+
+        /// <summary>
         /// Check if current user is Admin
         /// </summary>
-        protected bool IsAdmin() => GetCurrentUserRole() == UserRole.Admin;
+        protected bool IsAdmin() => GetCurrentUserRole() == UserRole.Admin || IsSuperAdmin();
 
         /// <summary>
         /// Check if current user is Executive
@@ -66,7 +82,7 @@ namespace OperationalPlanMS.Controllers
         /// <summary>
         /// Check if user can view all (Admin or Executive)
         /// </summary>
-        protected bool CanViewAll() => IsAdmin() || IsExecutive();
+        protected bool CanViewAll() => IsAdmin() || IsExecutive() || IsSuperAdmin();
 
         /// <summary>
         /// Check if user can create/edit/delete initiatives (Admin or Supervisor)
@@ -84,7 +100,7 @@ namespace OperationalPlanMS.Controllers
         /// </summary>
         protected bool CanEditInitiativeContent(int initiativeId)
         {
-            if (IsAdmin() || IsSupervisor()) return true;
+            if (IsAdmin() || IsSupervisor() || IsSuperAdmin()) return true;
             var db = HttpContext.RequestServices.GetRequiredService<Data.AppDbContext>();
             var access = db.InitiativeAccess
                 .FirstOrDefault(a => a.InitiativeId == initiativeId

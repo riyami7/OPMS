@@ -202,7 +202,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> EditNote(int noteId, int projectId, string notes)
         {
-            if (GetCurrentUserRole() != UserRole.Admin) return Forbid();
+            if (GetCurrentUserRole() != UserRole.Admin && GetCurrentUserRole() != UserRole.SuperAdmin) return Forbid();
             var (success, error) = await _projectService.EditNoteAsync(noteId, projectId, notes);
             TempData[success ? "SuccessMessage" : "ErrorMessage"] = success ? "تم تعديل الملاحظة بنجاح" : error;
             return RedirectToAction(nameof(Details), new { id = projectId });
@@ -212,7 +212,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteNote(int noteId, int projectId)
         {
-            if (GetCurrentUserRole() != UserRole.Admin) return Forbid();
+            if (GetCurrentUserRole() != UserRole.Admin && GetCurrentUserRole() != UserRole.SuperAdmin) return Forbid();
             var (success, error) = await _projectService.DeleteNoteAsync(noteId, projectId);
             TempData[success ? "SuccessMessage" : "ErrorMessage"] = success ? "تم حذف الملاحظة بنجاح" : error;
             return RedirectToAction(nameof(Details), new { id = projectId });
@@ -226,7 +226,7 @@ namespace OperationalPlanMS.Controllers
             if (project == null) return NotFound();
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
-            if (!(userRole == UserRole.Admin || (userRole == UserRole.User && project.ProjectManagerId == userId)))
+            if (!(userRole == UserRole.Admin || userRole == UserRole.SuperAdmin || (userRole == UserRole.User && project.ProjectManagerId == userId)))
                 return Forbid();
 
             await _projectService.RecalculateProgressAsync(id);

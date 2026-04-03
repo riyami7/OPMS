@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Models.Entities;
 using OperationalPlanMS.Models.ViewModels;
+using OperationalPlanMS.Services.Tenant;
 
 namespace OperationalPlanMS.Services
 {
@@ -36,16 +37,24 @@ namespace OperationalPlanMS.Services
     {
         private readonly AppDbContext _db;
         private readonly ILogger<UserService> _logger;
+        private readonly ITenantProvider _tenantProvider;
 
-        public UserService(AppDbContext db, ILogger<UserService> logger)
+        public UserService(AppDbContext db, ILogger<UserService> logger, ITenantProvider tenantProvider)
         {
             _db = db;
             _logger = logger;
+            _tenantProvider = tenantProvider;
         }
 
         public async Task<UserListViewModel> GetUsersAsync(string? searchTerm, int? roleId, bool? isActive, int page, int pageSize = 20)
         {
             var query = _db.Users.Include(u => u.Role).AsQueryable();
+
+            // Multi-Tenancy: TenantAdmin يشوف فقط مستخدمين وحدته
+            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            {
+                query = query.Where(u => u.TenantId == _tenantProvider.CurrentTenantId);
+            }
 
             if (!string.IsNullOrEmpty(searchTerm))
                 query = query.Where(u => u.FullNameAr.Contains(searchTerm) ||
@@ -109,6 +118,12 @@ namespace OperationalPlanMS.Services
                 CreatedBy = createdBy
             };
             model.UpdateEntity(entity);
+
+            // Multi-Tenancy: تعيين TenantId تلقائياً من الـ admin الحالي
+            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            {
+                entity.TenantId = _tenantProvider.CurrentTenantId;
+            }
 
             _db.Users.Add(entity);
             await _db.SaveChangesAsync();
@@ -190,7 +205,15 @@ namespace OperationalPlanMS.Services
 
         public async Task PopulateDropdownsAsync(UserFormViewModel model)
         {
-            model.Roles = new SelectList(await _db.Roles.ToListAsync(), "Id", "NameAr", model.RoleId);
+            var rolesQuery = _db.Roles.AsQueryable();
+
+            // TenantAdmin ما يقدر يعيّن SuperAdmin
+            if (!_tenantProvider.IsSuperAdmin)
+            {
+                rolesQuery = rolesQuery.Where(r => r.Id != 8); // 8 = SuperAdmin
+            }
+
+            model.Roles = new SelectList(await rolesQuery.ToListAsync(), "Id", "NameAr", model.RoleId);
         }
 
         /// <inheritdoc/>

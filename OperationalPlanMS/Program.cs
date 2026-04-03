@@ -11,7 +11,7 @@ using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 // DbContext with connection pooling
-builder.Services.AddDbContextPool<AppDbContext>(options =>
+builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Response Compression (gzip/brotli)
@@ -127,6 +127,10 @@ builder.Services.AddHttpClient<IExternalApiService, ExternalApiService>();
 builder.Services.AddMemoryCache();
 //builder.Services.AddExternalApiClients(builder.Configuration);
 
+// === Multi-Tenancy ===
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<OperationalPlanMS.Services.Tenant.ITenantProvider,
+    OperationalPlanMS.Services.Tenant.TenantProvider>();
 
 // User Management Service
 builder.Services.AddScoped<IUserService, UserService>();

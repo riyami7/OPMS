@@ -4,6 +4,7 @@ using OperationalPlanMS.Data;
 using OperationalPlanMS.Models;
 using OperationalPlanMS.Models.Entities;
 using OperationalPlanMS.Models.ViewModels;
+using OperationalPlanMS.Services.Tenant;
 
 namespace OperationalPlanMS.Services
 {
@@ -56,14 +57,16 @@ namespace OperationalPlanMS.Services
         private readonly IAuditService _audit;
         private readonly INotificationService _notify;
         private readonly IUserService _userService;
+        private readonly ITenantProvider _tenantProvider;
 
-        public ProjectService(AppDbContext db, ILogger<ProjectService> logger, IAuditService audit, INotificationService notify, IUserService userService)
+        public ProjectService(AppDbContext db, ILogger<ProjectService> logger, IAuditService audit, INotificationService notify, IUserService userService, ITenantProvider tenantProvider)
         {
             _db = db;
             _logger = logger;
             _audit = audit;
             _notify = notify;
             _userService = userService;
+            _tenantProvider = tenantProvider;
         }
 
         #region القراءة
@@ -75,6 +78,13 @@ namespace OperationalPlanMS.Services
             var query = _db.Projects.Where(p => !p.IsDeleted)
                 .Include(p => p.Initiative).Include(p => p.ProjectManager)
                 .Include(p => p.Steps.Where(s => !s.IsDeleted)).AsQueryable();
+
+            // Multi-Tenancy: فلتر المشاريع حسب الـ tenant
+            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
+            {
+                var tenantId = _tenantProvider.CurrentTenantId.Value;
+                query = query.Where(p => p.Initiative.TenantId == tenantId);
+            }
 
             // تصفية حسب الدور
             if (userRole == UserRole.Supervisor)
@@ -96,7 +106,7 @@ namespace OperationalPlanMS.Services
                     || deputyProjectIds.Contains(p.Id)
                     || stepProjectIds.Contains(p.Id));
             }
-            else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+            else if (userRole != UserRole.SuperAdmin && userRole != UserRole.Admin && userRole != UserRole.Executive)
             {
                 // User, StepUser — sees projects where they are manager, deputy, step assignee, or via InitiativeAccess
                 var accessibleInitiativeIds = await _db.InitiativeAccess
@@ -561,7 +571,7 @@ namespace OperationalPlanMS.Services
 
         public bool CanAccess(Project project, UserRole userRole, int userId)
         {
-            if (userRole == UserRole.Admin || userRole == UserRole.Executive)
+            if (userRole == UserRole.SuperAdmin || userRole == UserRole.Admin || userRole == UserRole.Executive)
                 return true;
 
             // مدير المشروع أو مساعده — أي دور
@@ -608,7 +618,7 @@ namespace OperationalPlanMS.Services
                     .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
                 initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId || accessibleIds.Contains(i.Id));
             }
-            else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+            else if (userRole != UserRole.SuperAdmin && userRole != UserRole.Admin && userRole != UserRole.Executive)
             {
                 var accessibleIds = await _db.InitiativeAccess
                     .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();

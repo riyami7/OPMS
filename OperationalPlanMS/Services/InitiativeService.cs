@@ -76,7 +76,7 @@ namespace OperationalPlanMS.Services
                     || accessibleIds.Contains(i.Id)
                     || managedProjectInitiativeIds.Contains(i.Id));
             }
-            else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+            else if (userRole != UserRole.SuperAdmin && userRole != UserRole.Admin && userRole != UserRole.Executive)
             {
                 // User, StepUser — sees initiatives where they are:
                 // - project manager or deputy
@@ -332,7 +332,7 @@ namespace OperationalPlanMS.Services
         public bool CanAccess(Initiative initiative, UserRole userRole, int userId)
         {
             // Admin and Executive see everything
-            if (userRole == UserRole.Admin || userRole == UserRole.Executive)
+            if (userRole == UserRole.SuperAdmin || userRole == UserRole.Admin || userRole == UserRole.Executive)
                 return true;
 
             // Supervisor sees own initiatives
@@ -352,7 +352,7 @@ namespace OperationalPlanMS.Services
         /// </summary>
         public AccessLevel? GetAccessLevel(int initiativeId, UserRole userRole, int userId)
         {
-            if (userRole == UserRole.Admin) return AccessLevel.FullAccess;
+            if (userRole == UserRole.Admin || userRole == UserRole.SuperAdmin) return AccessLevel.FullAccess;
             if (userRole == UserRole.Executive) return AccessLevel.ReadOnly;
 
             // Supervisor of this initiative gets FullAccess

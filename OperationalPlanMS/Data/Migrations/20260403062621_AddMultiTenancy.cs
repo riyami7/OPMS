@@ -1,0 +1,39 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace OperationalPlanMS.Data.Migrations
+{
+    /// <inheritdoc />
+    public partial class AddMultiTenancy : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<Guid>(
+                name: "TenantId",
+                table: "Users",
+                type: "uniqueidentifier",
+                nullable: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "TenantId",
+                table: "Initiatives",
+                type: "uniqueidentifier",
+                nullable: true);
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "TenantId",
+                table: "Users");
+
+            migrationBuilder.DropColumn(
+                name: "TenantId",
+                table: "Initiatives");
+        }
+    }
+}

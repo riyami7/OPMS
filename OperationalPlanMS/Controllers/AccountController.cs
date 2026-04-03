@@ -166,6 +166,10 @@ namespace OperationalPlanMS.Controllers
             if (user.ExternalUnitId.HasValue)
                 claims.Add(new Claim("ExternalUnitId", user.ExternalUnitId.Value.ToString()));
 
+            // Multi-Tenancy: إضافة TenantId إلى الـ claims
+            if (user.TenantId.HasValue)
+                claims.Add(new Claim("TenantId", user.TenantId.Value.ToString()));
+
             if (!string.IsNullOrEmpty(user.Email))
                 claims.Add(new Claim(ClaimTypes.Email, user.Email));
 

@@ -5,7 +5,8 @@ namespace OperationalPlanMS.Models
     /// </summary>
     public enum UserRole
     {
-        Admin = 1,      // مدير النظام
+        SuperAdmin = 8, // مدير النظام الأعلى — يشوف كل الـ tenants
+        Admin = 1,      // مدير الوحدة (TenantAdmin)
         Executive = 2,  // التنفيذي
         Supervisor = 3, // المشرف
         User = 4,       // مدير المشروع

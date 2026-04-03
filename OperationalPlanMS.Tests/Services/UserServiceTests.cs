@@ -14,7 +14,7 @@ namespace OperationalPlanMS.Tests.Services
         public UserServiceTests()
         {
             _db = TestDbHelper.CreateContext();
-            _service = new UserService(_db, TestDbHelper.CreateLogger<UserService>());
+            _service = new UserService(_db, TestDbHelper.CreateLogger<UserService>(), TestDbHelper.SuperAdminProvider());
             TestDbHelper.SeedBasicDataAsync(_db).GetAwaiter().GetResult();
         }
 

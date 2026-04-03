@@ -22,7 +22,7 @@ namespace OperationalPlanMS.Controllers
         {
             var userRole = GetCurrentUserRole();
             var viewModel = await _stepService.GetListAsync(model, userRole, GetCurrentUserId());
-            ViewBag.CanEdit = userRole == UserRole.Admin || userRole == UserRole.User;
+            ViewBag.CanEdit = userRole == UserRole.Admin || userRole == UserRole.SuperAdmin || userRole == UserRole.User;
             ViewBag.UserRole = userRole;
             return View(viewModel);
         }
@@ -210,7 +210,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> EditNote(int noteId, int stepId, string notes)
         {
-            if (GetCurrentUserRole() != UserRole.Admin) return Forbid();
+            if (GetCurrentUserRole() != UserRole.Admin && GetCurrentUserRole() != UserRole.SuperAdmin) return Forbid();
             var (success, error) = await _stepService.EditNoteAsync(noteId, stepId, notes);
             TempData[success ? "SuccessMessage" : "ErrorMessage"] = success ? "تم تعديل الملاحظة بنجاح" : error;
             return RedirectToAction(nameof(Details), new { id = stepId });
@@ -219,7 +219,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteNote(int noteId, int stepId)
         {
-            if (GetCurrentUserRole() != UserRole.Admin) return Forbid();
+            if (GetCurrentUserRole() != UserRole.Admin && GetCurrentUserRole() != UserRole.SuperAdmin) return Forbid();
             var (success, error) = await _stepService.DeleteNoteAsync(noteId, stepId);
             TempData[success ? "SuccessMessage" : "ErrorMessage"] = success ? "تم حذف الملاحظة بنجاح" : error;
             return RedirectToAction(nameof(Details), new { id = stepId });

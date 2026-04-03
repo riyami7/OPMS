@@ -26,7 +26,7 @@ namespace OperationalPlanMS.Controllers
             _configuration = configuration;
         }
 
-        private bool IsAdminUser() => GetCurrentUserRole() == UserRole.Admin;
+        private bool IsAdminUser() => GetCurrentUserRole() == UserRole.Admin || GetCurrentUserRole() == UserRole.SuperAdmin;
 
         // الصفحة الرئيسية للإدارة
         public IActionResult Index()

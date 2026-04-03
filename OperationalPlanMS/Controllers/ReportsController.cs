@@ -387,7 +387,7 @@ namespace OperationalPlanMS.Controllers
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
 
-            if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+            if (userRole != UserRole.SuperAdmin && userRole != UserRole.Admin && userRole != UserRole.Executive)
             {
                 if (userRole == UserRole.Supervisor && initiative.SupervisorId != userId)
                 {
@@ -565,7 +565,7 @@ namespace OperationalPlanMS.Controllers
 
         private IQueryable<Initiative> ApplyPermissionFilter(IQueryable<Initiative> query, UserRole role, int userId)
         {
-            if (role == UserRole.Admin || role == UserRole.Executive)
+            if (role == UserRole.SuperAdmin || role == UserRole.Admin || role == UserRole.Executive)
                 return query;
 
             if (role == UserRole.Supervisor)
@@ -599,7 +599,7 @@ namespace OperationalPlanMS.Controllers
 
         private IQueryable<Project> ApplyProjectPermissionFilter(IQueryable<Project> query, UserRole role, int userId)
         {
-            if (role == UserRole.Admin || role == UserRole.Executive)
+            if (role == UserRole.SuperAdmin || role == UserRole.Admin || role == UserRole.Executive)
                 return query;
 
             if (role == UserRole.Supervisor)
@@ -632,7 +632,7 @@ namespace OperationalPlanMS.Controllers
 
         private IQueryable<Step> ApplyStepPermissionFilter(IQueryable<Step> query, UserRole role, int userId)
         {
-            if (role == UserRole.Admin || role == UserRole.Executive)
+            if (role == UserRole.SuperAdmin || role == UserRole.Admin || role == UserRole.Executive)
                 return query;
 
             if (role == UserRole.Supervisor)

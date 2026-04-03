@@ -70,13 +70,13 @@ namespace OperationalPlanMS.Controllers
             var accessLevel = _initiativeService.GetAccessLevel(id, userRole, userId);
 
             // CanEdit: Admin always, Supervisor of this initiative, or Contributor/FullAccess
-            ViewBag.CanEdit = (userRole == UserRole.Admin)
+            ViewBag.CanEdit = (userRole == UserRole.Admin || userRole == UserRole.SuperAdmin)
                 || (userRole == UserRole.Supervisor && viewModel.Initiative.SupervisorId == userId)
                 || (accessLevel.HasValue && accessLevel.Value >= AccessLevel.Contributor);
 
             ViewBag.UserRole = userRole;
             ViewBag.AccessLevel = accessLevel;
-            ViewBag.IsAdmin = userRole == UserRole.Admin;
+            ViewBag.IsAdmin = userRole == UserRole.Admin || userRole == UserRole.SuperAdmin;
             return View(viewModel);
         }
 
@@ -193,7 +193,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> EditNote(int noteId, int initiativeId, string notes)
         {
-            if (GetCurrentUserRole() != UserRole.Admin) return Forbid();
+            if (GetCurrentUserRole() != UserRole.Admin && GetCurrentUserRole() != UserRole.SuperAdmin) return Forbid();
 
             var (success, error) = await _initiativeService.EditNoteAsync(noteId, initiativeId, notes);
             TempData[success ? "SuccessMessage" : "ErrorMessage"] = success ? "تم تعديل الملاحظة بنجاح" : error;
@@ -204,7 +204,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteNote(int noteId, int initiativeId)
         {
-            if (GetCurrentUserRole() != UserRole.Admin) return Forbid();
+            if (GetCurrentUserRole() != UserRole.Admin && GetCurrentUserRole() != UserRole.SuperAdmin) return Forbid();
 
             var (success, error) = await _initiativeService.DeleteNoteAsync(noteId, initiativeId);
             TempData[success ? "SuccessMessage" : "ErrorMessage"] = success ? "تم حذف الملاحظة بنجاح" : error;

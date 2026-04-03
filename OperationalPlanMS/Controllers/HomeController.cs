@@ -40,7 +40,7 @@ namespace OperationalPlanMS.Controllers
             {
                 var viewModel = new DashboardViewModel();
 
-                if (userRole == UserRole.Admin)
+                if (userRole == UserRole.Admin || userRole == UserRole.SuperAdmin)
                     await LoadAdminDashboard(viewModel);
                 else if (userRole == UserRole.Executive)
                     await LoadExecutiveDashboard(viewModel);

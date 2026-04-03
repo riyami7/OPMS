@@ -3,7 +3,8 @@
     var userRoleStr = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     Enum.TryParse<UserRole>(userRoleStr, out UserRole userRole);
 
-    var isAdmin = userRole == UserRole.Admin;
+    var isAdmin = userRole == UserRole.Admin || userRole == UserRole.SuperAdmin;
+    var isSuperAdmin = userRole == UserRole.SuperAdmin;
     var isExecutive = userRole == UserRole.Executive;
     var isSupervisor = userRole == UserRole.Supervisor;
     var isUser = userRole == UserRole.User;
@@ -175,12 +176,15 @@
                     {
                         <li class="nav-section">النظام</li>
 
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Audit" ? "active" : "")" href="/Audit">
-                                <i class="bi bi-shield-check"></i>
-                                <span>سجل التدقيق</span>
-                            </a>
-                        </li>
+                        @if (isSuperAdmin)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Audit" ? "active" : "")" href="/Audit">
+                                    <i class="bi bi-shield-check"></i>
+                                    <span>سجل التدقيق</span>
+                                </a>
+                            </li>
+                        }
 
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" ? "active" : "")" href="/Admin">
