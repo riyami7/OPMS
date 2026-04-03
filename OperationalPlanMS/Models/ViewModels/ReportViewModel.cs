@@ -5,21 +5,9 @@ namespace OperationalPlanMS.Models.ViewModels
 {
     public class ReportsDashboardViewModel
     {
-        // Filters
-        public int? FiscalYearId { get; set; }
-
-        // الوحدة التنظيمية المحلية (للتوافقية)
-
-        // الوحدة التنظيمية من API الخارجي - الفلتر الفعلي
+        // Filters — الوحدة التنظيمية فقط (السنة المالية أُلغيت)
         public Guid? ExternalUnitId { get; set; }
-
-        // اسم الوحدة المختارة للعرض
         public string? SelectedUnitName { get; set; }
-
-        public FiscalYear? CurrentFiscalYear { get; set; }
-
-        // Dropdowns
-        public SelectList? FiscalYears { get; set; }
 
         // Summary Statistics
         public int TotalInitiatives { get; set; }
@@ -47,21 +35,33 @@ namespace OperationalPlanMS.Models.ViewModels
             ? Math.Round((decimal)CompletedSteps / TotalSteps * 100, 1)
             : 0;
 
-        // Initiative Counts (محسوبة من المشاريع)
+        // Initiative Counts
         public int CompletedInitiatives { get; set; }
         public int InProgressInitiatives { get; set; }
         public int DelayedInitiatives { get; set; }
         public int NotStartedInitiatives { get; set; }
 
-        // Project Counts (محسوبة من الخطوات)
+        // Project Counts
         public int CompletedProjects { get; set; }
         public int InProgressProjects { get; set; }
         public int DelayedProjects { get; set; }
+        public int NotStartedProjects => TotalProjects - CompletedProjects - InProgressProjects - DelayedProjects;
 
         // Step Counts
         public int CompletedSteps { get; set; }
         public int InProgressSteps { get; set; }
         public int NotStartedSteps { get; set; }
+        public int DelayedSteps { get; set; }
+
+        // ===== مؤشر المخاطر =====
+        public int AtRiskProjects { get; set; }
+        public List<AtRiskProjectItem> AtRiskProjectsList { get; set; } = new();
+
+        // ===== أداء المشرفين =====
+        public List<SupervisorPerformance> SupervisorPerformances { get; set; } = new();
+
+        // ===== مؤشر الكفاءة الزمنية =====
+        public decimal TimeEfficiencyIndex { get; set; }
 
         // Overdue Items
         public List<Initiative> OverdueInitiatives { get; set; } = new();
@@ -72,13 +72,51 @@ namespace OperationalPlanMS.Models.ViewModels
         public List<InitiativeProgressItem> TopInitiatives { get; set; } = new();
         public List<InitiativeProgressItem> BottomInitiatives { get; set; } = new();
 
-        // Unit Summary - يستخدم ExternalUnitId الآن
+        // Unit Summary
         public List<UnitSummary> UnitSummaries { get; set; } = new();
 
         // Monthly Progress
         public List<MonthlyProgress> MonthlyProgressData { get; set; } = new();
+    }
 
-        public int NotStartedProjects => TotalProjects - CompletedProjects - InProgressProjects - DelayedProjects;
+    public class AtRiskProjectItem
+    {
+        public int Id { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? InitiativeName { get; set; }
+        public string? SupervisorName { get; set; }
+        public decimal Progress { get; set; }
+        public decimal ExpectedProgress { get; set; }
+        public decimal Gap => Math.Round(ExpectedProgress - Progress, 1);
+        public int DaysRemaining { get; set; }
+
+        public string RiskLevel =>
+            Gap >= 30 ? "حرج" :
+            Gap >= 15 ? "مرتفع" : "متوسط";
+
+        public string RiskBadgeClass =>
+            Gap >= 30 ? "badge-cancelled" :
+            Gap >= 15 ? "badge-delayed" : "badge-inprogress";
+    }
+
+    public class SupervisorPerformance
+    {
+        public int SupervisorId { get; set; }
+        public string SupervisorName { get; set; } = string.Empty;
+        public int TotalInitiatives { get; set; }
+        public int DelayedInitiatives { get; set; }
+        public int CompletedInitiatives { get; set; }
+        public decimal AverageProgress { get; set; }
+
+        public decimal HealthRate => TotalInitiatives > 0
+            ? Math.Round((decimal)(TotalInitiatives - DelayedInitiatives) / TotalInitiatives * 100, 0)
+            : 100;
+
+        public string HealthBadgeClass =>
+            HealthRate >= 80 ? "badge-completed" :
+            HealthRate >= 60 ? "badge-inprogress" :
+            "badge-delayed";
     }
 
     public class InitiativeProgressItem
@@ -89,12 +127,10 @@ namespace OperationalPlanMS.Models.ViewModels
         public string? UnitName { get; set; }
         public decimal Progress { get; set; }
 
-        // الحقول الجديدة بدلاً من Status
         public int ProjectsCount { get; set; }
         public int CompletedProjectsCount { get; set; }
         public bool IsOverdue { get; set; }
 
-        // حالة محسوبة
         public string CalculatedStatus =>
             ProjectsCount == 0 ? "لم يبدأ" :
             CompletedProjectsCount == ProjectsCount ? "مكتمل" :
@@ -110,19 +146,14 @@ namespace OperationalPlanMS.Models.ViewModels
                 _ => "badge-draft"
             };
 
-        // Legacy - للتوافقية مع Views القديمة
         public Status Status { get; set; }
         public int DaysRemaining { get; set; }
     }
 
     public class UnitSummary
     {
-        // الوحدة المحلية (للتوافقية)
         public Guid? UnitId { get; set; }
-
-        // الوحدة من API الخارجي
         public Guid? ExternalUnitId { get; set; }
-
         public string UnitName { get; set; } = string.Empty;
         public int InitiativeCount { get; set; }
         public int ProjectCount { get; set; }
@@ -131,10 +162,8 @@ namespace OperationalPlanMS.Models.ViewModels
         public int DelayedCount { get; set; }
         public decimal TotalBudget { get; set; }
 
-        // نسبة الإنجاز كنص
         public string ProgressText => $"{AverageProgress}%";
 
-        // Badge class
         public string ProgressBadgeClass =>
             AverageProgress >= 100 ? "bg-success" :
             AverageProgress >= 70 ? "bg-info" :
@@ -149,19 +178,16 @@ namespace OperationalPlanMS.Models.ViewModels
         public decimal ActualProgress { get; set; }
         public int CompletedCount { get; set; }
 
-        // الفرق بين المخطط والفعلي
         public decimal Variance => ActualProgress - PlannedProgress;
         public bool IsOnTrack => Variance >= 0;
     }
 
-    // ViewModel لتفاصيل المبادرة في التقارير
     public class InitiativeReportDetailsViewModel
     {
         public Initiative Initiative { get; set; } = null!;
         public List<Project> Projects { get; set; } = new();
         public List<Step> Steps { get; set; } = new();
 
-        // إحصائيات
         public int TotalProjects => Projects.Count;
         public int CompletedProjects => Projects.Count(p => p.ProgressPercentage >= 100);
         public int DelayedProjects { get; set; }
@@ -180,7 +206,6 @@ namespace OperationalPlanMS.Models.ViewModels
             : 0;
     }
 
-    // ViewModel للمشاريع المتأخرة
     public class OverdueProjectViewModel
     {
         public int Id { get; set; }
@@ -197,7 +222,6 @@ namespace OperationalPlanMS.Models.ViewModels
             : 0;
     }
 
-    // ViewModel للخطوات المتأخرة
     public class OverdueStepViewModel
     {
         public int Id { get; set; }

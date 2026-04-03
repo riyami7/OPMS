@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Models;
@@ -21,28 +20,12 @@ namespace OperationalPlanMS.Controllers
         }
 
         // GET: /Reports
-        public async Task<IActionResult> Index(int? fiscalYearId, Guid? externalUnitId)
+        public async Task<IActionResult> Index(Guid? externalUnitId)
         {
             var viewModel = new ReportsDashboardViewModel
             {
-                FiscalYearId = fiscalYearId,
                 ExternalUnitId = externalUnitId
             };
-
-            if (!fiscalYearId.HasValue)
-            {
-                var currentFY = await _db.FiscalYears.FirstOrDefaultAsync(f => f.IsCurrent);
-                if (currentFY != null)
-                {
-                    fiscalYearId = currentFY.Id;
-                    viewModel.FiscalYearId = currentFY.Id;
-                    viewModel.CurrentFiscalYear = currentFY;
-                }
-            }
-            else
-            {
-                viewModel.CurrentFiscalYear = await _db.FiscalYears.FindAsync(fiscalYearId);
-            }
 
             if (externalUnitId.HasValue)
             {
@@ -51,6 +34,7 @@ namespace OperationalPlanMS.Controllers
                 viewModel.SelectedUnitName = selectedUnit?.ArabicName ?? selectedUnit?.ArabicUnitName;
             }
 
+            // === بناء Query مع فلتر الصلاحيات ===
             var initiativesQuery = _db.Initiatives
                 .Where(i => !i.IsDeleted)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
@@ -60,35 +44,10 @@ namespace OperationalPlanMS.Controllers
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
 
-            // StepUser can see reports if they have InitiativeAccess
-            if (userRole == UserRole.StepUser)
-            {
-                var hasAccess = _db.InitiativeAccess.Any(a => a.UserId == userId && a.IsActive);
-                if (!hasAccess) return RedirectToAction("Index", "Home");
-            }
+            // صلاحيات: المستخدم يرى فقط ما يخصه
+            initiativesQuery = ApplyPermissionFilter(initiativesQuery, userRole, userId);
 
-            if (userRole == UserRole.Supervisor)
-            {
-                var accessibleIds = await _db.InitiativeAccess
-                    .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId || accessibleIds.Contains(i.Id));
-            }
-            else if (userRole == UserRole.User || userRole == UserRole.StepUser)
-            {
-                var userProjectInitiativeIds = await _db.Projects
-                    .Where(p => p.ProjectManagerId == userId && !p.IsDeleted)
-                    .Select(p => p.InitiativeId)
-                    .Distinct()
-                    .ToListAsync();
-                var accessibleIds = await _db.InitiativeAccess
-                    .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                var allIds = userProjectInitiativeIds.Union(accessibleIds).ToList();
-                initiativesQuery = initiativesQuery.Where(i => allIds.Contains(i.Id));
-            }
-
-            if (fiscalYearId.HasValue)
-                initiativesQuery = initiativesQuery.Where(i => i.FiscalYearId == fiscalYearId.Value);
-
+            // فلتر الوحدة التنظيمية
             if (externalUnitId.HasValue)
             {
                 var unitIds = await GetUnitAndChildrenIds(externalUnitId.Value);
@@ -100,6 +59,7 @@ namespace OperationalPlanMS.Controllers
             var projects = initiatives.SelectMany(i => i.Projects).ToList();
             var steps = projects.SelectMany(p => p.Steps).ToList();
 
+            // === الإحصائيات الأساسية ===
             viewModel.TotalInitiatives = initiatives.Count;
             viewModel.TotalProjects = projects.Count;
             viewModel.TotalSteps = steps.Count;
@@ -111,6 +71,7 @@ namespace OperationalPlanMS.Controllers
             viewModel.TotalBudget = initiatives.Sum(i => i.Budget ?? 0) + projects.Sum(p => p.Budget ?? 0);
             viewModel.TotalActualCost = initiatives.Sum(i => i.ActualCost ?? 0) + projects.Sum(p => p.ActualCost ?? 0);
 
+            // === حالات المبادرات ===
             viewModel.CompletedInitiatives = initiatives.Count(i =>
                 i.Projects.Any() && i.Projects.All(p => p.ProgressPercentage >= 100));
             viewModel.InProgressInitiatives = initiatives.Count(i =>
@@ -120,14 +81,18 @@ namespace OperationalPlanMS.Controllers
             viewModel.DelayedInitiatives = initiatives.Count(i =>
                 i.Projects.Any(p => IsProjectDelayed(p)));
 
+            // === حالات المشاريع (منفصلة — بدون عد مزدوج) ===
             viewModel.CompletedProjects = projects.Count(p => p.ProgressPercentage >= 100);
-            viewModel.InProgressProjects = projects.Count(p => p.ProgressPercentage > 0 && p.ProgressPercentage < 100);
+            viewModel.InProgressProjects = projects.Count(p => p.ProgressPercentage > 0 && p.ProgressPercentage < 100 && !IsProjectDelayed(p));
             viewModel.DelayedProjects = projects.Count(p => IsProjectDelayed(p));
 
+            // === حالات الخطوات (منفصلة) ===
             viewModel.CompletedSteps = steps.Count(s => s.ProgressPercentage >= 100);
-            viewModel.InProgressSteps = steps.Count(s => s.ProgressPercentage > 0 && s.ProgressPercentage < 100);
-            viewModel.NotStartedSteps = steps.Count(s => s.ProgressPercentage == 0);
+            viewModel.DelayedSteps = steps.Count(s => IsStepDelayed(s));
+            viewModel.InProgressSteps = steps.Count(s => s.ProgressPercentage > 0 && s.ProgressPercentage < 100 && !IsStepDelayed(s));
+            viewModel.NotStartedSteps = steps.Count(s => s.ProgressPercentage == 0 && !IsStepDelayed(s));
 
+            // === المتأخرات ===
             viewModel.OverdueInitiatives = initiatives
                 .Where(i => i.Projects.Any(p => IsProjectDelayed(p)))
                 .OrderByDescending(i => i.Projects.Count(p => IsProjectDelayed(p)))
@@ -146,42 +111,24 @@ namespace OperationalPlanMS.Controllers
                 .Take(10)
                 .ToList();
 
-            viewModel.TopInitiatives = initiatives
-                .Where(i => i.Projects.Any())
-                .OrderByDescending(i => i.Projects.Average(p => p.ProgressPercentage))
-                .Take(5)
-                .Select(i => new InitiativeProgressItem
-                {
-                    Id = i.Id,
-                    Code = i.Code,
-                    Name = i.NameAr,
-                    UnitName = i.ExternalUnitName ?? "-",
-                    Progress = Math.Round(i.Projects.Average(p => p.ProgressPercentage), 1),
-                    ProjectsCount = i.Projects.Count,
-                    CompletedProjectsCount = i.Projects.Count(p => p.ProgressPercentage >= 100),
-                    IsOverdue = i.Projects.Any(p => IsProjectDelayed(p))
-                })
-                .ToList();
+            // === مؤشر المخاطر — مشاريع "في خطر" ===
+            viewModel.AtRiskProjectsList = BuildAtRiskProjects(projects, initiatives);
+            viewModel.AtRiskProjects = viewModel.AtRiskProjectsList.Count;
 
-            viewModel.BottomInitiatives = initiatives
-                .Where(i => i.Projects.Any() && i.Projects.Any(p => p.ProgressPercentage < 100))
-                .OrderBy(i => i.Projects.Average(p => p.ProgressPercentage))
-                .Take(5)
-                .Select(i => new InitiativeProgressItem
-                {
-                    Id = i.Id,
-                    Code = i.Code,
-                    Name = i.NameAr,
-                    UnitName = i.ExternalUnitName ?? "-",
-                    Progress = Math.Round(i.Projects.Average(p => p.ProgressPercentage), 1),
-                    ProjectsCount = i.Projects.Count,
-                    CompletedProjectsCount = i.Projects.Count(p => p.ProgressPercentage >= 100),
-                    IsOverdue = i.Projects.Any(p => IsProjectDelayed(p))
-                })
-                .ToList();
+            // === أفضل وأسوأ المبادرات ===
+            viewModel.TopInitiatives = BuildInitiativeRanking(initiatives, top: true);
+            viewModel.BottomInitiatives = BuildInitiativeRanking(initiatives, top: false);
 
+            // === أداء المشرفين ===
+            viewModel.SupervisorPerformances = BuildSupervisorPerformance(initiatives);
+
+            // === مؤشر الكفاءة الزمنية ===
+            viewModel.TimeEfficiencyIndex = CalculateTimeEfficiency(projects);
+
+            // === ملخص الوحدات ===
             viewModel.UnitSummaries = BuildUnitSummaries(initiatives);
 
+            // === منحنى الإنجاز الشهري ===
             var monthNames = new[] { "", "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
                                       "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" };
 
@@ -198,12 +145,6 @@ namespace OperationalPlanMS.Controllers
                 });
             }
 
-            viewModel.FiscalYears = new SelectList(
-                await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(),
-                "Id", "NameAr", viewModel.FiscalYearId);
-
-            // Chart data served via /Reports/GetChartData API endpoint
-
             ViewBag.UserRole = userRole;
             ViewBag.ExternalUnitId = externalUnitId;
 
@@ -212,22 +153,10 @@ namespace OperationalPlanMS.Controllers
 
         // GET: /Reports/GetChartData
         [HttpGet]
-        public async Task<IActionResult> GetChartData(int? fiscalYearId, Guid? externalUnitId)
+        public async Task<IActionResult> GetChartData(Guid? externalUnitId)
         {
             var userRole = GetCurrentUserRole();
             var userId = GetCurrentUserId();
-
-            if (userRole == UserRole.StepUser)
-            {
-                var hasAccess = _db.InitiativeAccess.Any(a => a.UserId == userId && a.IsActive);
-                if (!hasAccess) return Forbid();
-            }
-
-            if (!fiscalYearId.HasValue)
-            {
-                var currentFY = await _db.FiscalYears.FirstOrDefaultAsync(f => f.IsCurrent);
-                if (currentFY != null) fiscalYearId = currentFY.Id;
-            }
 
             var initiativesQuery = _db.Initiatives
                 .Where(i => !i.IsDeleted)
@@ -235,25 +164,7 @@ namespace OperationalPlanMS.Controllers
                     .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
                 .AsQueryable();
 
-            if (userRole == UserRole.Supervisor)
-            {
-                var accessibleIds = await _db.InitiativeAccess
-                    .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId || accessibleIds.Contains(i.Id));
-            }
-            else if (userRole == UserRole.User || userRole == UserRole.StepUser)
-            {
-                var ids = await _db.Projects
-                    .Where(p => p.ProjectManagerId == userId && !p.IsDeleted)
-                    .Select(p => p.InitiativeId).Distinct().ToListAsync();
-                var accessibleIds = await _db.InitiativeAccess
-                    .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                var allIds = ids.Union(accessibleIds).ToList();
-                initiativesQuery = initiativesQuery.Where(i => allIds.Contains(i.Id));
-            }
-
-            if (fiscalYearId.HasValue)
-                initiativesQuery = initiativesQuery.Where(i => i.FiscalYearId == fiscalYearId.Value);
+            initiativesQuery = ApplyPermissionFilter(initiativesQuery, userRole, userId);
 
             if (externalUnitId.HasValue)
             {
@@ -276,10 +187,10 @@ namespace OperationalPlanMS.Controllers
                 unitId = (u.ExternalUnitId ?? u.UnitId)?.ToString() ?? ""
             }).ToList();
 
-            // Donut counts
+            // Donut counts — بدون عد مزدوج
             var completed = projects.Count(p => p.ProgressPercentage >= 100);
-            var inProgress = projects.Count(p => p.ProgressPercentage > 0 && p.ProgressPercentage < 100);
             var delayed = projects.Count(p => IsProjectDelayed(p));
+            var inProgress = projects.Count(p => p.ProgressPercentage > 0 && p.ProgressPercentage < 100 && !IsProjectDelayed(p));
             var notStarted = projects.Count - completed - inProgress - delayed;
             var overallProg = projects.Any() ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0m;
 
@@ -300,76 +211,226 @@ namespace OperationalPlanMS.Controllers
             });
         }
 
-        private async Task<List<Guid>> GetUnitAndChildrenIds(Guid unitId)
+        // GET: /Reports/GetSunburstData
+        [HttpGet]
+        public async Task<IActionResult> GetSunburstData(Guid? externalUnitId)
         {
-            // تحميل كل الوحدات النشطة مرة واحدة ثم تصفية في الذاكرة
-            var allUnits = await _db.ExternalOrganizationalUnits
-                .Where(u => u.IsActive)
-                .Select(u => new { u.Id, u.ParentId })
-                .ToListAsync();
+            var userRole = GetCurrentUserRole();
+            var userId = GetCurrentUserId();
 
-            var result = new List<Guid> { unitId };
+            var initiativesQuery = _db.Initiatives
+                .Where(i => !i.IsDeleted)
+                .Include(i => i.Projects.Where(p => !p.IsDeleted))
+                    .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
+                .AsQueryable();
 
-            // المستوى الثاني (أبناء مباشرون)
-            var children = allUnits.Where(u => u.ParentId == unitId).Select(u => u.Id).ToList();
-            result.AddRange(children);
+            initiativesQuery = ApplyPermissionFilter(initiativesQuery, userRole, userId);
 
-            // المستوى الثالث (أحفاد)
-            var grandChildren = allUnits.Where(u => u.ParentId.HasValue && children.Contains(u.ParentId.Value)).Select(u => u.Id).ToList();
-            result.AddRange(grandChildren);
+            if (externalUnitId.HasValue)
+            {
+                var unitIds = await GetUnitAndChildrenIds(externalUnitId.Value);
+                initiativesQuery = initiativesQuery.Where(i =>
+                    i.ExternalUnitId.HasValue && unitIds.Contains(i.ExternalUnitId.Value));
+            }
 
-            return result;
+            var initiatives = await initiativesQuery.ToListAsync();
+
+            // المبادرات → المشاريع (فقط المبادرات اللي فيها مشاريع)
+            var children = initiatives
+                .Where(i => i.Projects.Any())
+                .Select(i =>
+            {
+                var avgProgress = Math.Round(i.Projects.Average(p => p.ProgressPercentage), 1);
+                var iStatus = i.Projects.All(p => p.ProgressPercentage >= 100) ? "completed"
+                    : i.Projects.Any(p => IsProjectDelayed(p)) ? "delayed"
+                    : avgProgress > 0 ? "inprogress"
+                    : "notstarted";
+
+                return new
+                {
+                    name = i.NameAr.Length > 20 ? i.NameAr.Substring(0, 20) + "…" : i.NameAr,
+                    progress = avgProgress,
+                    status = iStatus,
+                    children = i.Projects.Select(p => new
+                    {
+                        name = p.NameAr.Length > 18 ? p.NameAr.Substring(0, 18) + "…" : p.NameAr,
+                        value = Math.Max(1, p.Steps.Count),
+                        progress = p.ProgressPercentage,
+                        status = p.ProgressPercentage >= 100 ? "completed"
+                               : IsProjectDelayed(p) ? "delayed"
+                               : p.ProgressPercentage > 0 ? "inprogress"
+                               : "notstarted",
+                        id = p.Id
+                    }).ToList()
+                };
+            }).ToList();
+
+            return Json(children);
         }
 
-        private List<UnitSummary> BuildUnitSummaries(List<Initiative> initiatives)
+        // GET: /Reports/GetGanttData — الجدول الزمني
+        [HttpGet]
+        public async Task<IActionResult> GetGanttData(Guid? externalUnitId)
         {
-            var summaries = new List<UnitSummary>();
+            var userRole = GetCurrentUserRole();
+            var userId = GetCurrentUserId();
 
-            var groups = initiatives
-                .Where(i => i.ExternalUnitId.HasValue)
-                .GroupBy(i => new { i.ExternalUnitId, UnitName = i.ExternalUnitName ?? "غير محدد" });
+            var query = _db.Projects
+                .Where(p => !p.IsDeleted && p.PlannedStartDate.HasValue && p.PlannedEndDate.HasValue)
+                .Include(p => p.Initiative)
+                .Include(p => p.Steps.Where(s => !s.IsDeleted))
+                .AsQueryable();
 
-            foreach (var g in groups)
+            query = ApplyProjectPermissionFilter(query, userRole, userId);
+
+            if (externalUnitId.HasValue)
             {
-                summaries.Add(new UnitSummary
-                {
-                    ExternalUnitId = g.Key.ExternalUnitId,
-                    UnitName = g.Key.UnitName,
-                    InitiativeCount = g.Count(),
-                    ProjectCount = g.SelectMany(i => i.Projects).Count(),
-                    AverageProgress = g.SelectMany(i => i.Projects).Any()
-                        ? Math.Round(g.SelectMany(i => i.Projects).Average(p => p.ProgressPercentage), 1)
-                        : 0,
-                    CompletedCount = g.Count(i => i.Projects.Any() && i.Projects.All(p => p.ProgressPercentage >= 100)),
-                    DelayedCount = g.Count(i => i.Projects.Any(p => IsProjectDelayed(p))),
-                    TotalBudget = g.Sum(i => i.Budget ?? 0) + g.SelectMany(i => i.Projects).Sum(p => p.Budget ?? 0)
-                });
+                var unitIds = await GetUnitAndChildrenIds(externalUnitId.Value);
+                query = query.Where(p => p.Initiative.ExternalUnitId.HasValue &&
+                    unitIds.Contains(p.Initiative.ExternalUnitId.Value));
             }
 
-            // المبادرات بدون ExternalUnitId
-            var noUnitGroup = initiatives.Where(i => !i.ExternalUnitId.HasValue).ToList();
-            if (noUnitGroup.Any())
+            var projects = await query.OrderBy(p => p.PlannedStartDate).ToListAsync();
+
+            var data = projects.Select(p => new
             {
-                summaries.Add(new UnitSummary
-                {
-                    UnitName = "غير محدد",
-                    InitiativeCount = noUnitGroup.Count,
-                    ProjectCount = noUnitGroup.SelectMany(i => i.Projects).Count(),
-                    AverageProgress = noUnitGroup.SelectMany(i => i.Projects).Any()
-                        ? Math.Round(noUnitGroup.SelectMany(i => i.Projects).Average(p => p.ProgressPercentage), 1)
-                        : 0,
-                    CompletedCount = noUnitGroup.Count(i => i.Projects.Any() && i.Projects.All(p => p.ProgressPercentage >= 100)),
-                    DelayedCount = noUnitGroup.Count(i => i.Projects.Any(p => IsProjectDelayed(p))),
-                    TotalBudget = noUnitGroup.Sum(i => i.Budget ?? 0) + noUnitGroup.SelectMany(i => i.Projects).Sum(p => p.Budget ?? 0)
-                });
+                name = p.NameAr.Length > 25 ? p.NameAr.Substring(0, 25) + "…" : p.NameAr,
+                plannedStart = p.PlannedStartDate!.Value.ToString("yyyy-MM-dd"),
+                plannedEnd = p.PlannedEndDate!.Value.ToString("yyyy-MM-dd"),
+                progress = p.ProgressPercentage,
+                status = p.ProgressPercentage >= 100 ? "completed"
+                       : IsProjectDelayed(p) ? "delayed"
+                       : p.ProgressPercentage > 0 ? "inprogress"
+                       : "notstarted",
+                id = p.Id
+            }).ToList();
+
+            return Json(data);
+        }
+
+        // GET: /Reports/GetHeatmapData — نشاط شهري
+        [HttpGet]
+        public async Task<IActionResult> GetHeatmapData(Guid? externalUnitId)
+        {
+            var userRole = GetCurrentUserRole();
+            var userId = GetCurrentUserId();
+
+            var query = _db.Initiatives
+                .Where(i => !i.IsDeleted)
+                .Include(i => i.Projects.Where(p => !p.IsDeleted))
+                    .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
+                .AsQueryable();
+
+            query = ApplyPermissionFilter(query, userRole, userId);
+
+            if (externalUnitId.HasValue)
+            {
+                var unitIds = await GetUnitAndChildrenIds(externalUnitId.Value);
+                query = query.Where(i => i.ExternalUnitId.HasValue && unitIds.Contains(i.ExternalUnitId.Value));
             }
 
-            return summaries.OrderByDescending(u => u.InitiativeCount).ToList();
+            var initiatives = await query.ToListAsync();
+
+            var monthNames = new[] { "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+                                     "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" };
+
+            // لكل مبادرة، نحسب عدد الخطوات المكتملة في كل شهر
+            var rows = initiatives
+                .Where(i => i.Projects.Any())
+                .Select(i =>
+                {
+                    var steps = i.Projects.SelectMany(p => p.Steps).ToList();
+                    var monthly = new int[12];
+
+                    foreach (var s in steps)
+                    {
+                        // الخطوات المكتملة — نستخدم ActualEndDate كتاريخ الإكمال
+                        if (s.ProgressPercentage >= 100 && s.ActualEndDate.HasValue)
+                        {
+                            var m = s.ActualEndDate.Value.Month - 1;
+                            if (m >= 0 && m < 12) monthly[m]++;
+                        }
+                        // الخطوات الجارية — نحسبها في الشهر الحالي
+                        else if (s.ProgressPercentage > 0 && s.ProgressPercentage < 100)
+                        {
+                            var m = DateTime.Today.Month - 1;
+                            if (m >= 0 && m < 12) monthly[m]++;
+                        }
+                    }
+
+                    return new
+                    {
+                        name = i.NameAr.Length > 22 ? i.NameAr.Substring(0, 22) + "…" : i.NameAr,
+                        totalSteps = steps.Count,
+                        data = monthly
+                    };
+                })
+                .Where(r => r.data.Any(v => v > 0))
+                .ToList();
+
+            return Json(new { months = monthNames, rows });
+        }
+
+        // GET: /Reports/InitiativeDetails/5
+        public async Task<IActionResult> InitiativeDetails(int id)
+        {
+            var initiative = await _db.Initiatives
+                .Include(i => i.FiscalYear)
+                .Include(i => i.Supervisor)
+                .Include(i => i.Projects.Where(p => !p.IsDeleted))
+                    .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
+                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+
+            if (initiative == null)
+                return NotFound();
+
+            var userRole = GetCurrentUserRole();
+            var userId = GetCurrentUserId();
+
+            if (userRole != UserRole.Admin && userRole != UserRole.Executive)
+            {
+                if (userRole == UserRole.Supervisor && initiative.SupervisorId != userId)
+                {
+                    var hasAccess = _db.InitiativeAccess.Any(a =>
+                        a.InitiativeId == id && a.UserId == userId && a.IsActive);
+                    if (!hasAccess) return Forbid();
+                }
+                else if (userRole != UserRole.Supervisor)
+                {
+                    // User, StepUser — check project assignment or InitiativeAccess
+                    var hasAccess = _db.InitiativeAccess.Any(a =>
+                        a.InitiativeId == id && a.UserId == userId && a.IsActive);
+                    var isProjectManager = initiative.Projects.Any(p => p.ProjectManagerId == userId);
+                    var isStepAssignee = initiative.Projects
+                        .SelectMany(p => p.Steps)
+                        .Any(s => s.AssignedToId == userId);
+
+                    if (!hasAccess && !isProjectManager && !isStepAssignee) return Forbid();
+                }
+            }
+
+            var projects = initiative.Projects.ToList();
+            var steps = projects.SelectMany(p => p.Steps).ToList();
+
+            ViewBag.TotalProjects = projects.Count;
+            ViewBag.CompletedProjects = projects.Count(p => p.ProgressPercentage >= 100);
+            ViewBag.DelayedProjects = projects.Count(p => IsProjectDelayed(p));
+            ViewBag.AverageProgress = projects.Any() ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0;
+
+            ViewBag.TotalSteps = steps.Count;
+            ViewBag.CompletedSteps = steps.Count(s => s.ProgressPercentage >= 100);
+            ViewBag.DelayedSteps = steps.Count(s => IsStepDelayed(s));
+
+            ViewBag.Projects = projects;
+            ViewBag.Steps = steps;
+            ViewBag.UnitName = initiative.ExternalUnitName ?? "-";
+
+            return View(initiative);
         }
 
         // GET: /Reports/Export
         [HttpGet]
-        public async Task<IActionResult> Export(string type = "initiatives", int? fiscalYearId = null, Guid? externalUnitId = null)
+        public async Task<IActionResult> Export(string type = "initiatives", Guid? externalUnitId = null)
         {
             var csv = new StringBuilder();
             csv.AppendLine("\uFEFF");
@@ -389,21 +450,9 @@ namespace OperationalPlanMS.Controllers
                     var initiativesQuery = _db.Initiatives
                         .Where(i => !i.IsDeleted)
                         .Include(i => i.Projects.Where(p => !p.IsDeleted))
-                        .Where(i => !fiscalYearId.HasValue || i.FiscalYearId == fiscalYearId)
                         .AsQueryable();
 
-                    if (userRole == UserRole.Supervisor)
-                    {
-                        var accessIds = await _db.InitiativeAccess
-                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                        initiativesQuery = initiativesQuery.Where(i => i.SupervisorId == userId || accessIds.Contains(i.Id));
-                    }
-                    else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
-                    {
-                        var accessIds = await _db.InitiativeAccess
-                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                        initiativesQuery = initiativesQuery.Where(i => accessIds.Contains(i.Id));
-                    }
+                    initiativesQuery = ApplyPermissionFilter(initiativesQuery, userRole, userId);
 
                     if (unitIds != null)
                         initiativesQuery = initiativesQuery.Where(i =>
@@ -431,28 +480,7 @@ namespace OperationalPlanMS.Controllers
                         .Include(p => p.Steps.Where(s => !s.IsDeleted))
                         .AsQueryable();
 
-                    if (userRole == UserRole.Supervisor)
-                    {
-                        var supervisedIds = await _db.Initiatives
-                            .Where(i => i.SupervisorId == userId && !i.IsDeleted)
-                            .Select(i => i.Id).ToListAsync();
-                        var accessIds = await _db.InitiativeAccess
-                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                        var allIds = supervisedIds.Union(accessIds).ToList();
-                        projectsQuery = projectsQuery.Where(p => allIds.Contains(p.InitiativeId));
-                    }
-                    else if (userRole == UserRole.User)
-                    {
-                        var accessIds = await _db.InitiativeAccess
-                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                        projectsQuery = projectsQuery.Where(p => p.ProjectManagerId == userId || accessIds.Contains(p.InitiativeId));
-                    }
-                    else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
-                    {
-                        var accessIds = await _db.InitiativeAccess
-                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                        projectsQuery = projectsQuery.Where(p => accessIds.Contains(p.InitiativeId));
-                    }
+                    projectsQuery = ApplyProjectPermissionFilter(projectsQuery, userRole, userId);
 
                     if (unitIds != null)
                         projectsQuery = projectsQuery.Where(p =>
@@ -480,41 +508,7 @@ namespace OperationalPlanMS.Controllers
                         .Include(s => s.AssignedTo)
                         .AsQueryable();
 
-                    if (userRole == UserRole.Supervisor)
-                    {
-                        var supervisedIds = await _db.Initiatives
-                            .Where(i => i.SupervisorId == userId && !i.IsDeleted)
-                            .Select(i => i.Id).ToListAsync();
-                        var accessIds = await _db.InitiativeAccess
-                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                        var allInitIds = supervisedIds.Union(accessIds).ToList();
-                        var projectIds = await _db.Projects
-                            .Where(p => allInitIds.Contains(p.InitiativeId) && !p.IsDeleted)
-                            .Select(p => p.Id).ToListAsync();
-                        stepsQuery = stepsQuery.Where(s => projectIds.Contains(s.ProjectId));
-                    }
-                    else if (userRole == UserRole.User)
-                    {
-                        var userProjectIds = await _db.Projects
-                            .Where(p => p.ProjectManagerId == userId && !p.IsDeleted)
-                            .Select(p => p.Id).ToListAsync();
-                        var accessIds = await _db.InitiativeAccess
-                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                        var accessProjectIds = await _db.Projects
-                            .Where(p => accessIds.Contains(p.InitiativeId) && !p.IsDeleted)
-                            .Select(p => p.Id).ToListAsync();
-                        var allProjIds = userProjectIds.Union(accessProjectIds).ToList();
-                        stepsQuery = stepsQuery.Where(s => allProjIds.Contains(s.ProjectId));
-                    }
-                    else if (userRole != UserRole.Admin && userRole != UserRole.Executive)
-                    {
-                        var accessIds = await _db.InitiativeAccess
-                            .Where(a => a.UserId == userId && a.IsActive).Select(a => a.InitiativeId).ToListAsync();
-                        var projectIds = await _db.Projects
-                            .Where(p => accessIds.Contains(p.InitiativeId) && !p.IsDeleted)
-                            .Select(p => p.Id).ToListAsync();
-                        stepsQuery = stepsQuery.Where(s => projectIds.Contains(s.ProjectId));
-                    }
+                    stepsQuery = ApplyStepPermissionFilter(stepsQuery, userRole, userId);
 
                     var exportSteps = await stepsQuery
                         .OrderBy(s => s.Project.InitiativeId)
@@ -530,6 +524,34 @@ namespace OperationalPlanMS.Controllers
                     }
                     break;
 
+                case "overdue":
+                    csv.AppendLine("النوع,الكود/الرقم,الاسم,المبادرة/المشروع,المسؤول,نسبة الإنجاز,أيام التأخير");
+
+                    var overdueInitiatives = _db.Initiatives
+                        .Where(i => !i.IsDeleted)
+                        .Include(i => i.Projects.Where(p => !p.IsDeleted))
+                            .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
+                        .AsQueryable();
+
+                    overdueInitiatives = ApplyPermissionFilter(overdueInitiatives, userRole, userId);
+
+                    var allInitiatives = await overdueInitiatives.ToListAsync();
+                    var allProjects = allInitiatives.SelectMany(i => i.Projects).ToList();
+                    var allSteps = allProjects.SelectMany(p => p.Steps).ToList();
+
+                    foreach (var p in allProjects.Where(p => IsProjectDelayed(p)))
+                    {
+                        var days = p.ActualEndDate.HasValue ? Math.Max(0, (DateTime.Today - p.ActualEndDate.Value).Days) : 0;
+                        csv.AppendLine($"مشروع,{p.Code},{p.NameAr},{p.Initiative?.NameAr},-,{p.ProgressPercentage}%,{days}");
+                    }
+
+                    foreach (var s in allSteps.Where(s => IsStepDelayed(s)))
+                    {
+                        var days = s.ActualEndDate.HasValue ? Math.Max(0, (DateTime.Today - s.ActualEndDate.Value).Days) : 0;
+                        csv.AppendLine($"خطوة,{s.StepNumber},{s.NameAr},{s.Project?.NameAr},{s.AssignedTo?.FullNameAr ?? "-"},{s.ProgressPercentage}%,{days}");
+                    }
+                    break;
+
                 default:
                     return BadRequest("نوع التقرير غير صالح");
             }
@@ -539,55 +561,294 @@ namespace OperationalPlanMS.Controllers
             return File(bytes, "text/csv; charset=utf-8", fileName);
         }
 
-        // GET: /Reports/InitiativeDetails/5
-        public async Task<IActionResult> InitiativeDetails(int id)
+        #region Permission Filters (مركزية)
+
+        private IQueryable<Initiative> ApplyPermissionFilter(IQueryable<Initiative> query, UserRole role, int userId)
         {
-            var initiative = await _db.Initiatives
-                .Include(i => i.FiscalYear)
-                .Include(i => i.Supervisor)
-                .Include(i => i.Projects.Where(p => !p.IsDeleted))
-                    .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
-                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+            if (role == UserRole.Admin || role == UserRole.Executive)
+                return query;
 
-            if (initiative == null)
-                return NotFound();
-
-            var userRole = GetCurrentUserRole();
-            var userId = GetCurrentUserId();
-
-            if (userRole == UserRole.Supervisor && initiative.SupervisorId != userId)
+            if (role == UserRole.Supervisor)
             {
-                // Check InitiativeAccess as fallback
-                var hasAccess = _db.InitiativeAccess.Any(a =>
-                    a.InitiativeId == id && a.UserId == userId && a.IsActive);
-                if (!hasAccess) return Forbid();
-            }
-            else if (userRole != UserRole.Admin && userRole != UserRole.Executive && userRole != UserRole.Supervisor)
-            {
-                // User, StepUser, etc. — check InitiativeAccess
-                var hasAccess = _db.InitiativeAccess.Any(a =>
-                    a.InitiativeId == id && a.UserId == userId && a.IsActive);
-                if (!hasAccess) return Forbid();
+                var accessibleIds = _db.InitiativeAccess
+                    .Where(a => a.UserId == userId && a.IsActive)
+                    .Select(a => a.InitiativeId);
+                return query.Where(i => i.SupervisorId == userId || accessibleIds.Contains(i.Id));
             }
 
-            var projects = initiative.Projects.ToList();
-            var steps = projects.SelectMany(p => p.Steps).ToList();
+            // User, StepUser — project manager, step assignee, or InitiativeAccess
+            var pmInitiativeIds = _db.Projects
+                .Where(p => p.ProjectManagerId == userId && !p.IsDeleted)
+                .Select(p => p.InitiativeId)
+                .Distinct();
 
-            ViewBag.TotalProjects = projects.Count;
-            ViewBag.CompletedProjects = projects.Count(p => p.ProgressPercentage >= 100);
-            ViewBag.DelayedProjects = projects.Count(p => IsProjectDelayed(p));
-            ViewBag.AverageProgress = projects.Any() ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0;
+            var stepInitiativeIds = _db.Steps
+                .Where(s => s.AssignedToId == userId && !s.IsDeleted)
+                .Select(s => s.Project.InitiativeId)
+                .Distinct();
 
-            ViewBag.TotalSteps = steps.Count;
-            ViewBag.CompletedSteps = steps.Count(s => s.ProgressPercentage >= 100);
-            ViewBag.DelayedSteps = steps.Count(s => IsStepDelayed(s));
+            var accessIds = _db.InitiativeAccess
+                .Where(a => a.UserId == userId && a.IsActive)
+                .Select(a => a.InitiativeId);
 
-            ViewBag.Projects = projects;
-            ViewBag.Steps = steps;
-            ViewBag.UnitName = initiative.ExternalUnitName ?? "-";
-
-            return View(initiative);
+            return query.Where(i =>
+                pmInitiativeIds.Contains(i.Id) ||
+                stepInitiativeIds.Contains(i.Id) ||
+                accessIds.Contains(i.Id));
         }
+
+        private IQueryable<Project> ApplyProjectPermissionFilter(IQueryable<Project> query, UserRole role, int userId)
+        {
+            if (role == UserRole.Admin || role == UserRole.Executive)
+                return query;
+
+            if (role == UserRole.Supervisor)
+            {
+                var supervisedIds = _db.Initiatives
+                    .Where(i => i.SupervisorId == userId && !i.IsDeleted)
+                    .Select(i => i.Id);
+                var accessIds = _db.InitiativeAccess
+                    .Where(a => a.UserId == userId && a.IsActive)
+                    .Select(a => a.InitiativeId);
+                return query.Where(p => supervisedIds.Contains(p.InitiativeId) || accessIds.Contains(p.InitiativeId));
+            }
+
+            // User, StepUser
+            var pmProjectIds = _db.Projects
+                .Where(p2 => p2.ProjectManagerId == userId && !p2.IsDeleted)
+                .Select(p2 => p2.Id);
+            var stepProjectIds = _db.Steps
+                .Where(s => s.AssignedToId == userId && !s.IsDeleted)
+                .Select(s => s.ProjectId)
+                .Distinct();
+            var iaIds = _db.InitiativeAccess
+                .Where(a => a.UserId == userId && a.IsActive)
+                .Select(a => a.InitiativeId);
+            return query.Where(p =>
+                pmProjectIds.Contains(p.Id) ||
+                stepProjectIds.Contains(p.Id) ||
+                iaIds.Contains(p.InitiativeId));
+        }
+
+        private IQueryable<Step> ApplyStepPermissionFilter(IQueryable<Step> query, UserRole role, int userId)
+        {
+            if (role == UserRole.Admin || role == UserRole.Executive)
+                return query;
+
+            if (role == UserRole.Supervisor)
+            {
+                var supervisedIds = _db.Initiatives
+                    .Where(i => i.SupervisorId == userId && !i.IsDeleted)
+                    .Select(i => i.Id);
+                var accessIds = _db.InitiativeAccess
+                    .Where(a => a.UserId == userId && a.IsActive)
+                    .Select(a => a.InitiativeId);
+                var projectIds = _db.Projects
+                    .Where(p => (supervisedIds.Contains(p.InitiativeId) || accessIds.Contains(p.InitiativeId)) && !p.IsDeleted)
+                    .Select(p => p.Id);
+                return query.Where(s => projectIds.Contains(s.ProjectId));
+            }
+
+            // User, StepUser
+            var userProjectIds = _db.Projects
+                .Where(p => p.ProjectManagerId == userId && !p.IsDeleted)
+                .Select(p => p.Id);
+            var iaIds = _db.InitiativeAccess
+                .Where(a => a.UserId == userId && a.IsActive)
+                .Select(a => a.InitiativeId);
+            var iaProjectIds = _db.Projects
+                .Where(p => iaIds.Contains(p.InitiativeId) && !p.IsDeleted)
+                .Select(p => p.Id);
+            return query.Where(s =>
+                s.AssignedToId == userId ||
+                userProjectIds.Contains(s.ProjectId) ||
+                iaProjectIds.Contains(s.ProjectId));
+        }
+
+        #endregion
+
+        #region Builder Methods
+
+        private List<AtRiskProjectItem> BuildAtRiskProjects(List<Project> projects, List<Initiative> initiatives)
+        {
+            var atRisk = new List<AtRiskProjectItem>();
+
+            foreach (var p in projects)
+            {
+                // تخطي المكتمل والمتأخر
+                if (p.ProgressPercentage >= 100 || IsProjectDelayed(p)) continue;
+                if (!p.PlannedStartDate.HasValue || !p.PlannedEndDate.HasValue) continue;
+
+                var totalDays = (p.PlannedEndDate.Value - p.PlannedStartDate.Value).TotalDays;
+                if (totalDays <= 0) continue;
+
+                var elapsedDays = (DateTime.Today - p.PlannedStartDate.Value).TotalDays;
+                if (elapsedDays <= 0) continue; // لم يبدأ بعد
+
+                var expectedProgress = Math.Min(100, Math.Round((decimal)(elapsedDays / totalDays) * 100, 1));
+                var gap = expectedProgress - p.ProgressPercentage;
+
+                // يعتبر "في خطر" إذا الفجوة 10% أو أكثر
+                if (gap >= 10)
+                {
+                    var initiative = initiatives.FirstOrDefault(i => i.Projects.Contains(p));
+                    atRisk.Add(new AtRiskProjectItem
+                    {
+                        Id = p.Id,
+                        Code = p.Code,
+                        Name = p.NameAr,
+                        InitiativeName = initiative?.NameAr,
+                        SupervisorName = initiative?.SupervisorDisplayName,
+                        Progress = p.ProgressPercentage,
+                        ExpectedProgress = expectedProgress,
+                        DaysRemaining = Math.Max(0, (int)(p.PlannedEndDate.Value - DateTime.Today).TotalDays)
+                    });
+                }
+            }
+
+            return atRisk.OrderByDescending(r => r.Gap).Take(10).ToList();
+        }
+
+        private List<SupervisorPerformance> BuildSupervisorPerformance(List<Initiative> initiatives)
+        {
+            return initiatives
+                .Where(i => i.SupervisorId.HasValue && !string.IsNullOrEmpty(i.SupervisorName))
+                .GroupBy(i => new { i.SupervisorId, Name = i.SupervisorDisplayName })
+                .Select(g => new SupervisorPerformance
+                {
+                    SupervisorId = g.Key.SupervisorId!.Value,
+                    SupervisorName = g.Key.Name,
+                    TotalInitiatives = g.Count(),
+                    DelayedInitiatives = g.Count(i => i.Projects.Any(p => IsProjectDelayed(p))),
+                    CompletedInitiatives = g.Count(i => i.Projects.Any() && i.Projects.All(p => p.ProgressPercentage >= 100)),
+                    AverageProgress = g.SelectMany(i => i.Projects).Any()
+                        ? Math.Round(g.SelectMany(i => i.Projects).Average(p => p.ProgressPercentage), 1)
+                        : 0
+                })
+                .OrderBy(s => s.HealthRate)
+                .ThenByDescending(s => s.TotalInitiatives)
+                .Take(10)
+                .ToList();
+        }
+
+        private decimal CalculateTimeEfficiency(List<Project> projects)
+        {
+            var projectsWithDates = projects
+                .Where(p => p.PlannedStartDate.HasValue && p.PlannedEndDate.HasValue && p.ProgressPercentage < 100)
+                .ToList();
+
+            if (!projectsWithDates.Any()) return 100;
+
+            var efficiencies = new List<decimal>();
+            foreach (var p in projectsWithDates)
+            {
+                var totalDays = (p.PlannedEndDate!.Value - p.PlannedStartDate!.Value).TotalDays;
+                if (totalDays <= 0) continue;
+
+                var elapsed = Math.Max(0, (DateTime.Today - p.PlannedStartDate.Value).TotalDays);
+                var timePercent = Math.Min(100, (decimal)(elapsed / totalDays) * 100);
+
+                if (timePercent > 0)
+                    efficiencies.Add(Math.Min(200, p.ProgressPercentage / timePercent * 100));
+            }
+
+            return efficiencies.Any() ? Math.Round(efficiencies.Average(), 0) : 100;
+        }
+
+        private List<InitiativeProgressItem> BuildInitiativeRanking(List<Initiative> initiatives, bool top)
+        {
+            var query = initiatives
+                .Where(i => i.Projects.Any());
+
+            if (top)
+            {
+                query = query.OrderByDescending(i => i.Projects.Average(p => p.ProgressPercentage));
+            }
+            else
+            {
+                query = query
+                    .Where(i => i.Projects.Any(p => p.ProgressPercentage < 100))
+                    .OrderBy(i => i.Projects.Average(p => p.ProgressPercentage));
+            }
+
+            return query
+                .Take(5)
+                .Select(i => new InitiativeProgressItem
+                {
+                    Id = i.Id,
+                    Code = i.Code,
+                    Name = i.NameAr,
+                    UnitName = i.ExternalUnitName ?? "-",
+                    Progress = Math.Round(i.Projects.Average(p => p.ProgressPercentage), 1),
+                    ProjectsCount = i.Projects.Count,
+                    CompletedProjectsCount = i.Projects.Count(p => p.ProgressPercentage >= 100),
+                    IsOverdue = i.Projects.Any(p => IsProjectDelayed(p))
+                })
+                .ToList();
+        }
+
+        private List<UnitSummary> BuildUnitSummaries(List<Initiative> initiatives)
+        {
+            var summaries = new List<UnitSummary>();
+
+            var groups = initiatives
+                .Where(i => i.ExternalUnitId.HasValue)
+                .GroupBy(i => new { i.ExternalUnitId, UnitName = i.ExternalUnitName ?? "غير محدد" });
+
+            foreach (var g in groups)
+            {
+                summaries.Add(new UnitSummary
+                {
+                    ExternalUnitId = g.Key.ExternalUnitId,
+                    UnitName = g.Key.UnitName,
+                    InitiativeCount = g.Count(),
+                    ProjectCount = g.SelectMany(i => i.Projects).Count(),
+                    AverageProgress = g.SelectMany(i => i.Projects).Any()
+                        ? Math.Round(g.SelectMany(i => i.Projects).Average(p => p.ProgressPercentage), 1)
+                        : 0,
+                    CompletedCount = g.Count(i => i.Projects.Any() && i.Projects.All(p => p.ProgressPercentage >= 100)),
+                    DelayedCount = g.Count(i => i.Projects.Any(p => IsProjectDelayed(p))),
+                    TotalBudget = g.Sum(i => i.Budget ?? 0) + g.SelectMany(i => i.Projects).Sum(p => p.Budget ?? 0)
+                });
+            }
+
+            var noUnitGroup = initiatives.Where(i => !i.ExternalUnitId.HasValue).ToList();
+            if (noUnitGroup.Any())
+            {
+                summaries.Add(new UnitSummary
+                {
+                    UnitName = "غير محدد",
+                    InitiativeCount = noUnitGroup.Count,
+                    ProjectCount = noUnitGroup.SelectMany(i => i.Projects).Count(),
+                    AverageProgress = noUnitGroup.SelectMany(i => i.Projects).Any()
+                        ? Math.Round(noUnitGroup.SelectMany(i => i.Projects).Average(p => p.ProgressPercentage), 1)
+                        : 0,
+                    CompletedCount = noUnitGroup.Count(i => i.Projects.Any() && i.Projects.All(p => p.ProgressPercentage >= 100)),
+                    DelayedCount = noUnitGroup.Count(i => i.Projects.Any(p => IsProjectDelayed(p))),
+                    TotalBudget = noUnitGroup.Sum(i => i.Budget ?? 0) + noUnitGroup.SelectMany(i => i.Projects).Sum(p => p.Budget ?? 0)
+                });
+            }
+
+            return summaries.OrderByDescending(u => u.InitiativeCount).ToList();
+        }
+
+        private async Task<List<Guid>> GetUnitAndChildrenIds(Guid unitId)
+        {
+            var allUnits = await _db.ExternalOrganizationalUnits
+                .Where(u => u.IsActive)
+                .Select(u => new { u.Id, u.ParentId })
+                .ToListAsync();
+
+            var result = new List<Guid> { unitId };
+            var children = allUnits.Where(u => u.ParentId == unitId).Select(u => u.Id).ToList();
+            result.AddRange(children);
+            var grandChildren = allUnits.Where(u => u.ParentId.HasValue && children.Contains(u.ParentId.Value)).Select(u => u.Id).ToList();
+            result.AddRange(grandChildren);
+
+            return result;
+        }
+
+        #endregion
 
         #region Helper Methods
 

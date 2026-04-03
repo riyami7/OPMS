@@ -1,15 +1,22 @@
-﻿@model OperationalPlanMS.Models.ViewModels.ReportsDashboardViewModel
+@model OperationalPlanMS.Models.ViewModels.ReportsDashboardViewModel
 @{
     ViewData["Title"] = "لوحة المتابعة التنفيذية";
 
-    var totalItems = Model.TotalProjects + Model.TotalSteps;
-    var delayedItems = Model.DelayedProjects + Model.OverdueSteps.Count;
-    var healthScore = totalItems > 0 ? (int)Math.Round((1 - ((decimal)delayedItems / totalItems)) * 100) : 100;
+    // مؤشر الصحة — مبني على المشاريع المتأخرة فقط (بدون عد مزدوج)
+    var healthScore = Model.TotalProjects > 0
+        ? (int)Math.Round((1 - ((decimal)Model.DelayedProjects / Model.TotalProjects)) * 100)
+        : 100;
     healthScore = Math.Max(0, Math.Min(100, healthScore));
     var healthColor = healthScore >= 80 ? "#0e7d5a" : healthScore >= 60 ? "#b45309" : "#b91c1c";
     var healthStatus = healthScore >= 80 ? "ممتاز" : healthScore >= 60 ? "يحتاج متابعة" : "يحتاج تدخل";
     double gaugeCircumference = Math.PI * 70;
     double gaugeDashOffset = gaugeCircumference * (1 - healthScore / 100.0);
+
+    // مؤشر الكفاءة
+    var effColor = Model.TimeEfficiencyIndex >= 90 ? "#0e7d5a"
+                 : Model.TimeEfficiencyIndex >= 70 ? "#b45309" : "#b91c1c";
+    var effLabel = Model.TimeEfficiencyIndex >= 90 ? "ممتاز"
+                 : Model.TimeEfficiencyIndex >= 70 ? "مقبول" : "ضعيف";
 }
 
 <!-- HEADER -->
@@ -20,12 +27,6 @@
                 <i class="bi bi-speedometer2 me-2"></i>لوحة المتابعة التنفيذية
             </h4>
             <p class="mb-0 text-white-50 small">
-                @if (Model.CurrentFiscalYear != null)
-                {
-                    <span>@Model.CurrentFiscalYear.NameAr</span>
-
-                    <span class="mx-2 opacity-50">|</span>
-                }
                 <span>@DateTime.Now.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("ar-OM"))</span>
                 @if (!string.IsNullOrEmpty(Model.SelectedUnitName))
                 {
@@ -57,17 +58,17 @@
                     </div>
                 </div>
                 <div class="col-3">
-                    @if (delayedItems > 0)
+                    @if (Model.DelayedProjects > 0)
                     {
                         <div class="rpt-qk rpt-qk-danger">
-                            <div class="rpt-qk-v">@delayedItems</div>
-                            <div class="rpt-qk-l">متأخر</div>
+                            <div class="rpt-qk-v">@Model.DelayedProjects</div>
+                            <div class="rpt-qk-l">مشروع متأخر</div>
                         </div>
                     }
                     else
                     {
                         <div class="rpt-qk">
-                            <div class="rpt-qk-v">@delayedItems</div>
+                            <div class="rpt-qk-v">0</div>
                             <div class="rpt-qk-l">متأخر</div>
                         </div>
                     }
@@ -97,9 +98,9 @@
                         <i class="bi bi-download"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="/Reports/Export?type=initiatives&fiscalYearId=@Model.FiscalYearId&externalUnitId=@Model.ExternalUnitId"><i class="bi bi-lightning-charge me-2 text-warning"></i>المبادرات</a></li>
-                        <li><a class="dropdown-item" href="/Reports/Export?type=projects&fiscalYearId=@Model.FiscalYearId&externalUnitId=@Model.ExternalUnitId"><i class="bi bi-folder me-2 text-success"></i>المشاريع</a></li>
-                        <li><a class="dropdown-item" href="/Reports/Export?type=steps&fiscalYearId=@Model.FiscalYearId&externalUnitId=@Model.ExternalUnitId"><i class="bi bi-list-check me-2 text-info"></i>الخطوات</a></li>
+                        <li><a class="dropdown-item" href="/Reports/Export?type=initiatives&externalUnitId=@Model.ExternalUnitId"><i class="bi bi-lightning-charge me-2 text-warning"></i>المبادرات</a></li>
+                        <li><a class="dropdown-item" href="/Reports/Export?type=projects&externalUnitId=@Model.ExternalUnitId"><i class="bi bi-folder me-2 text-success"></i>المشاريع</a></li>
+                        <li><a class="dropdown-item" href="/Reports/Export?type=steps&externalUnitId=@Model.ExternalUnitId"><i class="bi bi-list-check me-2 text-info"></i>الخطوات</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item text-danger" href="/Reports/Export?type=overdue&externalUnitId=@Model.ExternalUnitId"><i class="bi bi-exclamation-triangle me-2"></i>المتأخرات</a></li>
                     </ul>
@@ -109,44 +110,38 @@
     </div>
 </div>
 
-<!-- FILTER -->
+<!-- FILTER — الوحدة التنظيمية فقط -->
 <div class="card mb-4">
     <div class="card-header" data-bs-toggle="collapse" data-bs-target="#filterSection" style="cursor:pointer;">
         <div class="d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-funnel me-2"></i><strong>فلاتر البحث</strong></span>
+            <span><i class="bi bi-funnel me-2"></i><strong>فلتر الوحدة التنظيمية</strong></span>
             <i class="bi bi-chevron-down"></i>
         </div>
     </div>
-    <div class="collapse show" id="filterSection">
+    <div class="collapse" id="filterSection">
         <div class="card-body">
             <form method="get" asp-action="Index" id="filterForm">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label"><i class="bi bi-calendar3 me-1 text-primary"></i>السنة المالية</label>
-                        <select class="form-select" asp-for="FiscalYearId" asp-items="Model.FiscalYears">
-                            <option value="">-- جميع السنوات --</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-8">
                         <label class="form-label"><i class="bi bi-building me-1 text-primary"></i>الوحدة التنظيمية</label>
                         <div id="filterOrgTree"></div>
                     </div>
+                    <div class="col-md-4">
+                        <div id="selectedUnitDisplay" class="mb-2">
+                            @if (!string.IsNullOrEmpty(Model.SelectedUnitName))
+                            {
+                                <span class="badge badge-approved" style="font-size:.82rem;padding:6px 12px;">
+                                    <i class="bi bi-building me-1"></i>@Model.SelectedUnitName
+                                </span>
+                            }
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> تطبيق</button>
+                            <a href="/Reports" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> إعادة</a>
+                        </div>
+                    </div>
                 </div>
                 <input type="hidden" id="ExternalUnitId" name="ExternalUnitId" value="@Model.ExternalUnitId" />
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <div id="selectedUnitDisplay">
-                        @if (!string.IsNullOrEmpty(Model.SelectedUnitName))
-                        {
-                            <span class="badge badge-approved" style="font-size:.82rem;padding:6px 12px;">
-                                <i class="bi bi-building me-1"></i>@Model.SelectedUnitName
-                            </span>
-                        }
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> تطبيق</button>
-                        <a href="/Reports" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> إعادة تعيين</a>
-                    </div>
-                </div>
             </form>
         </div>
     </div>
@@ -161,7 +156,7 @@
                 <div class="kpi-value" style="color:var(--primary);">@Model.ProjectCompletionRate%</div>
                 <div class="kpi-label">إكمال المشاريع</div>
                 <div class="progress mt-2" style="height:5px;">
-                    <div class="progress-bar" style="width:@Model.ProjectCompletionRate%;background:var(--primary);"></div>
+                    <div class="progress-bar" style="width:@(Model.ProjectCompletionRate)%;background:var(--primary);"></div>
                 </div>
                 <small class="text-muted d-block mt-1">@Model.CompletedProjects من @Model.TotalProjects</small>
             </div>
@@ -174,7 +169,7 @@
                 <div class="kpi-value" style="color:var(--success);">@Model.StepCompletionRate%</div>
                 <div class="kpi-label">إكمال الخطوات</div>
                 <div class="progress mt-2" style="height:5px;">
-                    <div class="progress-bar bg-success" style="width:@Model.StepCompletionRate%;"></div>
+                    <div class="progress-bar bg-success" style="width:@(Model.StepCompletionRate)%;"></div>
                 </div>
                 <small class="text-muted d-block mt-1">@Model.CompletedSteps من @Model.TotalSteps</small>
             </div>
@@ -183,45 +178,30 @@
     <div class="col-md-3 col-6">
         <div class="card kpi-card h-100">
             <div class="card-body text-center py-4">
-                <div class="kpi-ico" style="background:var(--warning-light);color:var(--warning);"><i class="bi bi-cash-stack"></i></div>
-                @if (Model.BudgetUtilization > 100)
-                {
-                    <div class="kpi-value" style="color:var(--danger);">@Model.BudgetUtilization%</div>
-                }
-                else if (Model.BudgetUtilization > 80)
-                {
-                    <div class="kpi-value" style="color:var(--warning);">@Model.BudgetUtilization%</div>
-                }
-                else
-                {
-                    <div class="kpi-value" style="color:var(--info);">@Model.BudgetUtilization%</div>
-                }
-                <div class="kpi-label">استخدام الميزانية</div>
+                <div class="kpi-ico" style="background:var(--warning-light);color:var(--warning);"><i class="bi bi-speedometer"></i></div>
+                <div class="kpi-value" style="color:@effColor;">@Model.TimeEfficiencyIndex%</div>
+                <div class="kpi-label">الكفاءة الزمنية</div>
                 <div class="progress mt-2" style="height:5px;">
-                    @if (Model.BudgetUtilization > 100)
-                    {
-                        <div class="progress-bar bg-danger" style="width:100%;"></div>
-                    }
-                    else
-                    {
-                        <div class="progress-bar bg-warning" style="width:@Model.BudgetUtilization%;"></div>
-                    }
+                    <div class="progress-bar" style="width:@(Math.Min(100, Model.TimeEfficiencyIndex))%;background:@effColor;"></div>
                 </div>
-                <small class="text-muted d-block mt-1">@Model.TotalActualCost.ToString("N0") / @Model.TotalBudget.ToString("N0")</small>
+                <small class="text-muted d-block mt-1">@effLabel — الإنجاز مقابل الوقت</small>
             </div>
         </div>
     </div>
     <div class="col-md-3 col-6">
         <div class="card kpi-card h-100">
-            @if (delayedItems > 0)
+            @if (Model.DelayedProjects > 0 || Model.AtRiskProjects > 0)
             {
                 <div class="card-body text-center py-4" style="border-right:3px solid var(--danger);">
                     <div class="kpi-ico" style="background:var(--danger-light);color:var(--danger);"><i class="bi bi-exclamation-triangle"></i></div>
-                    <div class="kpi-value" style="color:var(--danger);">@delayedItems</div>
-                    <div class="kpi-label">عناصر متأخرة</div>
+                    <div class="kpi-value" style="color:var(--danger);">@Model.DelayedProjects</div>
+                    <div class="kpi-label">مشاريع متأخرة</div>
                     <div class="d-flex justify-content-center gap-1 mt-2 flex-wrap">
-                        <span class="badge badge-cancelled">@Model.DelayedProjects مشروع</span>
-                        <span class="badge badge-delayed">@Model.OverdueSteps.Count خطوة</span>
+                        <span class="badge badge-cancelled">@Model.DelayedSteps خطوة متأخرة</span>
+                        @if (Model.AtRiskProjects > 0)
+                        {
+                            <span class="badge badge-delayed">@Model.AtRiskProjects في خطر</span>
+                        }
                     </div>
                 </div>
             }
@@ -230,9 +210,9 @@
                 <div class="card-body text-center py-4" style="border-right:3px solid var(--success);">
                     <div class="kpi-ico" style="background:var(--success-light);color:var(--success);"><i class="bi bi-check-circle"></i></div>
                     <div class="kpi-value" style="color:var(--success);">0</div>
-                    <div class="kpi-label">عناصر متأخرة</div>
+                    <div class="kpi-label">مشاريع متأخرة</div>
                     <div class="mt-2">
-                        <span class="badge badge-completed"><i class="bi bi-check-circle me-1"></i>لا يوجد</span>
+                        <span class="badge badge-completed"><i class="bi bi-check-circle me-1"></i>جميع المشاريع في الموعد</span>
                     </div>
                 </div>
             }
@@ -246,7 +226,6 @@
         <div class="card h-100">
             <div class="card-header">
                 <i class="bi bi-pie-chart me-2"></i>توزيع حالات المشاريع
-                <small class="text-muted float-end" style="font-size:.72rem;"><i class="bi bi-hand-index me-1"></i>تفاعلي</small>
             </div>
             <div class="card-body d-flex align-items-center justify-content-center">
                 <canvas id="projectStatusChart" style="max-height:230px;"></canvas>
@@ -257,7 +236,6 @@
         <div class="card h-100">
             <div class="card-header">
                 <i class="bi bi-bar-chart-horizontal me-2"></i>أداء الوحدات التنظيمية
-                <small class="text-muted float-end" style="font-size:.72rem;"><i class="bi bi-hand-index me-1"></i>تفاعلي</small>
             </div>
             <div class="card-body">
                 <canvas id="unitPerformanceChart" style="max-height:230px;"></canvas>
@@ -266,7 +244,141 @@
     </div>
 </div>
 
-<!-- ROW 3: ALERTS (+ LINE CHART if data exists) -->
+<!-- ROW 3: SUNBURST — خريطة الخطة الهرمية -->
+<div class="row mb-4 g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-diagram-3 me-2"></i>خريطة الخطة التشغيلية</span>
+                <div>
+                    <small class="text-muted me-3" style="font-size:.72rem;">المبادرات ← المشاريع</small>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary btn-sm active" onclick="setSunburstColor('status')">حسب الحالة</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setSunburstColor('progress')">حسب الإنجاز</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body text-center" style="padding:0.5rem;position:relative;">
+                <button id="sunburstBackBtn" class="btn btn-sm btn-outline-secondary" onclick="resetSunburst()"
+                        style="position:absolute;top:10px;right:10px;z-index:10;display:none;">
+                    <i class="bi bi-arrow-clockwise me-1"></i>عودة
+                </button>
+                <div id="sunburstChart" style="width:100%;height:420px;"></div>
+                <div class="d-flex justify-content-center gap-3 mt-1" style="font-size:.75rem;">
+                    <span class="text-muted fw-bold">الحلقة الداخلية: المبادرات</span>
+                    <span class="opacity-25">|</span>
+                    <span class="text-muted fw-bold">الحلقة الخارجية: المشاريع</span>
+                    <span class="opacity-25">|</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0e7d5a;margin-left:4px;"></span> مكتمل</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2D4A22;margin-left:4px;"></span> جاري</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#b91c1c;margin-left:4px;"></span> متأخر</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#94a3b8;margin-left:4px;"></span> لم يبدأ</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ROW 4: GANTT TIMELINE -->
+<div class="row mb-4 g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-calendar-range me-2"></i>الجدول الزمني للمشاريع
+                <small class="text-muted float-end" style="font-size:.72rem;">المخطط مع نسبة الإنجاز</small>
+            </div>
+            <div class="card-body" style="padding:0.5rem;">
+                <div id="ganttChart" style="width:100%;min-height:300px;"></div>
+                <div class="d-flex justify-content-center gap-3 mt-1" style="font-size:.75rem;">
+                    <span><span style="display:inline-block;width:20px;height:10px;border-radius:3px;background:#d1fae5;border:1px solid #0e7d5a;margin-left:4px;"></span> المدة المخططة</span>
+                    <span><span style="display:inline-block;width:20px;height:10px;border-radius:3px;background:#0e7d5a;margin-left:4px;"></span> الإنجاز الفعلي</span>
+                    <span><span style="display:inline-block;width:2px;height:12px;border-right:2px dashed #C9A84C;margin-left:4px;"></span> اليوم</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ROW 5: HEATMAP -->
+<div class="row mb-4 g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-grid-3x3 me-2"></i>خريطة النشاط الشهري
+                <small class="text-muted float-end" style="font-size:.72rem;">عدد الخطوات المنجزة / الجارية لكل مبادرة</small>
+            </div>
+            <div class="card-body" style="padding:0.5rem;">
+                <div id="heatmapChart" style="width:100%;min-height:250px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ROW 6: RISK + ALERTS -->
+<div class="row mb-4 g-3">
+    @if (Model.AtRiskProjectsList.Any())
+    {
+        <div class="col-md-7">
+            <div class="card h-100">
+                <div class="card-header" style="background:linear-gradient(90deg, #fef3c7, #fde68a);color:#92400e;border-bottom-color:#fcd34d;">
+                    <i class="bi bi-shield-exclamation me-2"></i>مشاريع في خطر
+                    <span class="badge" style="background:#92400e;color:white;" class="float-end">@Model.AtRiskProjects</span>
+                    <small class="float-end me-2" style="font-size:.7rem;opacity:.7;">إنجاز أقل من المتوقع</small>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle" style="font-size:.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>المشروع</th>
+                                    <th class="text-center">الإنجاز</th>
+                                    <th class="text-center">المتوقع</th>
+                                    <th class="text-center">الفجوة</th>
+                                    <th class="text-center">الخطورة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var risk in Model.AtRiskProjectsList.Take(5))
+                                {
+                                    <tr>
+                                        <td>
+                                            <a href="/Projects/Details/@risk.Id" class="fw-semibold text-dark text-decoration-none">@risk.Name</a>
+                                            <div class="text-muted" style="font-size:.72rem;">@risk.InitiativeName</div>
+                                        </td>
+                                        <td class="text-center fw-bold" style="color:var(--danger);">@risk.Progress%</td>
+                                        <td class="text-center text-muted">@risk.ExpectedProgress%</td>
+                                        <td class="text-center">
+                                            <span class="fw-bold" style="color:var(--danger);">-@risk.Gap%</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge @risk.RiskBadgeClass">@risk.RiskLevel</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    <div class="@(Model.AtRiskProjectsList.Any() ? "col-md-5" : "col-12")">
+        <div class="card h-100">
+            <div class="card-header" style="background:var(--danger-light);color:var(--danger);border-bottom-color:#fca5a5;">
+                <i class="bi bi-exclamation-triangle me-2"></i>يتطلب انتباهاً فورياً
+                @if (Model.OverdueProjects.Any() || Model.OverdueSteps.Any())
+                {
+                    <span class="badge badge-cancelled float-end">@(Model.OverdueProjects.Count + Model.OverdueSteps.Count)</span>
+                }
+            </div>
+            <div class="card-body p-2" style="max-height:300px;overflow-y:auto;">
+                @await Html.PartialAsync("_OverdueAlerts", Model)
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ROW 4: MONTHLY + SUPERVISOR PERFORMANCE -->
 <div class="row mb-4 g-3">
     @if (Model.MonthlyProgressData.Any())
     {
@@ -278,50 +390,78 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-5">
-            <div class="card h-100">
-                <div class="card-header" style="background:var(--danger-light);color:var(--danger);border-bottom-color:#fca5a5;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>يتطلب انتباهاً فورياً
-                    @if (Model.OverdueProjects.Any() || Model.OverdueSteps.Any())
-                    {
-                        <span class="badge badge-cancelled float-end">@(Model.OverdueProjects.Count + Model.OverdueSteps.Count)</span>
-                    }
-                </div>
-                <div class="card-body p-2" style="max-height:270px;overflow-y:auto;">
-                    @await Html.PartialAsync("_OverdueAlerts", Model)
-                </div>
-            </div>
-        </div>
     }
-    else
+    @if (Model.SupervisorPerformances.Any())
     {
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header" style="background:var(--danger-light);color:var(--danger);border-bottom-color:#fca5a5;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>يتطلب انتباهاً فورياً
-                    @if (Model.OverdueProjects.Any() || Model.OverdueSteps.Any())
-                    {
-                        <span class="badge badge-cancelled float-end">@(Model.OverdueProjects.Count + Model.OverdueSteps.Count)</span>
-                    }
+        <div class="@(Model.MonthlyProgressData.Any() ? "col-md-5" : "col-12")">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-people me-2"></i>أداء المشرفين
                 </div>
-                <div class="card-body p-2" style="max-height:270px;overflow-y:auto;">
-                    @await Html.PartialAsync("_OverdueAlerts", Model)
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle" style="font-size:.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>المشرف</th>
+                                    <th class="text-center">المبادرات</th>
+                                    <th class="text-center">الإنجاز</th>
+                                    <th class="text-center">الصحة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sup in Model.SupervisorPerformances.Take(6))
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong style="font-size:.82rem;">@sup.SupervisorName</strong>
+                                            @if (sup.DelayedInitiatives > 0)
+                                            {
+                                                <div><small class="text-danger">@sup.DelayedInitiatives متأخرة</small></div>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @sup.TotalInitiatives
+                                            @if (sup.CompletedInitiatives > 0)
+                                            {
+                                                <div><small class="text-success">@sup.CompletedInitiatives مكتملة</small></div>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex align-items-center gap-1">
+                                                <div class="progress flex-fill" style="height:6px;">
+                                                    @{
+                                                        var pColor = sup.AverageProgress >= 70 ? "var(--success)" : sup.AverageProgress >= 40 ? "var(--warning)" : "var(--danger)";
+                                                    }
+                                                    <div class="progress-bar" style="width:@(sup.AverageProgress)%;background:@pColor;"></div>
+                                                </div>
+                                                <small class="fw-bold text-nowrap">@sup.AverageProgress%</small>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge @sup.HealthBadgeClass">@sup.HealthRate%</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     }
 </div>
 
-<!-- ROW 4: TOP INITIATIVES + UNIT TABLE -->
+<!-- ROW 5: BOTTOM INITIATIVES + TOP INITIATIVES -->
 <div class="row mb-4 g-3">
-    <div class="col-md-5">
-        <div class="card h-100">
-            <div class="card-header" style="background:var(--success-light);color:var(--success);border-bottom-color:#a7f3d0;">
-                <i class="bi bi-trophy me-2"></i>أفضل المبادرات أداءً
-            </div>
-            <div class="card-body p-0">
-                @if (Model.TopInitiatives.Any())
-                {
+    @if (Model.BottomInitiatives.Any())
+    {
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header" style="background:var(--danger-light);color:var(--danger);border-bottom-color:#fca5a5;">
+                    <i class="bi bi-arrow-down-circle me-2"></i>مبادرات تحتاج تدخل
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead>
@@ -332,12 +472,12 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var item in Model.TopInitiatives.Take(6))
+                                @foreach (var item in Model.BottomInitiatives)
                                 {
                                     <tr>
                                         <td>
                                             <a href="/Initiatives/Details/@item.Id" class="fw-semibold text-dark text-decoration-none" style="font-size:.85rem;">@item.Name</a>
-                                            <div class="text-muted" style="font-size:.75rem;">@item.UnitName</div>
+                                            <div class="text-muted" style="font-size:.72rem;">@item.UnitName</div>
                                         </td>
                                         <td class="text-center align-middle">
                                             <span class="badge badge-completed">@item.CompletedProjectsCount</span>/@item.ProjectsCount
@@ -345,7 +485,52 @@
                                         <td class="align-middle">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="progress flex-fill" style="height:5px;">
-                                                    <div class="progress-bar bg-success" style="width:@item.Progress%;"></div>
+                                                    <div class="progress-bar bg-danger" style="width:@(Math.Max(item.Progress, 3))%;"></div>
+                                                </div>
+                                                <small class="fw-bold text-nowrap text-danger">@item.Progress%</small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    @if (Model.TopInitiatives.Any())
+    {
+        <div class="@(Model.BottomInitiatives.Any() ? "col-md-6" : "col-12")">
+            <div class="card h-100">
+                <div class="card-header" style="background:var(--success-light);color:var(--success);border-bottom-color:#a7f3d0;">
+                    <i class="bi bi-trophy me-2"></i>أفضل المبادرات أداءً
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>المبادرة</th>
+                                    <th class="text-center" style="width:70px;">المشاريع</th>
+                                    <th style="width:120px;">الإنجاز</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.TopInitiatives)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a href="/Initiatives/Details/@item.Id" class="fw-semibold text-dark text-decoration-none" style="font-size:.85rem;">@item.Name</a>
+                                            <div class="text-muted" style="font-size:.72rem;">@item.UnitName</div>
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <span class="badge badge-completed">@item.CompletedProjectsCount</span>/@item.ProjectsCount
+                                        </td>
+                                        <td class="align-middle">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-fill" style="height:5px;">
+                                                    <div class="progress-bar bg-success" style="width:@(item.Progress)%;"></div>
                                                 </div>
                                                 <small class="fw-bold text-nowrap">@item.Progress%</small>
                                             </div>
@@ -355,21 +540,61 @@
                             </tbody>
                         </table>
                     </div>
-                }
-                else
-                {
-                    <div class="text-center py-5 text-muted">
-                        <i class="bi bi-inbox" style="font-size:2rem;opacity:.3;"></i>
-                        <p class="mt-2 small">لا توجد مبادرات</p>
-                    </div>
-                }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- ROW 6: SUMMARY CARDS -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100" style="background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);border:none;">
+            <div class="card-body text-white">
+                <h6 class="mb-3 opacity-75 fw-semibold" style="color:white;"><i class="bi bi-lightning-charge me-2"></i>المبادرات</h6>
+                <div class="row text-center g-0">
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.CompletedInitiatives</div><small style="font-size:.68rem;opacity:.7;">مكتمل</small></div>
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.InProgressInitiatives</div><small style="font-size:.68rem;opacity:.7;">جاري</small></div>
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.NotStartedInitiatives</div><small style="font-size:.68rem;opacity:.7;">لم يبدأ</small></div>
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.DelayedInitiatives</div><small style="font-size:.68rem;opacity:.7;">متأخر</small></div>
+                </div>
             </div>
         </div>
     </div>
-    @if (Model.UnitSummaries.Any())
-    {
-        <div class="col-md-7">
-            <div class="card h-100">
+    <div class="col-md-4">
+        <div class="card h-100" style="background:linear-gradient(135deg,var(--success) 0%,#10b981 100%);border:none;">
+            <div class="card-body text-white">
+                <h6 class="mb-3 opacity-75 fw-semibold" style="color:white;"><i class="bi bi-folder me-2"></i>المشاريع</h6>
+                <div class="row text-center g-0">
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.CompletedProjects</div><small style="font-size:.68rem;opacity:.7;">مكتمل</small></div>
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.InProgressProjects</div><small style="font-size:.68rem;opacity:.7;">جاري</small></div>
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.NotStartedProjects</div><small style="font-size:.68rem;opacity:.7;">لم يبدأ</small></div>
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.DelayedProjects</div><small style="font-size:.68rem;opacity:.7;">متأخر</small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="background:linear-gradient(135deg,var(--info) 0%,#0ea5e9 100%);border:none;">
+            <div class="card-body text-white">
+                <h6 class="mb-3 opacity-75 fw-semibold" style="color:white;"><i class="bi bi-list-check me-2"></i>الخطوات</h6>
+                <div class="row text-center g-0">
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.CompletedSteps</div><small style="font-size:.68rem;opacity:.7;">مكتمل</small></div>
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.InProgressSteps</div><small style="font-size:.68rem;opacity:.7;">جاري</small></div>
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.NotStartedSteps</div><small style="font-size:.68rem;opacity:.7;">لم يبدأ</small></div>
+                    <div class="col-3"><div class="fs-5 fw-bold">@Model.DelayedSteps</div><small style="font-size:.68rem;opacity:.7;">متأخر</small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ROW 7: UNIT TABLE -->
+@if (Model.UnitSummaries.Any())
+{
+    <div class="row mb-4 g-3">
+        <div class="col-12">
+            <div class="card">
                 <div class="card-header">
                     <i class="bi bi-building me-2"></i>ملخص أداء الوحدات
                     <small class="text-muted float-end" style="font-size:.72rem;"><i class="bi bi-hand-index me-1"></i>اضغط للتفاصيل</small>
@@ -382,8 +607,8 @@
                                     <th>الوحدة</th>
                                     <th class="text-center">مبادرات</th>
                                     <th class="text-center">مشاريع</th>
-                                    <th class="text-center"><span class="text-success">✓</span>/<span class="text-danger">!</span></th>
-                                    <th style="width:160px;">الإنجاز</th>
+                                    <th class="text-center"><span class="text-success">مكتمل</span> / <span class="text-danger">متأخر</span></th>
+                                    <th style="width:180px;">الإنجاز</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -396,7 +621,7 @@
                                     else if (unit.AverageProgress >= 50) { pc = "var(--primary-light)"; }
                                     else if (unit.AverageProgress >= 30) { pc = "var(--warning)"; }
                                     else { pc = "var(--danger)"; }
-                                    <tr style="cursor:pointer;" onclick="showUnitDrillDown('@unitNameJs', @uid)">
+                                    <tr style="cursor:pointer;" onclick="showUnitDrillDown('@unitNameJs', '@uid')">
                                         <td><strong style="font-size:.875rem;">@unit.UnitName</strong></td>
                                         <td class="text-center">@unit.InitiativeCount</td>
                                         <td class="text-center">@unit.ProjectCount</td>
@@ -423,51 +648,10 @@
                 </div>
             </div>
         </div>
-    }
-</div>
+    </div>
+}
 
-<!-- ROW 5: SUMMARY CARDS -->
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card h-100" style="background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);border:none;">
-            <div class="card-body text-white">
-                <h6 class="mb-3 opacity-75 fw-semibold"><i class="bi bi-lightning-charge me-2"></i>المبادرات</h6>
-                <div class="row text-center g-0">
-                    <div class="col-3"><div class="fs-5 fw-bold">@Model.CompletedInitiatives</div><small style="font-size:.68rem;opacity:.7;">مكتمل</small></div>
-                    <div class="col-3"><div class="fs-5 fw-bold">@Model.InProgressInitiatives</div><small style="font-size:.68rem;opacity:.7;">جاري</small></div>
-                    <div class="col-3"><div class="fs-5 fw-bold">@Model.NotStartedInitiatives</div><small style="font-size:.68rem;opacity:.7;">لم يبدأ</small></div>
-                    <div class="col-3"><div class="fs-5 fw-bold">@Model.DelayedInitiatives</div><small style="font-size:.68rem;opacity:.7;">متأخر</small></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100" style="background:linear-gradient(135deg,var(--success) 0%,#10b981 100%);border:none;">
-            <div class="card-body text-white">
-                <h6 class="mb-3 opacity-75 fw-semibold"><i class="bi bi-folder me-2"></i>المشاريع</h6>
-                <div class="row text-center g-0">
-                    <div class="col-4"><div class="fs-5 fw-bold">@Model.CompletedProjects</div><small style="font-size:.68rem;opacity:.7;">مكتمل</small></div>
-                    <div class="col-4"><div class="fs-5 fw-bold">@Model.InProgressProjects</div><small style="font-size:.68rem;opacity:.7;">جاري</small></div>
-                    <div class="col-4"><div class="fs-5 fw-bold">@Model.DelayedProjects</div><small style="font-size:.68rem;opacity:.7;">متأخر</small></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100" style="background:linear-gradient(135deg,var(--info) 0%,#0ea5e9 100%);border:none;">
-            <div class="card-body text-white">
-                <h6 class="mb-3 opacity-75 fw-semibold"><i class="bi bi-list-check me-2"></i>الخطوات</h6>
-                <div class="row text-center g-0">
-                    <div class="col-4"><div class="fs-5 fw-bold">@Model.CompletedSteps</div><small style="font-size:.68rem;opacity:.7;">مكتمل</small></div>
-                    <div class="col-4"><div class="fs-5 fw-bold">@Model.InProgressSteps</div><small style="font-size:.68rem;opacity:.7;">جاري</small></div>
-                    <div class="col-4"><div class="fs-5 fw-bold">@Model.NotStartedSteps</div><small style="font-size:.68rem;opacity:.7;">لم يبدأ</small></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Drill-Down Data (hidden) - filled by partial -->
+<!-- Drill-Down Data (hidden) -->
 <div id="delayedDrillData" style="display:none;">
     @await Html.PartialAsync("_OverdueAlerts", Model)
 </div>
@@ -495,6 +679,7 @@
 
 @section Scripts {
     <script src="~/lib/chartjs/chart.umd.min.js"></script>
+    <script src="~/lib/echarts/echarts.min.js"></script>
     <script>
         window.ReportsConfig = {
             selectedExternalUnitId: '@(Model.ExternalUnitId?.ToString() ?? "")'
