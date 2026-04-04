@@ -29,7 +29,7 @@ namespace OperationalPlanMS.Controllers
 
         public async Task<IActionResult> PendingApprovals()
         {
-            if (!await _stepService.IsStepApproverAsync(GetCurrentUserId()))
+            if (!IsAdmin())
             {
                 TempData["ErrorMessage"] = "ليس لديك صلاحية الوصول لهذه الصفحة";
                 return RedirectToAction("Index", "Home");
@@ -48,7 +48,7 @@ namespace OperationalPlanMS.Controllers
 
             ViewBag.CanEdit = _stepService.CanEditProject(viewModel.Step.Project, GetCurrentUserRole(), GetCurrentUserId());
             ViewBag.UserRole = GetCurrentUserRole();
-            ViewBag.IsStepApprover = await _stepService.IsStepApproverAsync(GetCurrentUserId());
+            ViewBag.IsStepApprover = IsAdmin();
             return View(viewModel);
         }
 
@@ -180,7 +180,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveStep(int id, string? approverNotes)
         {
-            if (!await _stepService.IsStepApproverAsync(GetCurrentUserId())) return Forbid();
+            if (!IsAdmin()) return Forbid();
             var (success, error) = await _stepService.ApproveStepAsync(id, approverNotes, GetCurrentUserId());
             TempData[success ? "SuccessMessage" : "ErrorMessage"] = success ? "تم تأكيد الخطوة بنجاح وتم احتساب الوزن في المشروع" : error;
             return RedirectToAction(nameof(PendingApprovals));
@@ -189,7 +189,7 @@ namespace OperationalPlanMS.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> RejectStep(int id, string rejectionReason)
         {
-            if (!await _stepService.IsStepApproverAsync(GetCurrentUserId())) return Forbid();
+            if (!IsAdmin()) return Forbid();
             var (success, error) = await _stepService.RejectStepAsync(id, rejectionReason, GetCurrentUserId());
             TempData[success ? "SuccessMessage" : "ErrorMessage"] = success ? "تم رفض الخطوة وإرسالها للمسؤول للتعديل" : error;
             return success ? RedirectToAction(nameof(PendingApprovals)) : RedirectToAction(nameof(Details), new { id });

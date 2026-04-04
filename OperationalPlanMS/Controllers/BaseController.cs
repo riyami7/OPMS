@@ -157,12 +157,22 @@ namespace OperationalPlanMS.Controllers
         {
             base.OnActionExecuting(context);
 
-            // Load chatbot setting for _ChatWidget
             var db = HttpContext.RequestServices.GetService<AppDbContext>();
             if (db != null)
             {
+                // Load chatbot setting for _ChatWidget
                 var settings = db.SystemSettings.AsNoTracking().FirstOrDefault();
                 ViewBag.IsChatbotEnabled = settings?.IsChatbotEnabled ?? false;
+
+                // عدد الخطوات المعلقة للتأكيد — Admin/SuperAdmin فقط
+                if (IsAdmin())
+                {
+                    ViewBag.PendingApprovalsCount = db.Steps
+                        .Count(s => !s.IsDeleted
+                            && s.ApprovalStatus == ApprovalStatus.Pending
+                            && s.InitiativeId != null
+                            && db.Initiatives.Any(i => i.Id == s.InitiativeId));
+                }
             }
         }
     }

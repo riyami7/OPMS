@@ -255,6 +255,20 @@
                             </select>
                             <span asp-validation-for="RoleId" class="text-danger small"></span>
                         </div>
+
+                        <!-- القيادة / الوحدة — SuperAdmin فقط -->
+                        @if (Model.Tenants != null)
+                        {
+                            <div class="col-md-4">
+                                <label asp-for="TenantId" class="form-label">
+                                    <i class="bi bi-building me-1 text-primary"></i>القيادة / الوحدة
+                                </label>
+                                <select asp-for="TenantId" asp-items="Model.Tenants" class="form-select">
+                                    <option value="">-- بدون وحدة (SuperAdmin) --</option>
+                                </select>
+                            </div>
+                        }
+
                         <!-- Switches -->
                         <div class="col-md-6">
                             <div class="form-check form-switch">

@@ -72,7 +72,11 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "اسم الوحدة (API)")]
         public string? ExternalUnitName { get; set; }
 
+        [Display(Name = "القيادة / الوحدة")]
+        public Guid? TenantId { get; set; }
+
         public SelectList? Roles { get; set; }
+        public SelectList? Tenants { get; set; }
 
         public static UserFormViewModel FromEntity(User entity) => new()
         {
@@ -88,7 +92,8 @@ namespace OperationalPlanMS.Models.ViewModels
             EmployeePosition = entity.EmployeePosition,
             BranchName = entity.BranchName,
             ExternalUnitId = entity.ExternalUnitId,
-            ExternalUnitName = entity.ExternalUnitName
+            ExternalUnitName = entity.ExternalUnitName,
+            TenantId = entity.TenantId
         };
 
         public void UpdateEntity(User entity)
@@ -98,6 +103,7 @@ namespace OperationalPlanMS.Models.ViewModels
             entity.RoleId = RoleId; entity.IsActive = IsActive; entity.IsStepApprover = IsStepApprover;
             entity.EmployeeRank = EmployeeRank; entity.EmployeePosition = EmployeePosition;
             entity.BranchName = BranchName; entity.ExternalUnitId = ExternalUnitId; entity.ExternalUnitName = ExternalUnitName;
+            entity.TenantId = TenantId;
         }
     }
 

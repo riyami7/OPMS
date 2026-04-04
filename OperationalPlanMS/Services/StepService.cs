@@ -433,7 +433,7 @@ namespace OperationalPlanMS.Services
         public async Task<(bool Success, string? Error)> SubmitForApprovalAsync(
             int id, string completionDetails, Microsoft.AspNetCore.Http.IFormFile? attachmentFile, int userId, string webRootPath)
         {
-            var step = await _db.Steps.Include(s => s.Project).FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+            var step = await _db.Steps.Include(s => s.Project).ThenInclude(p => p.Initiative).FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
             if (step == null) return (false, "الخطوة غير موجودة");
             if (step.ApprovalStatus == ApprovalStatus.Pending) return (false, "الخطوة معلقة للتأكيد بالفعل");
 
@@ -480,14 +480,37 @@ namespace OperationalPlanMS.Services
             });
 
             await _db.SaveChangesAsync();
+
+            // إشعار لمدير/مديري الوحدة (TenantAdmin) بنفس الـ tenant
+            var tenantId = step.Project?.Initiative?.TenantId;
+            if (tenantId.HasValue)
+            {
+                var tenantAdmins = await _db.Users
+                    .Where(u => u.TenantId == tenantId && u.RoleId == 1 && u.IsActive)
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                foreach (var adminId in tenantAdmins)
+                {
+                    await _notify.CreateAsync(adminId,
+                        "خطوة جديدة بانتظار التأكيد",
+                        $"{step.NameAr} — مشروع: {step.Project?.NameAr}",
+                        "StepPendingApproval", $"/Steps/PendingApprovals", "bi-clipboard-check");
+                }
+            }
+
             return (true, null);
         }
 
         public async Task<(bool Success, string? Error)> ApproveStepAsync(int id, string? approverNotes, int approverId)
         {
-            var step = await _db.Steps.Include(s => s.Project).FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+            var step = await _db.Steps.Include(s => s.Project).ThenInclude(p => p.Initiative).FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
             if (step == null) return (false, "الخطوة غير موجودة");
             if (step.ApprovalStatus != ApprovalStatus.Pending) return (false, "الخطوة ليست معلقة للتأكيد");
+
+            // Multi-Tenancy: تحقق من أن الخطوة تتبع نفس الـ tenant
+            if (_tenantProvider.CurrentTenantId.HasValue && step.Project?.Initiative?.TenantId != _tenantProvider.CurrentTenantId)
+                return (false, "لا تملك صلاحية تأكيد هذه الخطوة");
 
             step.ApprovalStatus = ApprovalStatus.Approved;
             step.Status = StepStatus.Completed;
@@ -526,9 +549,13 @@ namespace OperationalPlanMS.Services
         public async Task<(bool Success, string? Error)> RejectStepAsync(int id, string rejectionReason, int rejecterId)
         {
             if (string.IsNullOrWhiteSpace(rejectionReason)) return (false, "يجب كتابة سبب الرفض");
-            var step = await _db.Steps.FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+            var step = await _db.Steps.Include(s => s.Project).ThenInclude(p => p.Initiative).FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
             if (step == null) return (false, "الخطوة غير موجودة");
             if (step.ApprovalStatus != ApprovalStatus.Pending) return (false, "الخطوة ليست معلقة للتأكيد");
+
+            // Multi-Tenancy: تحقق من أن الخطوة تتبع نفس الـ tenant
+            if (_tenantProvider.CurrentTenantId.HasValue && step.Project?.Initiative?.TenantId != _tenantProvider.CurrentTenantId)
+                return (false, "لا تملك صلاحية رفض هذه الخطوة");
 
             step.ApprovalStatus = ApprovalStatus.Rejected;
             step.Status = StepStatus.InProgress;

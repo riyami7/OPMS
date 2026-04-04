@@ -120,7 +120,7 @@ namespace OperationalPlanMS.Services
             model.UpdateEntity(entity);
 
             // Multi-Tenancy: تعيين TenantId تلقائياً من الـ admin الحالي
-            if (_tenantProvider.CurrentTenantId.HasValue)
+            if (!_tenantProvider.IsSuperAdmin && _tenantProvider.CurrentTenantId.HasValue)
             {
                 entity.TenantId = _tenantProvider.CurrentTenantId;
             }
@@ -214,6 +214,17 @@ namespace OperationalPlanMS.Services
             }
 
             model.Roles = new SelectList(await rolesQuery.ToListAsync(), "Id", "NameAr", model.RoleId);
+
+            // قائمة الوحدات — SuperAdmin فقط
+            if (_tenantProvider.IsSuperAdmin)
+            {
+                var tenants = await _db.ExternalOrganizationalUnits
+                    .Where(u => u.ParentId == null && u.IsActive)
+                    .OrderBy(u => u.ArabicName)
+                    .Select(u => new { u.Id, u.ArabicName })
+                    .ToListAsync();
+                model.Tenants = new SelectList(tenants, "Id", "ArabicName", model.TenantId);
+            }
         }
 
         /// <inheritdoc/>

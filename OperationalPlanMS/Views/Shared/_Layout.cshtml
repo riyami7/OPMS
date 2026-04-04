@@ -139,12 +139,8 @@
                         </li>
                     }
 
-                    <!-- الخطوات المعلقة - للمؤكدين فقط -->
-                    @{
-                        var isStepApproverClaim = User.FindFirst("IsStepApprover")?.Value;
-                        var isStepApprover = isStepApproverClaim == "True" || isStepApproverClaim == "true";
-                    }
-                    @if (isStepApprover)
+                    <!-- الخطوات المعلقة - لمدير الوحدة و SuperAdmin فقط -->
+                    @if (isAdmin)
                     {
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "PendingApprovals" ? "active" : "")" href="/Steps/PendingApprovals">

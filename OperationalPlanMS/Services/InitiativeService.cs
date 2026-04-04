@@ -4,6 +4,7 @@ using OperationalPlanMS.Data;
 using OperationalPlanMS.Models;
 using OperationalPlanMS.Models.Entities;
 using OperationalPlanMS.Models.ViewModels;
+using OperationalPlanMS.Services.Tenant;
 
 namespace OperationalPlanMS.Services
 {
@@ -42,13 +43,22 @@ namespace OperationalPlanMS.Services
         private readonly ILogger<InitiativeService> _logger;
         private readonly IAuditService _audit;
         private readonly IUserService _userService;
+        private readonly ITenantProvider _tenantProvider;
 
-        public InitiativeService(AppDbContext db, ILogger<InitiativeService> logger, IAuditService audit, IUserService userService)
+        public InitiativeService(AppDbContext db, ILogger<InitiativeService> logger, IAuditService audit, IUserService userService, ITenantProvider? tenantProvider = null)
         {
             _db = db;
             _logger = logger;
             _audit = audit;
             _userService = userService;
+            _tenantProvider = tenantProvider ?? new NullTenantProvider();
+        }
+
+        /// <summary>Fallback للاختبارات بدون DI</summary>
+        private class NullTenantProvider : ITenantProvider
+        {
+            public Guid? CurrentTenantId => null;
+            public bool IsSuperAdmin => true;
         }
 
         #region القراءة
@@ -177,9 +187,9 @@ namespace OperationalPlanMS.Services
         {
             var viewModel = new InitiativeFormViewModel();
 
-            // توليد الكود التلقائي
+            // توليد الكود التلقائي — يتجاوز فلتر الـ tenant لأن الكود فريد عالمياً
             var currentYear = DateTime.Now.Year;
-            var lastCode = await _db.Initiatives
+            var lastCode = await _db.Initiatives.IgnoreQueryFilters()
                 .Where(i => i.Code.StartsWith($"INI-{currentYear}"))
                 .OrderByDescending(i => i.Code).Select(i => i.Code).FirstOrDefaultAsync();
 
@@ -207,7 +217,7 @@ namespace OperationalPlanMS.Services
 
         public async Task<(bool Success, int? Id, string? Error)> CreateAsync(InitiativeFormViewModel model, int createdById)
         {
-            if (await _db.Initiatives.AnyAsync(i => i.Code == model.Code))
+            if (await _db.Initiatives.IgnoreQueryFilters().AnyAsync(i => i.Code == model.Code))
                 return (false, null, "هذا الكود مستخدم بالفعل");
 
             var initiative = new Initiative
@@ -216,6 +226,16 @@ namespace OperationalPlanMS.Services
                 CreatedAt = DateTime.Now
             };
             model.UpdateEntity(initiative);
+
+            // Multi-Tenancy: تعيين TenantId تلقائياً
+            if (_tenantProvider.CurrentTenantId.HasValue)
+            {
+                initiative.TenantId = _tenantProvider.CurrentTenantId;
+            }
+            else if (initiative.ExternalUnitId.HasValue)
+            {
+                initiative.TenantId = await FindRootUnitIdAsync(initiative.ExternalUnitId.Value);
+            }
 
             // ربط المشرف — ينشئه تلقائياً إذا ما موجود
             initiative.SupervisorId = await _userService.EnsureUserExistsAsync(
@@ -239,7 +259,7 @@ namespace OperationalPlanMS.Services
             if (userRole == UserRole.Supervisor && initiative.SupervisorId != userId)
                 return (false, "لا يمكنك تعديل هذه المبادرة");
 
-            if (await _db.Initiatives.AnyAsync(i => i.Code == model.Code && i.Id != id))
+            if (await _db.Initiatives.IgnoreQueryFilters().AnyAsync(i => i.Code == model.Code && i.Id != id))
                 return (false, "هذا الكود مستخدم بالفعل");
 
             model.UpdateEntity(initiative);
@@ -403,6 +423,27 @@ namespace OperationalPlanMS.Services
                 result.AddRange(grandChildren);
             }
             return result;
+        }
+
+        /// <summary>
+        /// يبحث عن الوحدة الجذرية (ParentId == null) لأي وحدة تنظيمية
+        /// </summary>
+        private async Task<Guid?> FindRootUnitIdAsync(Guid unitId)
+        {
+            var currentId = unitId;
+            for (int i = 0; i < 10; i++) // حماية من loops لا نهائية
+            {
+                var unit = await _db.ExternalOrganizationalUnits
+                    .AsNoTracking()
+                    .Where(u => u.Id == currentId)
+                    .Select(u => new { u.Id, u.ParentId })
+                    .FirstOrDefaultAsync();
+
+                if (unit == null) return null;
+                if (!unit.ParentId.HasValue) return unit.Id; // وصلنا للجذر
+                currentId = unit.ParentId.Value;
+            }
+            return null;
         }
 
         #endregion
