@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Models;
 using OperationalPlanMS.Services.Tenant;
@@ -21,10 +22,12 @@ namespace OperationalPlanMS.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _configuration;
-        public AdminController(AppDbContext db, IConfiguration configuration)
+        private readonly IMemoryCache _cache;
+        public AdminController(AppDbContext db, IConfiguration configuration, IMemoryCache cache)
         {
             _db = db;
             _configuration = configuration;
+            _cache = cache;
         }
 
         private bool IsAdminUser() => GetCurrentUserRole() == UserRole.Admin || GetCurrentUserRole() == UserRole.SuperAdmin;
@@ -56,11 +59,17 @@ namespace OperationalPlanMS.Controllers
         {
             if (!IsSuperAdmin()) return Forbid();
 
-            var tenants = await _db.ExternalOrganizationalUnits
-                .Where(u => u.ParentId == null && u.IsActive)
-                .Select(u => new { u.Id, Name = u.ArabicName })
-                .OrderBy(u => u.Name)
-                .ToListAsync();
+            // تخزين مؤقت لقائمة الوحدات — تتحدث كل 10 دقائق
+            var tenants = await _cache.GetOrCreateAsync("TenantsList", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+                return await _db.ExternalOrganizationalUnits
+                    .AsNoTracking()
+                    .Where(u => u.ParentId == null && u.IsActive)
+                    .Select(u => new { u.Id, Name = u.ArabicName })
+                    .OrderBy(u => u.Name)
+                    .ToListAsync();
+            });
 
             var selectedId = HttpContext.Session.GetString(TenantProvider.SessionKey);
 

@@ -39,6 +39,17 @@ namespace OperationalPlanMS.Controllers
             return View(pendingSteps);
         }
 
+        /// <summary>
+        /// GET /Steps/GetPendingCount — AJAX: عدد الخطوات المعلقة للـ badge
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetPendingCount()
+        {
+            if (!IsAdmin()) return Json(new { count = 0 });
+            var pendingSteps = await _stepService.GetPendingApprovalsAsync();
+            return Json(new { count = pendingSteps.Count });
+        }
+
         public async Task<IActionResult> Details(int id)
         {
             var viewModel = await _stepService.GetDetailsAsync(id);

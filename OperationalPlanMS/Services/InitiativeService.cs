@@ -67,7 +67,7 @@ namespace OperationalPlanMS.Services
             string? searchTerm, int? fiscalYearId, Guid? externalUnitId,
             int page, int pageSize, UserRole userRole, int userId)
         {
-            var query = _db.Initiatives.Where(i => !i.IsDeleted)
+            var query = _db.Initiatives.AsNoTracking().Where(i => !i.IsDeleted)
                 .Include(i => i.FiscalYear).Include(i => i.Supervisor)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                 .AsQueryable();

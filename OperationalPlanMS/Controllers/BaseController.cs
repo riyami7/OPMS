@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using OperationalPlanMS.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using OperationalPlanMS.Data;
 
 namespace OperationalPlanMS.Controllers
@@ -157,23 +158,19 @@ namespace OperationalPlanMS.Controllers
         {
             base.OnActionExecuting(context);
 
-            var db = HttpContext.RequestServices.GetService<AppDbContext>();
-            if (db != null)
+            // Chatbot setting — cached in memory (يتحدث كل 5 دقائق)
+            var cache = HttpContext.RequestServices.GetService<IMemoryCache>();
+            if (cache != null)
             {
-                // Load chatbot setting for _ChatWidget
-                var settings = db.SystemSettings.AsNoTracking().FirstOrDefault();
-                ViewBag.IsChatbotEnabled = settings?.IsChatbotEnabled ?? false;
-
-                // عدد الخطوات المعلقة للتأكيد — Admin/SuperAdmin فقط
-                if (IsAdmin())
+                ViewBag.IsChatbotEnabled = cache.GetOrCreate("ChatbotEnabled", entry =>
                 {
-                    ViewBag.PendingApprovalsCount = db.Steps
-                        .Count(s => !s.IsDeleted
-                            && s.ApprovalStatus == ApprovalStatus.Pending
-                            && s.InitiativeId != null
-                            && db.Initiatives.Any(i => i.Id == s.InitiativeId));
-                }
+                    entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+                    var db = HttpContext.RequestServices.GetService<AppDbContext>();
+                    return db?.SystemSettings.AsNoTracking().Select(s => s.IsChatbotEnabled).FirstOrDefault() ?? false;
+                });
             }
+
+            // PendingApprovalsCount يُحمّل عبر AJAX — لا حاجة لاستعلام كل request
         }
     }
 }

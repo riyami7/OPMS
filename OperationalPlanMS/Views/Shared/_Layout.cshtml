@@ -146,10 +146,7 @@
                             <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "PendingApprovals" ? "active" : "")" href="/Steps/PendingApprovals">
                                 <i class="bi bi-clipboard-check"></i>
                                 <span>تأكيد الخطوات</span>
-                                @if (ViewBag.PendingApprovalsCount != null && (int)ViewBag.PendingApprovalsCount > 0)
-                                {
-                                    <span class="badge bg-danger ms-auto">@ViewBag.PendingApprovalsCount</span>
-                                }
+                                <span id="pendingBadge" class="badge bg-danger ms-auto" style="font-size:.6rem;display:none;">0</span>
                             </a>
                         </li>
                     }
@@ -388,6 +385,14 @@
             fetch('/Notification/GetDropdown').then(r => r.json()).then(data => {
                 var badge = document.getElementById('notifBadge');
                 if (data.unreadCount > 0) { badge.textContent = data.unreadCount; badge.style.display = ''; }
+            });
+        }
+
+        // تحميل عدد الخطوات المعلقة عبر AJAX
+        if (document.getElementById('pendingBadge')) {
+            fetch('/Steps/GetPendingCount').then(r => r.json()).then(data => {
+                var badge = document.getElementById('pendingBadge');
+                if (data.count > 0) { badge.textContent = data.count; badge.style.display = ''; }
             });
         }
 
