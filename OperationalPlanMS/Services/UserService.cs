@@ -27,7 +27,7 @@ namespace OperationalPlanMS.Services
         /// <summary>
         /// يتحقق إذا الموظف موجود في Users — إذا لا ينشئه تلقائياً بدور User
         /// </summary>
-        Task<int?> EnsureUserExistsAsync(string? empNumber, string? name, string? rank, string? assignRole = null);
+        Task<int?> EnsureUserExistsAsync(string? empNumber, string? name, string? rank, string? assignRole = null, string? position = null, Guid? externalUnitId = null, string? externalUnitName = null);
     }
 
     /// <summary>
@@ -228,7 +228,7 @@ namespace OperationalPlanMS.Services
         }
 
         /// <inheritdoc/>
-        public async Task<int?> EnsureUserExistsAsync(string? empNumber, string? name, string? rank, string? assignRole = null)
+        public async Task<int?> EnsureUserExistsAsync(string? empNumber, string? name, string? rank, string? assignRole = null, string? position = null, Guid? externalUnitId = null, string? externalUnitName = null)
         {
             if (string.IsNullOrWhiteSpace(empNumber)) return null;
 
@@ -239,16 +239,24 @@ namespace OperationalPlanMS.Services
                 // تحديث البيانات إذا تغيرت
                 if (!string.IsNullOrEmpty(name) && user.FullNameAr != name) user.FullNameAr = name;
                 if (!string.IsNullOrEmpty(rank) && user.EmployeeRank != rank) user.EmployeeRank = rank;
+                if (!string.IsNullOrEmpty(position) && user.EmployeePosition != position) user.EmployeePosition = position;
+                if (externalUnitId.HasValue && user.ExternalUnitId != externalUnitId) user.ExternalUnitId = externalUnitId;
+                if (!string.IsNullOrEmpty(externalUnitName) && user.ExternalUnitName != externalUnitName) user.ExternalUnitName = externalUnitName;
                 if (!user.IsActive) user.IsActive = true;
+
+                // تعيين TenantId إذا مفقود
+                if (!user.TenantId.HasValue && _tenantProvider.CurrentTenantId.HasValue)
+                    user.TenantId = _tenantProvider.CurrentTenantId;
+
                 await _db.SaveChangesAsync();
                 return user.Id;
             }
 
             // إنشاء مستخدم جديد
-            var defaultRole = !string.IsNullOrEmpty(assignRole)
+            var role = !string.IsNullOrEmpty(assignRole)
                 ? await _db.Roles.FirstOrDefaultAsync(r => r.NameEn == assignRole)
-                  ?? await _db.Roles.OrderByDescending(r => r.Id).FirstAsync()
-                : await _db.Roles.OrderByDescending(r => r.Id).FirstAsync();
+                : null;
+            var defaultRoleId = role?.Id ?? (int)Models.UserRole.StepUser; // StepUser كـ fallback آمن
 
             user = new User
             {
@@ -256,15 +264,19 @@ namespace OperationalPlanMS.Services
                 FullNameAr = name ?? empNumber,
                 FullNameEn = name ?? empNumber,
                 Email = empNumber + "@domain.com",
-                RoleId = defaultRole.Id,
+                RoleId = defaultRoleId,
                 EmployeeRank = rank,
+                EmployeePosition = position,
+                ExternalUnitId = externalUnitId,
+                ExternalUnitName = externalUnitName,
+                TenantId = _tenantProvider.CurrentTenantId,
                 IsActive = true,
                 CreatedAt = DateTime.Now
             };
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            _logger.LogInformation("تم إنشاء مستخدم تلقائياً: {EmpNumber} - {Name}", empNumber, name);
+            _logger.LogInformation("تم إنشاء مستخدم تلقائياً: {EmpNumber} - {Name} - وحدة: {Unit}", empNumber, name, externalUnitName);
             return user.Id;
         }
 

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Models.ViewModels;
+using OperationalPlanMS.Services;
 using System.Security.Claims;
 
 namespace OperationalPlanMS.Controllers
@@ -14,14 +15,16 @@ namespace OperationalPlanMS.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
+        private readonly IExternalApiService _externalApiService;
 
         // تشفير كلمات المرور
         private static readonly Microsoft.AspNetCore.Identity.PasswordHasher<Models.Entities.User> _passwordHasher = new();
 
-        public ProfileController(AppDbContext db, IWebHostEnvironment env)
+        public ProfileController(AppDbContext db, IWebHostEnvironment env, IExternalApiService externalApiService)
         {
             _db = db;
             _env = env;
+            _externalApiService = externalApiService;
         }
 
         // GET: /Profile
@@ -39,6 +42,9 @@ namespace OperationalPlanMS.Controllers
             {
                 return NotFound();
             }
+
+            // === تعبئة الصورة تلقائياً من API إذا مفقودة أو قديمة ===
+            await SyncProfilePhotoFromApiAsync(user);
 
             var viewModel = new ProfileViewModel
             {
@@ -386,6 +392,46 @@ namespace OperationalPlanMS.Controllers
                 return true;
 
             return false;
+        }
+
+        /// <summary>
+        /// مزامنة صورة الملف الشخصي من API الخارجي — تحفظ محلياً وتتحدث كل 30 يوم
+        /// </summary>
+        private async Task SyncProfilePhotoFromApiAsync(Models.Entities.User user)
+        {
+            try
+            {
+                // تخطّي إذا الصورة موجودة وحديثة (أقل من 30 يوم)
+                if (!string.IsNullOrEmpty(user.ProfileImage))
+                {
+                    var localPath = Path.Combine(_env.WebRootPath, user.ProfileImage.TrimStart('/'));
+                    if (System.IO.File.Exists(localPath))
+                    {
+                        var fileAge = DateTime.Now - new FileInfo(localPath).LastWriteTime;
+                        if (fileAge.TotalDays < 30) return; // الصورة حديثة
+                    }
+                }
+
+                // جلب الصورة من API
+                var photoBytes = await _externalApiService.GetEmployeePhotoAsync(user.ADUsername);
+                if (photoBytes == null || photoBytes.Length == 0) return;
+
+                // حفظ محلياً
+                var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "profiles");
+                Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = $"profile_{user.Id}_api.jpg";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+                await System.IO.File.WriteAllBytesAsync(filePath, photoBytes);
+
+                // تحديث المسار في DB
+                user.ProfileImage = $"/uploads/profiles/{fileName}";
+                await _db.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                // فشل جلب الصورة — نتجاهله ونكمل عرض الملف الشخصي بدون صورة
+            }
         }
     }
 }

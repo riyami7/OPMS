@@ -75,7 +75,7 @@ namespace OperationalPlanMS.Services
             string? searchTerm, int? initiativeId, Guid? externalUnitId,
             int page, int pageSize, UserRole userRole, int userId)
         {
-            var query = _db.Projects.AsNoTracking().Where(p => !p.IsDeleted)
+            var query = _db.Projects.Where(p => !p.IsDeleted)
                 .Include(p => p.Initiative).Include(p => p.ProjectManager)
                 .Include(p => p.Steps.Where(s => !s.IsDeleted)).AsQueryable();
 
@@ -287,7 +287,7 @@ namespace OperationalPlanMS.Services
 
             var project = new Project { CreatedById = createdById, CreatedAt = DateTime.Now, ProgressPercentage = 0 };
             model.UpdateEntity(project);
-            project.ProjectManagerId = await ResolveProjectManagerIdAsync(model.ProjectManagerEmpNumber, model.ProjectManagerName, model.ProjectManagerRank);
+            project.ProjectManagerId = await ResolveProjectManagerIdAsync(model.ProjectManagerEmpNumber, model.ProjectManagerName, model.ProjectManagerRank, model.ExternalUnitId, model.ExternalUnitName);
 
             string? warning = null;
             if (!string.IsNullOrWhiteSpace(model.ProjectManagerEmpNumber) && project.ProjectManagerId == null)
@@ -341,7 +341,7 @@ namespace OperationalPlanMS.Services
                 return (false, "رقم المشروع مستخدم بالفعل", null);
 
             model.UpdateEntity(project);
-            project.ProjectManagerId = await ResolveProjectManagerIdAsync(model.ProjectManagerEmpNumber, model.ProjectManagerName, model.ProjectManagerRank);
+            project.ProjectManagerId = await ResolveProjectManagerIdAsync(model.ProjectManagerEmpNumber, model.ProjectManagerName, model.ProjectManagerRank, model.ExternalUnitId, model.ExternalUnitName);
 
             string? warning = null;
             if (!string.IsNullOrWhiteSpace(model.ProjectManagerEmpNumber) && project.ProjectManagerId == null)
@@ -634,9 +634,9 @@ namespace OperationalPlanMS.Services
 
         #region Private Helpers
 
-        private async Task<int?> ResolveProjectManagerIdAsync(string? empNumber, string? name = null, string? rank = null)
+        private async Task<int?> ResolveProjectManagerIdAsync(string? empNumber, string? name = null, string? rank = null, Guid? externalUnitId = null, string? externalUnitName = null)
         {
-            return await _userService.EnsureUserExistsAsync(empNumber, name, rank, "Project Manager");
+            return await _userService.EnsureUserExistsAsync(empNumber, name, rank, "Project Manager", null, externalUnitId, externalUnitName);
         }
 
         private decimal CalculateProjectProgress(Project project)

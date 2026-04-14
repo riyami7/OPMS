@@ -4,23 +4,16 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace OperationalPlanMS.Models.Entities
 {
     /// <summary>
-    /// المحاور الرئيسية (الاستراتيجية)
+    /// الخطة الاستراتيجية الخمسية
     /// </summary>
-    [Table("StrategicAxes")]
-    public class StrategicAxis
+    [Table("StrategicPlans")]
+    public class StrategicPlan
     {
         [Key]
         public int Id { get; set; }
 
         /// <summary>
-        /// الكود (تلقائي)
-        /// </summary>
-        [Required]
-        [StringLength(50)]
-        public string Code { get; set; } = string.Empty;
-
-        /// <summary>
-        /// الاسم بالعربية
+        /// الاسم بالعربية — مثال: "الخطة الخمسية 2026-2030"
         /// </summary>
         [Required]
         [StringLength(300)]
@@ -30,39 +23,38 @@ namespace OperationalPlanMS.Models.Entities
         /// الاسم بالإنجليزية
         /// </summary>
         [StringLength(300)]
-        public string? NameEn { get; set; } = string.Empty;
+        public string? NameEn { get; set; }
 
         /// <summary>
-        /// الوصف بالعربية
+        /// الوصف
         /// </summary>
         public string? DescriptionAr { get; set; }
 
         /// <summary>
-        /// الوصف بالإنجليزية
+        /// سنة البداية — مثال: 2026
         /// </summary>
-        public string? DescriptionEn { get; set; }
+        [Required]
+        public int StartYear { get; set; }
 
         /// <summary>
-        /// ترتيب العرض
+        /// سنة النهاية — مثال: 2030
         /// </summary>
-        public int OrderIndex { get; set; } = 0;
+        [Required]
+        public int EndYear { get; set; }
 
         /// <summary>
-        /// نشط
+        /// هل هي الخطة الحالية؟
+        /// </summary>
+        public bool IsCurrent { get; set; } = false;
+
+        /// <summary>
+        /// نشطة
         /// </summary>
         public bool IsActive { get; set; } = true;
 
-        /// <summary>
-        /// الخطة الاستراتيجية الخمسية المرتبطة بهذا المحور
-        /// </summary>
-        public int? StrategicPlanId { get; set; }
-
         public int CreatedById { get; set; }
-
         public DateTime CreatedAt { get; set; } = DateTime.Now;
-
         public int? LastModifiedById { get; set; }
-
         public DateTime? LastModifiedAt { get; set; }
 
         // Navigation
@@ -72,12 +64,23 @@ namespace OperationalPlanMS.Models.Entities
         [ForeignKey("LastModifiedById")]
         public virtual User? LastModifiedBy { get; set; }
 
-        [ForeignKey("StrategicPlanId")]
-        public virtual StrategicPlan? StrategicPlan { get; set; }
+        /// <summary>
+        /// المحاور المرتبطة بهذه الخطة
+        /// </summary>
+        public virtual ICollection<StrategicAxis> Axes { get; set; } = new List<StrategicAxis>();
+
+        // === Computed ===
 
         /// <summary>
-        /// الأهداف الاستراتيجية المرتبطة بهذا المحور
+        /// مدة الخطة بالسنوات
         /// </summary>
-        public virtual ICollection<StrategicObjective> StrategicObjectives { get; set; } = new List<StrategicObjective>();
+        [NotMapped]
+        public int DurationYears => EndYear - StartYear + 1;
+
+        /// <summary>
+        /// اسم العرض — "2026 - 2030"
+        /// </summary>
+        [NotMapped]
+        public string DisplayName => $"{StartYear} - {EndYear}";
     }
 }

@@ -65,7 +65,7 @@ namespace OperationalPlanMS.Services
 
         public async Task<StepListViewModel> GetListAsync(StepListViewModel filters, UserRole userRole, int userId)
         {
-            var query = _db.Steps.AsNoTracking().Where(s => !s.IsDeleted)
+            var query = _db.Steps.Where(s => !s.IsDeleted)
                 .Include(s => s.Project).ThenInclude(p => p.Initiative)
                 .Include(s => s.AssignedTo).AsQueryable();
 
@@ -108,7 +108,7 @@ namespace OperationalPlanMS.Services
 
         public async Task<List<Step>> GetPendingApprovalsAsync()
         {
-            var query = _db.Steps.AsNoTracking().Where(s => !s.IsDeleted && s.ApprovalStatus == ApprovalStatus.Pending)
+            var query = _db.Steps.Where(s => !s.IsDeleted && s.ApprovalStatus == ApprovalStatus.Pending)
                 .Include(s => s.Project).ThenInclude(p => p.Initiative)
                 .Include(s => s.AssignedTo).Include(s => s.Attachments)
                 .AsQueryable();
@@ -713,9 +713,9 @@ namespace OperationalPlanMS.Services
             await _db.SaveChangesAsync();
         }
 
-        private async Task<int?> ResolveUserIdAsync(string? empNumber, string? name = null, string? rank = null)
+        private async Task<int?> ResolveUserIdAsync(string? empNumber, string? name = null, string? rank = null, Guid? externalUnitId = null, string? externalUnitName = null)
         {
-            return await _userService.EnsureUserExistsAsync(empNumber, name, rank, "Step User");
+            return await _userService.EnsureUserExistsAsync(empNumber, name, rank, "Step User", null, externalUnitId, externalUnitName);
         }
 
         private async Task PopulateFilterDropdownsAsync(StepListViewModel model, UserRole userRole, int userId)

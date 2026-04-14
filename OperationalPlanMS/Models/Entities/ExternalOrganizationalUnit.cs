@@ -82,7 +82,7 @@ namespace OperationalPlanMS.Models.Entities
         /// هل هذه وحدة جذر (المستوى الأول)
         /// </summary>
         [NotMapped]
-        public bool IsRoot => !ParentId.HasValue;
+        public bool IsRoot => !ParentId.HasValue && Code == "00001";
 
         /// <summary>
         /// الاسم للعرض (يفضل ArabicName)

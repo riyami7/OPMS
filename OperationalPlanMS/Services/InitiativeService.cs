@@ -67,7 +67,7 @@ namespace OperationalPlanMS.Services
             string? searchTerm, int? fiscalYearId, Guid? externalUnitId,
             int page, int pageSize, UserRole userRole, int userId)
         {
-            var query = _db.Initiatives.AsNoTracking().Where(i => !i.IsDeleted)
+            var query = _db.Initiatives.Where(i => !i.IsDeleted)
                 .Include(i => i.FiscalYear).Include(i => i.Supervisor)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                 .AsQueryable();
@@ -239,7 +239,7 @@ namespace OperationalPlanMS.Services
 
             // ربط المشرف — ينشئه تلقائياً إذا ما موجود
             initiative.SupervisorId = await _userService.EnsureUserExistsAsync(
-                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor");
+                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor", null, initiative.ExternalUnitId, initiative.ExternalUnitName);
 
             _db.Initiatives.Add(initiative);
             await _db.SaveChangesAsync();
@@ -266,7 +266,7 @@ namespace OperationalPlanMS.Services
 
             // ربط المشرف — ينشئه تلقائياً إذا ما موجود
             initiative.SupervisorId = await _userService.EnsureUserExistsAsync(
-                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor");
+                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor", null, initiative.ExternalUnitId, initiative.ExternalUnitName);
 
             initiative.LastModifiedById = modifiedById;
             initiative.LastModifiedAt = DateTime.Now;

@@ -72,7 +72,7 @@ namespace OperationalPlanMS.Controllers.Api
             try
             {
                 var units = await _db.ExternalOrganizationalUnits
-                    .Where(u => u.IsActive && (u.ParentId == null))
+                    .Where(u => u.IsActive && u.ParentId == null && u.Code == "00001")
                     .OrderBy(u => u.ArabicName)
                     .Select(u => new
                     {

@@ -29,6 +29,8 @@ namespace OperationalPlanMS.Services
 
         // جلب موظف برقم الموظف
         Task<EmployeeDto?> GetEmployeeByNumberAsync(string empNumber);
+        Task<byte[]?> GetEmployeePhotoAsync(string empNumber);
+
 
         void ClearCache();
     }
@@ -440,6 +442,30 @@ namespace OperationalPlanMS.Services
             Position = e.Position,
             Unit = e.CurrentUnit
         };
+
+
+        public async Task<byte[]?> GetEmployeePhotoAsync(string empNumber)
+        {
+            if (string.IsNullOrWhiteSpace(empNumber)) return null;
+            try
+            {
+                var url = $"{_baseUrl}/person-photo-by-military-service-id/{empNumber}";
+                var request = await CreateAuthorizedRequestAsync(HttpMethod.Get, url);
+                var response = await _httpClient.SendAsync(request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var photoBytes = await response.Content.ReadAsByteArrayAsync();
+                    if (photoBytes.Length > 0) return photoBytes;
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "خطأ في جلب صورة الموظف: {EmpNumber}", empNumber);
+                return null;
+            }
+        }
 
         #endregion
 

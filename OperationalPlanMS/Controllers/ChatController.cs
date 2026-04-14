@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -23,17 +26,23 @@ namespace OperationalPlanMS.Controllers
         private readonly ChatContextBuilder _contextBuilder;
         private readonly OllamaSettings _settings;
         private readonly AppDbContext _db;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly AgentSettings _agentSettings;
 
         public ChatController(
             IOllamaService ollama,
             ChatContextBuilder contextBuilder,
             IOptions<OllamaSettings> settings,
-            AppDbContext db)
+            AppDbContext db,
+            IHttpClientFactory httpClientFactory,
+            IOptions<AgentSettings> agentSettings)
         {
             _ollama = ollama;
             _contextBuilder = contextBuilder;
             _settings = settings.Value;
             _db = db;
+            _httpClientFactory = httpClientFactory;
+            _agentSettings = agentSettings.Value;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -48,6 +57,7 @@ namespace OperationalPlanMS.Controllers
 
         // ═══════════════════════════════════════════════════════════
         //  POST /Chat/Stream — SSE streaming endpoint + DB save
+        //  Supports Agent mode (riyamiai) and Legacy mode (direct Ollama)
         // ═══════════════════════════════════════════════════════════
 
         [HttpPost]
@@ -68,7 +78,6 @@ namespace OperationalPlanMS.Controllers
 
                 if (dto.ConversationId.HasValue && dto.ConversationId.Value > 0)
                 {
-                    // Load existing conversation (verify ownership)
                     conversation = await _db.ChatConversations
                         .FirstOrDefaultAsync(c => c.Id == dto.ConversationId.Value
                             && c.UserId == currentUserId
@@ -77,7 +86,6 @@ namespace OperationalPlanMS.Controllers
 
                 if (conversation == null && currentUserId.HasValue)
                 {
-                    // Create new conversation
                     conversation = new ChatConversation
                     {
                         UserId = currentUserId.Value,
@@ -109,16 +117,18 @@ namespace OperationalPlanMS.Controllers
                     await _db.SaveChangesAsync(cancellationToken);
                 }
 
-                // ─── 5. Build system prompt with OPMS context ───
-                var systemPrompt = await _contextBuilder.BuildSystemPromptAsync(
-                    User, _settings.SystemPrompt);
+                // ─── 5. Build message history ───
+                var messages = new List<OllamaChatMessage>();
 
-                var messages = new List<OllamaChatMessage>
+                if (!_agentSettings.Enabled)
                 {
-                    new() { Role = "system", Content = systemPrompt }
-                };
+                    // Legacy mode needs system prompt
+                    var systemPrompt = await _contextBuilder.BuildSystemPromptAsync(
+                        User, _settings.SystemPrompt);
+                    messages.Add(new OllamaChatMessage { Role = "system", Content = systemPrompt });
+                }
 
-                // ─── 6. Load history from DB (not from client) ───
+                // ─── 6. Load history from DB ───
                 if (conversation != null)
                 {
                     var dbMessages = await _db.ChatMessages
@@ -139,7 +149,6 @@ namespace OperationalPlanMS.Controllers
                 }
                 else
                 {
-                    // Fallback: use client-sent history if no DB conversation
                     if (dto.History?.Count > 0)
                     {
                         var historyStart = Math.Max(0, dto.History.Count - 10);
@@ -153,7 +162,6 @@ namespace OperationalPlanMS.Controllers
                         }
                     }
 
-                    // Add current message
                     messages.Add(new OllamaChatMessage
                     {
                         Role = "user",
@@ -161,29 +169,18 @@ namespace OperationalPlanMS.Controllers
                     });
                 }
 
-                // ─── 7. Stream from Ollama ───
-                var request = new OllamaChatRequest
-                {
-                    Model = dto.Model ?? _settings.DefaultModel,
-                    Messages = messages,
-                    Stream = true,
-                    Options = new OllamaOptions
-                    {
-                        Temperature = _settings.Temperature
-                    }
-                };
-
+                // ─── 7. Stream from Agent or Ollama ───
                 var fullResponse = new StringBuilder();
 
-                await foreach (var token in _ollama.ChatStreamAsync(request, cancellationToken))
+                if (_agentSettings.Enabled)
                 {
-                    fullResponse.Append(token);
-
-                    // SSE format: data: {json}\n\n
-                    var escaped = token.Replace("\\", "\\\\").Replace("\"", "\\\"")
-                                       .Replace("\n", "\\n").Replace("\r", "\\r");
-                    await Response.WriteAsync($"data: {{\"token\":\"{escaped}\"}}\n\n", cancellationToken);
-                    await Response.Body.FlushAsync(cancellationToken);
+                    // ═══ AGENT MODE ═══
+                    await StreamFromAgent(dto, messages, fullResponse, currentUserId, cancellationToken);
+                }
+                else
+                {
+                    // ═══ LEGACY MODE — Direct Ollama ═══
+                    await StreamFromOllama(dto, messages, fullResponse, cancellationToken);
                 }
 
                 // ─── 8. Save assistant response to DB ───
@@ -197,7 +194,6 @@ namespace OperationalPlanMS.Controllers
                         CreatedAt = DateTime.Now
                     });
 
-                    // Update conversation timestamp
                     conversation.LastMessageAt = DateTime.Now;
                     await _db.SaveChangesAsync(cancellationToken);
                 }
@@ -214,6 +210,147 @@ namespace OperationalPlanMS.Controllers
             {
                 var errorMsg = "عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي.";
                 await Response.WriteAsync($"data: {{\"error\":\"{errorMsg}\"}}\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  Agent Mode — Call riyamiai Agent API
+        // ═══════════════════════════════════════════════════════════
+
+        private async Task StreamFromAgent(
+            ChatRequestDto dto,
+            List<OllamaChatMessage> messages,
+            StringBuilder fullResponse,
+            int? currentUserId,
+            CancellationToken cancellationToken)
+        {
+            var client = _httpClientFactory.CreateClient("AgentClient");
+            client.Timeout = TimeSpan.FromMinutes(3);
+
+            var userId = currentUserId ?? 0;
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "User";
+
+            // Send initial status
+            await Response.WriteAsync(
+                "data: {\"agent_status\":\"thinking\",\"message\":\"جاري التحليل...\"}\n\n",
+                cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
+
+            // Build agent request
+            var agentBody = new
+            {
+                message = dto.Message,
+                user_id = userId,
+                user_role = userRole,
+                conversation_history = messages
+                    .Where(m => m.Role != "system")
+                    .Select(m => new { role = m.Role, content = m.Content })
+                    .ToList()
+            };
+
+            var agentContent = new StringContent(
+                JsonSerializer.Serialize(agentBody),
+                Encoding.UTF8,
+                "application/json");
+
+            var agentResponse = await client.PostAsync(
+                $"{_agentSettings.BaseUrl}/agent/chat/stream",
+                agentContent,
+                cancellationToken);
+
+            agentResponse.EnsureSuccessStatusCode();
+
+            using var stream = await agentResponse.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new StreamReader(stream);
+
+            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            {
+                var line = await reader.ReadLineAsync();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                if (!line.StartsWith("data: ")) continue;
+
+                var jsonStr = line.Substring(6).Trim();
+                if (string.IsNullOrEmpty(jsonStr)) continue;
+
+                try
+                {
+                    var eventData = JsonDocument.Parse(jsonStr);
+                    var root = eventData.RootElement;
+
+                    // Forward agent_status events (tool calls)
+                    if (root.TryGetProperty("agent_status", out var statusProp))
+                    {
+                        var status = statusProp.GetString();
+                        var toolName = root.TryGetProperty("tool_name", out var tn) ? tn.GetString() : "";
+
+                        string statusMsg = status switch
+                        {
+                            "tool_call" => $"جاري استخدام: {GetToolArabicName(toolName)}...",
+                            "tool_result" => "تم الحصول على البيانات",
+                            _ => "جاري التحليل..."
+                        };
+
+                        await Response.WriteAsync(
+                            $"data: {{\"agent_status\":\"{status}\",\"message\":\"{statusMsg}\"}}\n\n",
+                            cancellationToken);
+                        await Response.Body.FlushAsync(cancellationToken);
+                        continue;
+                    }
+
+                    // Forward tokens
+                    if (root.TryGetProperty("token", out var tokenProp))
+                    {
+                        var token = tokenProp.GetString() ?? "";
+                        fullResponse.Append(token);
+
+                        var escaped = token.Replace("\\", "\\\\").Replace("\"", "\\\"")
+                                           .Replace("\n", "\\n").Replace("\r", "\\r");
+                        await Response.WriteAsync(
+                            $"data: {{\"token\":\"{escaped}\"}}\n\n",
+                            cancellationToken);
+                        await Response.Body.FlushAsync(cancellationToken);
+                    }
+
+                    // Check done
+                    if (root.TryGetProperty("done", out var doneProp) && doneProp.GetBoolean())
+                    {
+                        break;
+                    }
+                }
+                catch { }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  Legacy Mode — Direct Ollama streaming
+        // ═══════════════════════════════════════════════════════════
+
+        private async Task StreamFromOllama(
+            ChatRequestDto dto,
+            List<OllamaChatMessage> messages,
+            StringBuilder fullResponse,
+            CancellationToken cancellationToken)
+        {
+            var request = new OllamaChatRequest
+            {
+                Model = dto.Model ?? _settings.DefaultModel,
+                Messages = messages,
+                Stream = true,
+                Options = new OllamaOptions
+                {
+                    Temperature = _settings.Temperature
+                }
+            };
+
+            await foreach (var token in _ollama.ChatStreamAsync(request, cancellationToken))
+            {
+                fullResponse.Append(token);
+
+                var escaped = token.Replace("\\", "\\\\").Replace("\"", "\\\"")
+                                   .Replace("\n", "\\n").Replace("\r", "\\r");
+                await Response.WriteAsync($"data: {{\"token\":\"{escaped}\"}}\n\n", cancellationToken);
                 await Response.Body.FlushAsync(cancellationToken);
             }
         }
@@ -257,7 +394,6 @@ namespace OperationalPlanMS.Controllers
             if (!userId.HasValue)
                 return Unauthorized();
 
-            // Verify ownership
             var conversation = await _db.ChatConversations
                 .FirstOrDefaultAsync(c => c.Id == conversationId
                     && c.UserId == userId.Value
@@ -330,12 +466,14 @@ namespace OperationalPlanMS.Controllers
             {
                 available,
                 model = _settings.DefaultModel,
-                baseUrl = _settings.BaseUrl
+                baseUrl = _settings.BaseUrl,
+                agentEnabled = _agentSettings.Enabled,
+                agentUrl = _agentSettings.BaseUrl
             });
         }
 
         // ═══════════════════════════════════════════════════════════
-        //  Helper: Get current user ID from Claims
+        //  Helpers
         // ═══════════════════════════════════════════════════════════
 
         private int? GetCurrentUserId()
@@ -345,11 +483,27 @@ namespace OperationalPlanMS.Controllers
                 return userId;
             return null;
         }
+
+        private static string GetToolArabicName(string toolName) => toolName switch
+        {
+            "get_dashboard_stats" => "إحصائيات النظام",
+            "get_initiatives" => "بيانات المبادرات",
+            "get_delayed_steps" => "الخطوات المتأخرة",
+            "compare_org_units" => "مقارنة الوحدات",
+            _ => toolName
+        };
     }
 
     // DTO for delete endpoint
     public class DeleteConversationDto
     {
         public int ConversationId { get; set; }
+    }
+
+    // Agent configuration
+    public class AgentSettings
+    {
+        public string BaseUrl { get; set; } = "http://localhost:8000";
+        public bool Enabled { get; set; } = true;
     }
 }

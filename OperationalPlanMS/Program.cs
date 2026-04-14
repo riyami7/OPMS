@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using OperationalPlanMS.Controllers;
 using OperationalPlanMS.Data;
 using OperationalPlanMS.Services;
 using System.IO.Compression;
@@ -165,6 +166,8 @@ builder.Services.Configure<OperationalPlanMS.Services.AI.Models.OllamaSettings>(
 builder.Services.AddHttpClient<OperationalPlanMS.Services.AI.IOllamaService,
     OperationalPlanMS.Services.AI.OllamaService>();
 builder.Services.AddScoped<OperationalPlanMS.Services.AI.ChatContextBuilder>();
+builder.Services.Configure<AgentSettings>(builder.Configuration.GetSection("Agent"));
+builder.Services.AddHttpClient("AgentClient");
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
