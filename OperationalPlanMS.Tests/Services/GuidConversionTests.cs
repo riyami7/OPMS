@@ -35,7 +35,7 @@ namespace OperationalPlanMS.Tests.Services
 
             // Seed ExternalOrganizationalUnits with Guid IDs
             _db.ExternalOrganizationalUnits.AddRange(
-                new ExternalOrganizationalUnit { Id = UnitHQ, ParentId = null, TenantId = TenantId, Code = "HQ", ArabicName = "القيادة العامة", IsActive = true },
+                new ExternalOrganizationalUnit { Id = UnitHQ, ParentId = null, TenantId = TenantId, Code = "00001", ArabicName = "القيادة العامة", IsActive = true },
                 new ExternalOrganizationalUnit { Id = UnitOps, ParentId = UnitHQ, TenantId = TenantId, Code = "OPS", ArabicName = "قسم العمليات", IsActive = true },
                 new ExternalOrganizationalUnit { Id = UnitIT, ParentId = UnitHQ, TenantId = TenantId, Code = "IT", ArabicName = "قسم تقنية المعلومات", IsActive = true },
                 new ExternalOrganizationalUnit { Id = UnitDev, ParentId = UnitIT, TenantId = TenantId, Code = "DEV", ArabicName = "شعبة التطوير", IsActive = true }
@@ -111,7 +111,7 @@ namespace OperationalPlanMS.Tests.Services
             var initiative = new Initiative
             {
                 Code = "INI-GUID-001", NameAr = "مبادرة Guid", NameEn = "Guid Initiative",
-                FiscalYearId = 1, SupervisorId = 1, CreatedById = 3, CreatedAt = DateTime.Now,
+                  SupervisorId = 1, CreatedById = 3, CreatedAt = DateTime.Now,
                 Status = Status.InProgress, Priority = Priority.Medium,
                 PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(6),
                 ExternalUnitId = UnitOps, ExternalUnitName = "قسم العمليات"
@@ -129,7 +129,7 @@ namespace OperationalPlanMS.Tests.Services
             var initiative = new Initiative
             {
                 Code = "INI-NULL-001", NameAr = "بدون وحدة", NameEn = "No Unit",
-                FiscalYearId = 1, SupervisorId = 1, CreatedById = 3, CreatedAt = DateTime.Now,
+                  SupervisorId = 1, CreatedById = 3, CreatedAt = DateTime.Now,
                 Status = Status.Draft, Priority = Priority.Low,
                 PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(3),
                 ExternalUnitId = null
@@ -168,12 +168,12 @@ namespace OperationalPlanMS.Tests.Services
         {
             // Seed 2 initiatives in different units
             _db.Initiatives.AddRange(
-                new Initiative { Code = "INI-OPS", NameAr = "عمليات", FiscalYearId = 1, SupervisorId = 1, CreatedById = 3, Status = Status.InProgress, Priority = Priority.Medium, PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(6), ExternalUnitId = UnitOps },
-                new Initiative { Code = "INI-IT", NameAr = "تقنية", FiscalYearId = 1, SupervisorId = 1, CreatedById = 3, Status = Status.InProgress, Priority = Priority.Medium, PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(6), ExternalUnitId = UnitIT }
+                new Initiative { Code = "INI-OPS", NameAr = "عمليات",   SupervisorId = 1, CreatedById = 3, Status = Status.InProgress, Priority = Priority.Medium, PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(6), ExternalUnitId = UnitOps },
+                new Initiative { Code = "INI-IT", NameAr = "تقنية",   SupervisorId = 1, CreatedById = 3, Status = Status.InProgress, Priority = Priority.Medium, PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(6), ExternalUnitId = UnitIT }
             );
             await _db.SaveChangesAsync();
 
-            var result = await _initiativeService.GetListAsync(null, null, UnitOps, 1, 20, UserRole.Admin, 3);
+            var result = await _initiativeService.GetListAsync(null, UnitOps, 1, 20, UserRole.Admin, 3);
             result.Initiatives.Should().HaveCount(1);
             result.Initiatives.First().Code.Should().Be("INI-OPS");
         }
@@ -184,7 +184,7 @@ namespace OperationalPlanMS.Tests.Services
             // Initiative in child unit (DEV is child of IT)
             _db.Initiatives.Add(new Initiative
             {
-                Code = "INI-DEV", NameAr = "تطوير", FiscalYearId = 1, SupervisorId = 1, CreatedById = 3,
+                Code = "INI-DEV", NameAr = "تطوير",   SupervisorId = 1, CreatedById = 3,
                 Status = Status.InProgress, Priority = Priority.Medium,
                 PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(6),
                 ExternalUnitId = UnitDev
@@ -192,7 +192,7 @@ namespace OperationalPlanMS.Tests.Services
             await _db.SaveChangesAsync();
 
             // Filter by IT (parent) should include DEV (child)
-            var result = await _initiativeService.GetListAsync(null, null, UnitIT, 1, 20, UserRole.Admin, 3);
+            var result = await _initiativeService.GetListAsync(null, UnitIT, 1, 20, UserRole.Admin, 3);
             result.Initiatives.Should().HaveCountGreaterOrEqualTo(1);
         }
 

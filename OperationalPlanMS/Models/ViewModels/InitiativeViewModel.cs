@@ -8,8 +8,6 @@ namespace OperationalPlanMS.Models.ViewModels
     {
         public List<Initiative> Initiatives { get; set; } = new();
         public string? SearchTerm { get; set; }
-        public int? FiscalYearId { get; set; }
-        public SelectList? FiscalYears { get; set; }
         public int CurrentPage { get; set; } = 1;
         public int PageSize { get; set; } = 10;
         public int TotalCount { get; set; }
@@ -79,11 +77,6 @@ namespace OperationalPlanMS.Models.ViewModels
         [Display(Name = "رتبة المشرف")]
         public string? SupervisorRank { get; set; }
 
-        [Required(ErrorMessage = "السنة المالية مطلوبة")]
-        [Display(Name = "السنة المالية")]
-        public int FiscalYearId { get; set; }
-
-        public SelectList? FiscalYears { get; set; }
         public SelectList? Supervisors { get; set; }
 
         public static InitiativeFormViewModel FromEntity(Initiative entity) => new()
@@ -99,7 +92,6 @@ namespace OperationalPlanMS.Models.ViewModels
             Budget = entity.Budget,
             ActualCost = entity.ActualCost,
             StrategicObjective = entity.StrategicObjective,
-            FiscalYearId = entity.FiscalYearId,
             SupervisorId = entity.SupervisorId,
             ExternalUnitId = entity.ExternalUnitId,
             ExternalUnitName = entity.ExternalUnitName,
@@ -120,7 +112,6 @@ namespace OperationalPlanMS.Models.ViewModels
             entity.Budget = Budget;
             entity.ActualCost = ActualCost;
             entity.StrategicObjective = StrategicObjective;
-            entity.FiscalYearId = FiscalYearId;
             entity.ExternalUnitId = ExternalUnitId;
             entity.ExternalUnitName = ExternalUnitName;
             entity.SupervisorEmpNumber = SupervisorEmpNumber;

@@ -145,7 +145,7 @@ namespace OperationalPlanMS.Tests.Services
             var service = new InitiativeService(db, TestDbHelper.CreateLogger<InitiativeService>(),
                 TestDbHelper.CreateAuditService(), TestDbHelper.CreateUserService());
             // Admin of tenant 1 should see tenant 1 initiatives via Global Query Filter
-            var result = await service.GetListAsync(null, null, null, 1, 20, UserRole.Admin, 2);
+            var result = await service.GetListAsync(null, null, 1, 20, UserRole.Admin, 2);
             result.Initiatives.Should().HaveCount(2);
         }
 
@@ -155,7 +155,7 @@ namespace OperationalPlanMS.Tests.Services
             using var db = CreateDb(TestDbHelper.SuperAdminProvider());
             var service = new InitiativeService(db, TestDbHelper.CreateLogger<InitiativeService>(),
                 TestDbHelper.CreateAuditService(), TestDbHelper.CreateUserService());
-            var result = await service.GetListAsync(null, null, null, 1, 20, UserRole.SuperAdmin, 1);
+            var result = await service.GetListAsync(null, null, 1, 20, UserRole.SuperAdmin, 1);
             result.Initiatives.Should().HaveCount(3);
         }
 

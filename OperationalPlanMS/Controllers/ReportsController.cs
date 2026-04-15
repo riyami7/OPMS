@@ -86,12 +86,10 @@ namespace OperationalPlanMS.Controllers
             viewModel.InProgressProjects = projects.Count(p => p.ProgressPercentage > 0 && p.ProgressPercentage < 100 && !IsProjectDelayed(p));
             viewModel.DelayedProjects = projects.Count(p => IsProjectDelayed(p));
 
-            // === حالات الخطوات (منفصلة) — "مكتمل" فقط بعد التأكيد ===
-            viewModel.CompletedSteps = steps.Count(s => s.ProgressPercentage >= 100 && s.ApprovalStatus == ApprovalStatus.Approved);
+            // === حالات الخطوات (منفصلة) ===
+            viewModel.CompletedSteps = steps.Count(s => s.ProgressPercentage >= 100);
             viewModel.DelayedSteps = steps.Count(s => IsStepDelayed(s));
-            viewModel.InProgressSteps = steps.Count(s =>
-                (s.ProgressPercentage > 0 && s.ProgressPercentage < 100 && !IsStepDelayed(s))
-                || (s.ProgressPercentage >= 100 && s.ApprovalStatus != ApprovalStatus.Approved)); // بانتظار التأكيد
+            viewModel.InProgressSteps = steps.Count(s => s.ProgressPercentage > 0 && s.ProgressPercentage < 100 && !IsStepDelayed(s));
             viewModel.NotStartedSteps = steps.Count(s => s.ProgressPercentage == 0 && !IsStepDelayed(s));
 
             // === المتأخرات ===
@@ -346,8 +344,8 @@ namespace OperationalPlanMS.Controllers
 
                     foreach (var s in steps)
                     {
-                        // الخطوات المكتملة — المؤكّدة فقط
-                        if (s.ProgressPercentage >= 100 && s.ApprovalStatus == ApprovalStatus.Approved && s.ActualEndDate.HasValue)
+                        // الخطوات المكتملة — نستخدم ActualEndDate كتاريخ الإكمال
+                        if (s.ProgressPercentage >= 100 && s.ActualEndDate.HasValue)
                         {
                             var m = s.ActualEndDate.Value.Month - 1;
                             if (m >= 0 && m < 12) monthly[m]++;
@@ -377,7 +375,7 @@ namespace OperationalPlanMS.Controllers
         public async Task<IActionResult> InitiativeDetails(int id)
         {
             var initiative = await _db.Initiatives
-                .Include(i => i.FiscalYear)
+                
                 .Include(i => i.Supervisor)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                     .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
@@ -420,7 +418,7 @@ namespace OperationalPlanMS.Controllers
             ViewBag.AverageProgress = projects.Any() ? Math.Round(projects.Average(p => p.ProgressPercentage), 1) : 0;
 
             ViewBag.TotalSteps = steps.Count;
-            ViewBag.CompletedSteps = steps.Count(s => s.ProgressPercentage >= 100 && s.ApprovalStatus == ApprovalStatus.Approved);
+            ViewBag.CompletedSteps = steps.Count(s => s.ProgressPercentage >= 100);
             ViewBag.DelayedSteps = steps.Count(s => IsStepDelayed(s));
 
             ViewBag.Projects = projects;
@@ -493,7 +491,7 @@ namespace OperationalPlanMS.Controllers
                     foreach (var p in exportProjects)
                     {
                         var stepCount = p.Steps.Count;
-                        var completedSteps = p.Steps.Count(s => s.ProgressPercentage >= 100 && s.ApprovalStatus == ApprovalStatus.Approved);
+                        var completedSteps = p.Steps.Count(s => s.ProgressPercentage >= 100);
                         var status = GetCalculatedProjectStatus(p);
                         var unitName = p.Initiative?.ExternalUnitName ?? "-";
                         csv.AppendLine($"{p.Code},{p.NameAr},{p.Initiative?.NameAr},{unitName},{stepCount},{completedSteps},{p.ProgressPercentage}%,{p.Budget ?? 0},{p.ActualCost ?? 0},{status}");
@@ -872,8 +870,7 @@ namespace OperationalPlanMS.Controllers
 
         private string GetCalculatedStepStatus(Step step)
         {
-            if (step.ProgressPercentage >= 100 && step.ApprovalStatus == ApprovalStatus.Approved) return "مكتمل";
-            if (step.ProgressPercentage >= 100) return "بانتظار التأكيد";
+            if (step.ProgressPercentage >= 100) return "مكتمل";
             if (step.Status == StepStatus.Cancelled) return "ملغي";
             if (step.Status == StepStatus.OnHold) return "متوقف";
             if (IsStepDelayed(step)) return "متأخر";

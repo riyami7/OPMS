@@ -104,7 +104,7 @@ namespace OperationalPlanMS.Tests.Helpers
             var initiative = new Initiative
             {
                 Code = code, NameAr = "مبادرة اختبارية", NameEn = "Test Initiative",
-                FiscalYearId = 1, SupervisorId = supervisorId, CreatedById = 1, CreatedAt = DateTime.Now,
+                  SupervisorId = supervisorId, CreatedById = 1, CreatedAt = DateTime.Now,
                 Status = Status.InProgress, Priority = Priority.Medium,
                 PlannedStartDate = DateTime.Today, PlannedEndDate = DateTime.Today.AddMonths(6),
                 TenantId = tenantId

@@ -101,10 +101,7 @@ namespace OperationalPlanMS.Data
                     .HasForeignKey(e => e.ExternalUnitId)
                     .OnDelete(DeleteBehavior.SetNull);
 
-                entity.HasOne(e => e.FiscalYear)
-                    .WithMany(e => e.Initiatives)
-                    .HasForeignKey(e => e.FiscalYearId)
-                    .OnDelete(DeleteBehavior.Restrict);
+               
 
                 entity.HasOne(e => e.Supervisor)
                     .WithMany(e => e.SupervisedInitiatives)

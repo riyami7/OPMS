@@ -82,9 +82,6 @@ namespace OperationalPlanMS.Models.Entities
         [StringLength(100)]
         public string? SupervisorRank { get; set; }
 
-        [Required]
-        public int FiscalYearId { get; set; }
-
         public int? SupervisorId { get; set; }
 
         [Required]
@@ -99,9 +96,6 @@ namespace OperationalPlanMS.Models.Entities
         // Navigation properties
         [ForeignKey("ExternalUnitId")]
         public virtual ExternalOrganizationalUnit? ExternalUnit { get; set; }
-
-        [ForeignKey("FiscalYearId")]
-        public virtual FiscalYear FiscalYear { get; set; } = null!;
 
         [ForeignKey("SupervisorId")]
         public virtual User? Supervisor { get; set; }

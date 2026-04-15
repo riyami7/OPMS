@@ -40,12 +40,6 @@
                         <input type="text" class="form-control" asp-for="SearchTerm" placeholder="الاسم أو الكود..." />
                     </div>
                 </div>
-             @*    <div class="col-md-2">
-                    <label class="form-label">السنة المالية</label>
-                    <select class="form-select" asp-for="FiscalYearId" asp-items="Model.FiscalYears">
-                        <option value="">-- الكل --</option>
-                    </select>
-                </div> *@
                 <div class="col-md-4">
                     <label class="form-label">الوحدة التنظيمية</label>
                     <div id="filterOrgTree"></div>
@@ -187,16 +181,16 @@
     <nav class="mt-4">
         <ul class="pagination justify-content-center">
             <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
-                <a class="page-link" href="?CurrentPage=@(Model.CurrentPage - 1)&SearchTerm=@Model.SearchTerm&FiscalYearId=@Model.FiscalYearId&ExternalUnitId=@ViewBag.ExternalUnitId"><i class="bi bi-chevron-right"></i></a>
+                <a class="page-link" href="?CurrentPage=@(Model.CurrentPage - 1)&SearchTerm=@Model.SearchTerm&ExternalUnitId=@ViewBag.ExternalUnitId"><i class="bi bi-chevron-right"></i></a>
             </li>
             @for (int i = 1; i <= Model.TotalPages; i++)
             {
                 <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
-                    <a class="page-link" href="?CurrentPage=@i&SearchTerm=@Model.SearchTerm&FiscalYearId=@Model.FiscalYearId&ExternalUnitId=@ViewBag.ExternalUnitId">@i</a>
+                    <a class="page-link" href="?CurrentPage=@i&SearchTerm=@Model.SearchTerm&ExternalUnitId=@ViewBag.ExternalUnitId">@i</a>
                 </li>
             }
             <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
-                <a class="page-link" href="?CurrentPage=@(Model.CurrentPage + 1)&SearchTerm=@Model.SearchTerm&FiscalYearId=@Model.FiscalYearId&ExternalUnitId=@ViewBag.ExternalUnitId"><i class="bi bi-chevron-left"></i></a>
+                <a class="page-link" href="?CurrentPage=@(Model.CurrentPage + 1)&SearchTerm=@Model.SearchTerm&ExternalUnitId=@ViewBag.ExternalUnitId"><i class="bi bi-chevron-left"></i></a>
             </li>
         </ul>
     </nav>

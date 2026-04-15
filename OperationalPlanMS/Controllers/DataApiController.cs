@@ -35,21 +35,17 @@ namespace OperationalPlanMS.Controllers
 
         /// <summary>
         /// GET /api/data/summary — overall system statistics
-        /// Supports optional role-based filtering via userId and role params.
         /// </summary>
         [HttpGet("summary")]
-        public async Task<IActionResult> GetSummary(int? fiscalYearId, int? userId, string? role)
+        public async Task<IActionResult> GetSummary()
         {
-            var query = _db.Initiatives
+            var initiatives = await _db.Initiatives
                 .Where(i => !i.IsDeleted)
-                .Where(i => !fiscalYearId.HasValue || i.FiscalYearId == fiscalYearId)
+                .Where(i => !i.IsDeleted)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                     .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
-                .AsQueryable();
+                .ToListAsync();
 
-            query = ApplyRoleFilter(query, userId, role);
-
-            var initiatives = await query.ToListAsync();
             var projects = initiatives.SelectMany(i => i.Projects).ToList();
             var steps = projects.SelectMany(p => p.Steps).ToList();
 
@@ -97,24 +93,17 @@ namespace OperationalPlanMS.Controllers
         // ================================================================
 
         /// <summary>
-        /// GET /api/data/initiatives?fiscalYearId=1&unitId=5&search=keyword&userId=1&role=Admin
+        /// GET /api/data/initiatives?unitId=xxx&search=keyword
         /// </summary>
         [HttpGet("initiatives")]
-        public async Task<IActionResult> GetInitiatives(int? fiscalYearId, Guid? unitId, string? search, int? userId, string? role)
+        public async Task<IActionResult> GetInitiatives(Guid? unitId, string? search)
         {
-            if (!HasToolAccess(role, "initiatives"))
-                return StatusCode(403, new ApiResponse<object> { Success = false, Message = "ليس لديك صلاحية لعرض المبادرات" });
-
             var query = _db.Initiatives
                 .Where(i => !i.IsDeleted)
                 .Include(i => i.Supervisor)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                 .AsQueryable();
 
-            query = ApplyRoleFilter(query, userId, role);
-
-            if (fiscalYearId.HasValue)
-                query = query.Where(i => i.FiscalYearId == fiscalYearId);
             if (unitId.HasValue)
                 query = query.Where(i => i.ExternalUnitId == unitId);
             if (!string.IsNullOrEmpty(search))
@@ -138,7 +127,7 @@ namespace OperationalPlanMS.Controllers
             var item = await _db.Initiatives
                 .Where(i => !i.IsDeleted && i.Id == id)
                 .Include(i => i.Supervisor)
-                .Include(i => i.FiscalYear)
+                
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                     .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
                 .FirstOrDefaultAsync();
@@ -157,8 +146,6 @@ namespace OperationalPlanMS.Controllers
                 UnitName = item.ExternalUnitName,
                 SupervisorName = item.SupervisorName ?? item.Supervisor?.FullNameAr,
                 StrategicObjective = item.StrategicObjective,
-                FiscalYearId = item.FiscalYearId,
-                FiscalYearName = item.FiscalYear?.NameAr,
                 Budget = item.Budget,
                 ActualCost = item.ActualCost,
                 PlannedStartDate = item.PlannedStartDate,
@@ -287,6 +274,7 @@ namespace OperationalPlanMS.Controllers
 
             var items = await query.OrderBy(s => s.ProjectId).ThenBy(s => s.StepNumber).ToListAsync();
 
+            // Filter by calculated status in memory
             if (!string.IsNullOrEmpty(status))
             {
                 items = items.Where(s => GetStepStatus(s).Equals(status, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -350,54 +338,28 @@ namespace OperationalPlanMS.Controllers
         // ================================================================
 
         /// <summary>
-        /// GET /api/data/overdue — overdue items with role-based filtering
+        /// GET /api/data/overdue — all overdue items across the system
         /// </summary>
         [HttpGet("overdue")]
-        public async Task<IActionResult> GetOverdue(int? fiscalYearId, int? userId, string? role)
+        public async Task<IActionResult> GetOverdue()
         {
-            var query = _db.Initiatives
+            var initiatives = await _db.Initiatives
                 .Where(i => !i.IsDeleted)
-                .Where(i => !fiscalYearId.HasValue || i.FiscalYearId == fiscalYearId)
+                .Where(i => !i.IsDeleted)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                     .ThenInclude(p => p.Steps.Where(s => !s.IsDeleted))
-                .AsQueryable();
+                .ToListAsync();
 
-            query = ApplyRoleFilter(query, userId, role);
-
-            var initiatives = await query.ToListAsync();
             var result = new List<OverdueItemDto>();
 
             foreach (var i in initiatives)
             {
                 foreach (var p in i.Projects.Where(p => IsDelayed(p)))
                 {
-                    if ((role == nameof(UserRole.User) || role == nameof(UserRole.StepUser))
-                        && userId.HasValue && p.ProjectManagerId != userId.Value)
-                    {
-                        foreach (var s in p.Steps.Where(s => IsStepDelayed(s) && s.AssignedToId == userId.Value))
-                        {
-                            var stepDue = s.ActualEndDate ?? s.PlannedEndDate;
-                            result.Add(new OverdueItemDto
-                            {
-                                Id = s.Id,
-                                Code = $"S{s.StepNumber}",
-                                Name = s.NameAr,
-                                Type = "Step",
-                                Progress = s.ProgressPercentage,
-                                DueDate = stepDue,
-                                DaysOverdue = stepDue < DateTime.Today ? (int)(DateTime.Today - stepDue).TotalDays : 0
-                            });
-                        }
-                        continue;
-                    }
-
                     var dueDate = p.ActualEndDate ?? p.PlannedEndDate;
                     result.Add(new OverdueItemDto
                     {
-                        Id = p.Id,
-                        Code = p.Code,
-                        Name = p.NameAr,
-                        Type = "Project",
+                        Id = p.Id, Code = p.Code, Name = p.NameAr, Type = "Project",
                         Progress = p.ProgressPercentage,
                         DueDate = dueDate,
                         DaysOverdue = dueDate.HasValue ? (int)(DateTime.Today - dueDate.Value).TotalDays : 0
@@ -408,10 +370,7 @@ namespace OperationalPlanMS.Controllers
                         var stepDue = s.ActualEndDate ?? s.PlannedEndDate;
                         result.Add(new OverdueItemDto
                         {
-                            Id = s.Id,
-                            Code = $"S{s.StepNumber}",
-                            Name = s.NameAr,
-                            Type = "Step",
+                            Id = s.Id, Code = $"S{s.StepNumber}", Name = s.NameAr, Type = "Step",
                             Progress = s.ProgressPercentage,
                             DueDate = stepDue,
                             DaysOverdue = stepDue < DateTime.Today ? (int)(DateTime.Today - stepDue).TotalDays : 0
@@ -427,23 +386,15 @@ namespace OperationalPlanMS.Controllers
             });
         }
 
-        // ================================================================
-        //  Unit Performance
-        // ================================================================
-
         /// <summary>
         /// GET /api/data/unit-performance — performance by organizational unit
-        /// Only accessible by Admin/Executive/SuperAdmin
         /// </summary>
         [HttpGet("unit-performance")]
-        public async Task<IActionResult> GetUnitPerformance(int? fiscalYearId, int? userId, string? role)
+        public async Task<IActionResult> GetUnitPerformance()
         {
-            if (!HasToolAccess(role, "unit-performance"))
-                return StatusCode(403, new ApiResponse<object> { Success = false, Message = "ليس لديك صلاحية لمقارنة الوحدات التنظيمية" });
-
             var initiatives = await _db.Initiatives
                 .Where(i => !i.IsDeleted)
-                .Where(i => !fiscalYearId.HasValue || i.FiscalYearId == fiscalYearId)
+                .Where(i => !i.IsDeleted)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                 .ToListAsync();
 
@@ -471,12 +422,19 @@ namespace OperationalPlanMS.Controllers
             });
         }
 
+
         // ================================================================
         //  Chat Context — Role-Filtered Data for AI Chatbot
         // ================================================================
 
         /// <summary>
         /// GET /api/data/chat-context?userId=1&role=Admin
+        /// يرجع بيانات مصفّاة حسب صلاحيات المستخدم لاستخدامها كسياق للمحادثة مع الذكاء الاصطناعي.
+        /// 
+        /// قواعد التصفية:
+        ///   Admin / Executive → جميع البيانات
+        ///   Supervisor        → فقط المبادرات التي يشرف عليها (SupervisorId == userId) ومشاريعها وخطواتها
+        ///   غير ذلك           → 403 Forbidden
         /// </summary>
         [HttpGet("chat-context")]
         public async Task<IActionResult> GetChatContext(int userId, string role)
@@ -484,9 +442,11 @@ namespace OperationalPlanMS.Controllers
             if (!Enum.TryParse<UserRole>(role, true, out var userRole))
                 return BadRequest(new ApiResponse<object> { Success = false, Message = "Invalid role" });
 
+            // فقط Admin / Executive / Supervisor يمكنهم استخدام المساعد الذكي
             if (userRole != UserRole.Admin && userRole != UserRole.Executive && userRole != UserRole.Supervisor)
                 return StatusCode(403, new ApiResponse<object> { Success = false, Message = "Access denied — insufficient role" });
 
+            // ===== جلب المبادرات مع التصفية حسب الدور =====
             var query = _db.Initiatives
                 .Where(i => !i.IsDeleted)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
@@ -495,6 +455,7 @@ namespace OperationalPlanMS.Controllers
                     .ThenInclude(p => p.ProjectKPIs)
                 .AsQueryable();
 
+            // المشرف يرى فقط مبادراته
             if (userRole == UserRole.Supervisor)
                 query = query.Where(i => i.SupervisorId == userId);
 
@@ -502,6 +463,7 @@ namespace OperationalPlanMS.Controllers
             var projects = initiatives.SelectMany(i => i.Projects).ToList();
             var steps = projects.SelectMany(p => p.Steps).ToList();
 
+            // ===== بناء السياق =====
             var context = new ChatContextDto
             {
                 UserName = (await _db.Users.FindAsync(userId))?.FullNameAr ?? "مستخدم",
@@ -578,29 +540,18 @@ namespace OperationalPlanMS.Controllers
 
         private static FiscalYearDto MapFiscalYear(FiscalYear f) => new()
         {
-            Id = f.Id,
-            Year = f.Year,
-            NameAr = f.NameAr,
-            NameEn = f.NameEn,
-            StartDate = f.StartDate,
-            EndDate = f.EndDate,
-            IsCurrent = f.IsCurrent
+            Id = f.Id, Year = f.Year, NameAr = f.NameAr, NameEn = f.NameEn,
+            StartDate = f.StartDate, EndDate = f.EndDate, IsCurrent = f.IsCurrent
         };
 
         private static InitiativeListDto MapInitiativeList(Initiative i) => new()
         {
-            Id = i.Id,
-            Code = i.Code,
-            NameAr = i.NameAr,
-            NameEn = i.NameEn,
+            Id = i.Id, Code = i.Code, NameAr = i.NameAr, NameEn = i.NameEn,
             UnitName = i.ExternalUnitName,
             SupervisorName = i.SupervisorName ?? i.Supervisor?.FullNameAr,
-            Budget = i.Budget,
-            ActualCost = i.ActualCost,
-            PlannedStartDate = i.PlannedStartDate,
-            PlannedEndDate = i.PlannedEndDate,
-            ActualStartDate = i.ActualStartDate,
-            ActualEndDate = i.ActualEndDate,
+            Budget = i.Budget, ActualCost = i.ActualCost,
+            PlannedStartDate = i.PlannedStartDate, PlannedEndDate = i.PlannedEndDate,
+            ActualStartDate = i.ActualStartDate, ActualEndDate = i.ActualEndDate,
             ProgressPercentage = i.Projects.Any()
                 ? Math.Round(i.Projects.Where(p => !p.IsDeleted).Average(p => p.ProgressPercentage), 1) : 0,
             ProjectCount = i.Projects.Count(p => !p.IsDeleted),
@@ -611,18 +562,12 @@ namespace OperationalPlanMS.Controllers
 
         private static ProjectListDto MapProjectList(Project p) => new()
         {
-            Id = p.Id,
-            Code = p.Code,
-            NameAr = p.NameAr,
-            NameEn = p.NameEn,
+            Id = p.Id, Code = p.Code, NameAr = p.NameAr, NameEn = p.NameEn,
             ProjectManagerName = p.ProjectManagerName,
             UnitName = p.ExternalUnitName,
-            Budget = p.Budget,
-            ActualCost = p.ActualCost,
-            PlannedStartDate = p.PlannedStartDate,
-            PlannedEndDate = p.PlannedEndDate,
-            ActualStartDate = p.ActualStartDate,
-            ActualEndDate = p.ActualEndDate,
+            Budget = p.Budget, ActualCost = p.ActualCost,
+            PlannedStartDate = p.PlannedStartDate, PlannedEndDate = p.PlannedEndDate,
+            ActualStartDate = p.ActualStartDate, ActualEndDate = p.ActualEndDate,
             ProgressPercentage = p.ProgressPercentage,
             StepCount = p.Steps?.Count(s => !s.IsDeleted) ?? 0,
             CompletedStepCount = p.Steps?.Count(s => !s.IsDeleted && s.ProgressPercentage >= 100) ?? 0,
@@ -634,26 +579,20 @@ namespace OperationalPlanMS.Controllers
 
         private static StepListDto MapStepList(Step s) => new()
         {
-            Id = s.Id,
-            StepNumber = s.StepNumber,
-            NameAr = s.NameAr,
-            NameEn = s.NameEn,
+            Id = s.Id, StepNumber = s.StepNumber, NameAr = s.NameAr, NameEn = s.NameEn,
             AssignedToName = s.AssignedToName ?? s.AssignedTo?.FullNameAr,
-            Weight = s.Weight,
-            ProgressPercentage = s.ProgressPercentage,
+            Weight = s.Weight, ProgressPercentage = s.ProgressPercentage,
             Status = GetStepStatus(s),
             ApprovalStatus = s.ApprovalStatus.ToString(),
-            PlannedStartDate = s.PlannedStartDate,
-            PlannedEndDate = s.PlannedEndDate,
-            ActualStartDate = s.ActualStartDate,
-            ActualEndDate = s.ActualEndDate,
+            PlannedStartDate = s.PlannedStartDate, PlannedEndDate = s.PlannedEndDate,
+            ActualStartDate = s.ActualStartDate, ActualEndDate = s.ActualEndDate,
             IsDelayed = IsStepDelayed(s),
             ProjectId = s.ProjectId,
             ProjectName = s.Project?.NameAr
         };
 
         // ================================================================
-        //  Status Helpers
+        //  Status Helpers (return Arabic string, not enum int)
         // ================================================================
 
         private static string GetStepStatus(Step s)
@@ -697,57 +636,6 @@ namespace OperationalPlanMS.Controllers
             if (p.Steps?.Any(s => !s.IsDeleted && IsStepDelayed(s)) == true) return true;
             if (p.ActualEndDate.HasValue && p.ActualEndDate.Value < DateTime.Today) return true;
             return false;
-        }
-
-        // ================================================================
-        //  RBAC Helpers
-        // ================================================================
-
-        /// <summary>
-        /// Filters initiative query based on user role.
-        /// </summary>
-        private IQueryable<Initiative> ApplyRoleFilter(
-            IQueryable<Initiative> query, int? userId, string? role)
-        {
-            if (!userId.HasValue || string.IsNullOrEmpty(role))
-                return query;
-
-            if (role == nameof(UserRole.Admin) ||
-                role == nameof(UserRole.Executive) ||
-                role == nameof(UserRole.SuperAdmin))
-                return query;
-
-            if (role == nameof(UserRole.Supervisor))
-            {
-                return query.Where(i =>
-                    i.SupervisorId == userId.Value ||
-                    i.Projects.Any(p => !p.IsDeleted && p.ProjectManagerId == userId.Value));
-            }
-
-            return query.Where(i =>
-                i.Projects.Any(p => !p.IsDeleted && (
-                    p.ProjectManagerId == userId.Value ||
-                    p.Steps.Any(s => !s.IsDeleted && s.AssignedToId == userId.Value)
-                )));
-        }
-
-        /// <summary>
-        /// Checks if a role has access to a specific tool/feature.
-        /// </summary>
-        private static bool HasToolAccess(string? role, string toolName)
-        {
-            if (string.IsNullOrEmpty(role))
-                return true;
-
-            if (role == nameof(UserRole.Admin) ||
-                role == nameof(UserRole.Executive) ||
-                role == nameof(UserRole.SuperAdmin))
-                return true;
-
-            if (role == nameof(UserRole.Supervisor))
-                return toolName != "unit-performance";
-
-            return toolName == "summary" || toolName == "overdue";
         }
     }
 }

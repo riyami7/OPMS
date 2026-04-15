@@ -94,7 +94,7 @@ namespace OperationalPlanMS.Tests.Services
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
                 Code = "INI-2026-100", NameAr = "مبادرة جديدة", NameEn = "New Initiative",
-                FiscalYearId = 1, SupervisorId = 3,
+                  SupervisorId = 3,
             };
             var (success, id, error) = await _service.CreateAsync(model, createdById: 1);
             success.Should().BeTrue();
@@ -109,7 +109,7 @@ namespace OperationalPlanMS.Tests.Services
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
                 Code = "INI-2026-001", NameAr = "مكرر", NameEn = "Duplicate",
-                FiscalYearId = 1, SupervisorId = 3,
+                  SupervisorId = 3,
             };
             var (success, id, error) = await _service.CreateAsync(model, createdById: 1);
             success.Should().BeFalse();
@@ -123,7 +123,7 @@ namespace OperationalPlanMS.Tests.Services
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
                 Code = seeded.Code, NameAr = "مبادرة محدثة", NameEn = "Updated",
-                FiscalYearId = 1, SupervisorId = 3,
+                  SupervisorId = 3,
             };
             var (success, error) = await _service.UpdateAsync(seeded.Id, model, modifiedById: 1, UserRole.Admin, 1);
             success.Should().BeTrue();
@@ -138,7 +138,7 @@ namespace OperationalPlanMS.Tests.Services
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
                 Code = seeded.Code, NameAr = "تعديل المشرف", NameEn = "Supervisor Edit",
-                FiscalYearId = 1, SupervisorId = 3,
+                  SupervisorId = 3,
             };
             var (success, error) = await _service.UpdateAsync(seeded.Id, model, modifiedById: 3, UserRole.Supervisor, 3);
             success.Should().BeTrue();
@@ -151,7 +151,7 @@ namespace OperationalPlanMS.Tests.Services
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
                 Code = seeded.Code, NameAr = "محاولة", NameEn = "Attempt",
-                FiscalYearId = 1, SupervisorId = 3,
+                  SupervisorId = 3,
             };
             var (success, error) = await _service.UpdateAsync(seeded.Id, model, modifiedById: 99, UserRole.Supervisor, 99);
             success.Should().BeFalse();
@@ -164,7 +164,7 @@ namespace OperationalPlanMS.Tests.Services
             var model = new Models.ViewModels.InitiativeFormViewModel
             {
                 Code = "INI-XXXX", NameAr = "X", NameEn = "X",
-                FiscalYearId = 1, SupervisorId = 3,
+                  SupervisorId = 3,
             };
             var (success, error) = await _service.UpdateAsync(999, model, 1, UserRole.Admin, 1);
             success.Should().BeFalse();
@@ -251,7 +251,7 @@ namespace OperationalPlanMS.Tests.Services
         {
             var result = await _service.PrepareCreateViewModelAsync();
             result.Code.Should().MatchRegex(@"INI-\d{4}-001");
-            result.FiscalYears.Should().NotBeNull();
+             
         }
 
         [Fact]
@@ -267,7 +267,7 @@ namespace OperationalPlanMS.Tests.Services
         {
             await TestDbHelper.SeedInitiativeAsync(_db, supervisorId: 3, code: "INI-2026-001");
             await TestDbHelper.SeedInitiativeAsync(_db, supervisorId: 6, code: "INI-2026-002");
-            var result = await _service.GetListAsync(null, null, null, 1, 20, UserRole.Admin, 1);
+            var result = await _service.GetListAsync(null, null, 1, 20, UserRole.Admin, 1);
             result.Initiatives.Should().HaveCount(2);
         }
 
@@ -276,7 +276,7 @@ namespace OperationalPlanMS.Tests.Services
         {
             await TestDbHelper.SeedInitiativeAsync(_db, supervisorId: 3, code: "INI-2026-001");
             await TestDbHelper.SeedInitiativeAsync(_db, supervisorId: 6, code: "INI-2026-002");
-            var result = await _service.GetListAsync(null, null, null, 1, 20, UserRole.Supervisor, 3);
+            var result = await _service.GetListAsync(null, null, 1, 20, UserRole.Supervisor, 3);
             result.Initiatives.Should().HaveCount(1);
             result.Initiatives.First().SupervisorId.Should().Be(3);
         }
@@ -286,7 +286,7 @@ namespace OperationalPlanMS.Tests.Services
         {
             await TestDbHelper.SeedInitiativeAsync(_db, code: "INI-2026-001");
             await TestDbHelper.SeedInitiativeAsync(_db, code: "INI-2026-002");
-            var result = await _service.GetListAsync("002", null, null, 1, 20, UserRole.Admin, 1);
+            var result = await _service.GetListAsync("002", null, 1, 20, UserRole.Admin, 1);
             result.Initiatives.Should().HaveCount(1);
         }
     }

@@ -43,7 +43,7 @@ namespace OperationalPlanMS.Controllers
             }
 
             var viewModel = await _initiativeService.GetListAsync(
-                model.SearchTerm, model.FiscalYearId, externalUnitId,
+                model.SearchTerm, externalUnitId,
                 model.CurrentPage, model.PageSize, userRole, userId);
 
             ViewBag.CanEdit = CanEditInitiatives();

@@ -11,7 +11,7 @@ namespace OperationalPlanMS.Services
     public interface IInitiativeService
     {
         // القراءة
-        Task<InitiativeListViewModel> GetListAsync(string? searchTerm, int? fiscalYearId, Guid? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
+        Task<InitiativeListViewModel> GetListAsync(string? searchTerm, Guid? externalUnitId, int page, int pageSize, UserRole userRole, int userId);
         Task<InitiativeDetailsViewModel?> GetDetailsAsync(int id);
         Task<Initiative?> GetByIdAsync(int id);
 
@@ -64,11 +64,11 @@ namespace OperationalPlanMS.Services
         #region القراءة
 
         public async Task<InitiativeListViewModel> GetListAsync(
-            string? searchTerm, int? fiscalYearId, Guid? externalUnitId,
+            string? searchTerm, Guid? externalUnitId,
             int page, int pageSize, UserRole userRole, int userId)
         {
             var query = _db.Initiatives.Where(i => !i.IsDeleted)
-                .Include(i => i.FiscalYear).Include(i => i.Supervisor)
+                .Include(i => i.Supervisor)
                 .Include(i => i.Projects.Where(p => !p.IsDeleted))
                 .AsQueryable();
 
@@ -128,8 +128,6 @@ namespace OperationalPlanMS.Services
                     i.NameEn.Contains(searchTerm) || i.Code.Contains(searchTerm));
 
             // السنة المالية
-            if (fiscalYearId.HasValue)
-                query = query.Where(i => i.FiscalYearId == fiscalYearId.Value);
 
             // الوحدة التنظيمية (مع الوحدات الفرعية)
             if (externalUnitId.HasValue)
@@ -146,7 +144,6 @@ namespace OperationalPlanMS.Services
             {
                 Initiatives = initiatives,
                 SearchTerm = searchTerm,
-                FiscalYearId = fiscalYearId,
                 TotalCount = totalCount,
                 CurrentPage = page,
                 PageSize = pageSize
@@ -159,7 +156,7 @@ namespace OperationalPlanMS.Services
         public async Task<InitiativeDetailsViewModel?> GetDetailsAsync(int id)
         {
             var initiative = await _db.Initiatives
-                .Include(i => i.FiscalYear).Include(i => i.Supervisor).Include(i => i.CreatedBy)
+                .Include(i => i.Supervisor).Include(i => i.CreatedBy)
                 .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
 
             if (initiative == null) return null;
@@ -239,7 +236,7 @@ namespace OperationalPlanMS.Services
 
             // ربط المشرف — ينشئه تلقائياً إذا ما موجود
             initiative.SupervisorId = await _userService.EnsureUserExistsAsync(
-                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor", null, initiative.ExternalUnitId, initiative.ExternalUnitName);
+                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor");
 
             _db.Initiatives.Add(initiative);
             await _db.SaveChangesAsync();
@@ -266,7 +263,7 @@ namespace OperationalPlanMS.Services
 
             // ربط المشرف — ينشئه تلقائياً إذا ما موجود
             initiative.SupervisorId = await _userService.EnsureUserExistsAsync(
-                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor", null, initiative.ExternalUnitId, initiative.ExternalUnitName);
+                model.SupervisorEmpNumber, model.SupervisorName, model.SupervisorRank, "Supervisor");
 
             initiative.LastModifiedById = modifiedById;
             initiative.LastModifiedAt = DateTime.Now;
@@ -391,16 +388,12 @@ namespace OperationalPlanMS.Services
 
         public async Task PopulateFormDropdownsAsync(InitiativeFormViewModel model)
         {
-            model.FiscalYears = new SelectList(
-                await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(), "Id", "NameAr", model.FiscalYearId);
             model.Supervisors = new SelectList(
                 await _db.Users.Where(u => u.IsActive).ToListAsync(), "Id", "FullNameAr", model.SupervisorId);
         }
 
         public async Task PopulateFilterDropdownsAsync(InitiativeListViewModel model)
         {
-            model.FiscalYears = new SelectList(
-                await _db.FiscalYears.OrderByDescending(f => f.Year).ToListAsync(), "Id", "NameAr", model.FiscalYearId);
         }
 
         public async Task<string?> GetUnitNameAsync(Guid externalUnitId)

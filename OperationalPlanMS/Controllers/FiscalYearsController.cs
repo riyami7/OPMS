@@ -113,11 +113,7 @@ namespace OperationalPlanMS.Controllers
             var entity = await _db.FiscalYears.FindAsync(id);
             if (entity == null) return NotFound();
 
-            if (await _db.Initiatives.AnyAsync(i => i.FiscalYearId == id))
-            {
-                TempData["ErrorMessage"] = "لا يمكن حذف السنة المالية لوجود مبادرات مرتبطة بها";
-                return RedirectToAction(nameof(Index));
-            }
+            
 
             _db.FiscalYears.Remove(entity);
             await _db.SaveChangesAsync();
@@ -142,3 +138,4 @@ namespace OperationalPlanMS.Controllers
         }
     }
 }
+
